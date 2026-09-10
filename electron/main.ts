@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import path from 'path'
 import { registerAuthHandlers } from './ipc/authHandlers.js'
+import { registerMenuHandlers } from './ipc/menuHandlers.js'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -28,6 +29,7 @@ app.whenReady().then(createWindow)
 app.on('window-all-closed', () => app.quit())
 
 registerAuthHandlers()
+registerMenuHandlers()
 
 // IPC handler stubs — will be replaced in subsequent tasks
 ipcMain.handle('ping', () => 'pong')
@@ -58,11 +60,7 @@ ipcMain.handle('reports:daily', () => ({}))
 ipcMain.handle('reports:weekly', () => ({}))
 ipcMain.handle('reports:monthly', () => ({}))
 ipcMain.handle('reports:exportCsv', () => '')
-ipcMain.handle('proteins:list', () => [])
-ipcMain.handle('proteins:upsert', () => { throw new Error('Not implemented') })
-ipcMain.handle('proteins:setOutOfStock', () => { throw new Error('Not implemented') })
-ipcMain.handle('starches:list', () => [])
-ipcMain.handle('starches:upsert', () => { throw new Error('Not implemented') })
+
 ipcMain.handle('settings:get', () => ({}))
 ipcMain.handle('settings:update', () => { throw new Error('Not implemented') })
 ipcMain.handle('backup:create', () => { throw new Error('Not implemented') })
