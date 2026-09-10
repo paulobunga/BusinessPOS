@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import path from 'path'
+import { registerAuthHandlers } from './ipc/authHandlers.js'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -26,9 +27,10 @@ function createWindow() {
 app.whenReady().then(createWindow)
 app.on('window-all-closed', () => app.quit())
 
+registerAuthHandlers()
+
 // IPC handler stubs — will be replaced in subsequent tasks
 ipcMain.handle('ping', () => 'pong')
-ipcMain.handle('auth:login', () => null)
 ipcMain.handle('sales:create', () => { throw new Error('Not implemented') })
 ipcMain.handle('sales:void', () => { throw new Error('Not implemented') })
 ipcMain.handle('sales:list', () => [])
