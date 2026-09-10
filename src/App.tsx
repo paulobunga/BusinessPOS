@@ -6,6 +6,7 @@ import { RequireAuth } from './components/RequireAuth'
 import { SellPage } from './pages/Sell/SellPage'
 import { ExpensesPage } from './pages/Expenses/ExpensesPage'
 import { DebtsPage } from './pages/Debts/DebtsPage'
+import { ReimbursementsPage } from './pages/Reimbursements/ReimbursementsPage'
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
           <Route path="/sell" element={<RequireAuth><SellPage /></RequireAuth>} />
           <Route path="/expenses" element={<RequireAuth><ExpensesPage /></RequireAuth>} />
           <Route path="/debts" element={<RequireAuth><DebtsPage /></RequireAuth>} />
+          <Route path="/reimbursements" element={<RequireAuth><ReimbursementsPage /></RequireAuth>} />
         </Routes>
       </TillProvider>
     </AuthProvider>

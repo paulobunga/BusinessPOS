@@ -126,10 +126,13 @@ export interface Expense {
 
 export interface Reimbursement {
   id: number
+  description: string | null
   amount_cents: number
-  created_at: string
+  till_session_id: number | null
   created_by: number | null
-  note: string | null
+  date: string
+  paid_to: 'till' | 'mpesa'
+  created_at: string
 }
 
 export interface ProteinPurchase {
@@ -221,8 +224,9 @@ export interface Api {
   'expenses:delete': (id: number) => Promise<void>
   'expenses:list': (filters?: { date_from?: string; date_to?: string; category?: string; payment_source?: string }) => Promise<Expense[]>
   // Reimbursements
-  'reimbursements:create': (amount_cents: number, note?: string) => Promise<Reimbursement>
-  'reimbursements:balance': () => Promise<{ owed_to_owner_cents: number }>
+  'reimbursements:create': (payload: { description: string; amount_cents: number; till_session_id?: number | null; created_by: number; date: string; paid_to: 'till' | 'mpesa' }) => Promise<Reimbursement>
+  'reimbursements:list': (start: string, end: string) => Promise<Reimbursement[]>
+  'reimbursements:delete': (id: number) => Promise<void>
   // Till
   'till:open': (floatCents: number) => Promise<TillSession>
   'till:close': (countedCents: number) => Promise<{ expected: number; variance: number }>

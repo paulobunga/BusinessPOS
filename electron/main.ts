@@ -5,6 +5,7 @@ import { registerMenuHandlers } from './ipc/menuHandlers.js'
 import { registerSalesHandlers } from './ipc/salesHandlers.js'
 import { registerExpensesHandlers } from './ipc/expensesHandlers.js'
 import { registerDebtsHandlers } from './ipc/debtsHandlers.js'
+import { registerReimbursementsHandlers } from './ipc/reimbursementsHandlers.js'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -36,14 +37,13 @@ registerMenuHandlers()
 registerSalesHandlers()
 registerExpensesHandlers()
 registerDebtsHandlers()
+registerReimbursementsHandlers()
 ipcMain.handle('ping', () => 'pong')
 ipcMain.handle('customers:create', () => { throw new Error('Not implemented') })
 ipcMain.handle('customers:list', () => [])
 ipcMain.handle('customers:get', () => null)
 ipcMain.handle('payments:create', () => { throw new Error('Not implemented') })
 ipcMain.handle('payments:list', () => [])
-ipcMain.handle('reimbursements:create', () => { throw new Error('Not implemented') })
-ipcMain.handle('reimbursements:balance', () => ({ owed_to_owner_cents: 0 }))
 ipcMain.handle('foodCost:purchases:list', () => [])
 ipcMain.handle('foodCost:purchases:create', () => { throw new Error('Not implemented') })
 ipcMain.handle('foodCost:cookEvents:list', () => [])
