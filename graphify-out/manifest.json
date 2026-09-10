@@ -1,0 +1,26 @@
+{
+  "README.md": {
+    "mtime": 1789054204.460999,
+    "seen": 1789054805.380756,
+    "ast_hash": "e3b8c859a758c87c202ea45c4b252e75",
+    "semantic_hash": "e3b8c859a758c87c202ea45c4b252e75"
+  },
+  "design.md": {
+    "mtime": 1789043428.0,
+    "seen": 1789054805.380756,
+    "ast_hash": "1599ac8496b3bf101b8cf81c6a68488c",
+    "semantic_hash": "1599ac8496b3bf101b8cf81c6a68488c"
+  },
+  "requirements.md": {
+    "mtime": 1789043428.0,
+    "seen": 1789054805.380756,
+    "ast_hash": "10f555f2b46ffb8dce77ca5d9b0e2453",
+    "semantic_hash": "10f555f2b46ffb8dce77ca5d9b0e2453"
+  },
+  "tasks.md": {
+    "mtime": 1789043428.0,
+    "seen": 1789054805.380756,
+    "ast_hash": "b1a4d8c90d6561ed8aa0f408db7f3b40",
+    "semantic_hash": "b1a4d8c90d6561ed8aa0f408db7f3b40"
+  }
+}
