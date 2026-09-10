@@ -28,7 +28,7 @@
 
 - Tests: `npm test` (vitest). Existing suite: `electron/__tests__/integration.test.ts` + `electron/db/__tests__/db.test.ts` (10 tests passing).
 - Typecheck (run sequentially):
-  - `npx tsc --noEmit -p electron/tsconfig.json`
+  - `npx tsc --noEmit -p tsconfig.node.json` (electron main process)
   - `npx tsc --noEmit -p tsconfig.json` (renderer)
 - Manual smoke at the end: `npm run dev` → login (PIN for seeded manager), sell with add-on, record purchase, record waste, run daily report, manage categories/items/attributes in Settings.
 
@@ -161,7 +161,7 @@ Edge cases to respect when writing A1:
 - `db.pragma('foreign_keys = OFF')`/`ON` must be called on the raw Database object and outside a `.transaction()`. The DDL/copy/drop steps themselves may be wrapped in `db.transaction(() => {...})()` for atomicity *after* the OFF pragma.
 - Order matters: add+backfill new columns before dropping old ones, and drop child references before dropping parents is unnecessary once FK is OFF, but keep the exact order above anyway for readability.
 
-**Verify A1:** `npx tsc --noEmit -p electron/tsconfig.json` (sequential, with GOMEMLIMIT/GOGC env set). Unit-estimate: migration compiles.
+**Verify A1:** `npx tsc --noEmit -p tsconfig.node.json` (sequential, with GOMEMLIMIT/GOGC env set). Unit-estimate: migration compiles.
 
 ### A2. Wire migration + seeds in `electron/db/index.ts`
 
@@ -355,7 +355,7 @@ Edit `shared/types.ts`:
   Update `inventory:*` / `waste:*` / `reports:itemPerformance` signatures to the renamed payloads above (`InventoryPurchasePayload`, `WasteRecordPayload` inline or as named types).
 - `Customer`/`TillSession`/`Expense`/`Reimbursement`/`Payment`/`DebtSummaryItem`/`TillSummaryData`/`FoodCostSummary` remain, except `FoodCostSummary.protein_name` → `item_name` (dead type; rename fields for consistency, keep the rest).
 
-**Verify A1–A8:** `npx tsc --noEmit -p electron/tsconfig.json`. All electron code (repos, handlers, main, preload, shared types, tests) must compile. The renderer does **not** compile yet (Task B) — that's expected at this checkpoint.
+**Verify A1–A8:** `npx tsc --noEmit -p tsconfig.node.json`. All electron code (repos, handlers, main, preload, shared types, tests) must compile. The renderer does **not** compile yet (Task B) — that's expected at this checkpoint.
 
 ---
 
@@ -459,7 +459,7 @@ Fresh in-memory DB (migrations 1–7), then:
 ### C4. Final verification gate (before claiming done)
 
 1. `npm test` — all tests pass (expect ≥ 13: 2 db + 7 integration + 4+ new).
-2. `npx tsc --noEmit -p electron/tsconfig.json` then `npx tsc --noEmit -p tsconfig.json` — sequentially, both clean.
+2. `npx tsc --noEmit -p tsconfig.node.json` then `npx tsc --noEmit -p tsconfig.json` — sequentially, both clean.
 3. Grep gate: run `rg "protein|starch|Protein|Starch"` across `src/` and `electron/` — allow hits ONLY inside `electron/db/migrations/001_initial.ts`…`006_waste_table.ts`, `design.md`, the spec, this plan, and non-code docs. No field/table/API name (`protein_id`, `starch_id`, `proteins:list`, `useProteins`, `reports:proteinPerformance`, `proteinsRepo`, `starchesRepo`, `inventoryRepo`) may remain in code.
 4. Manual smoke (`npm run dev`): login → category chips render (Proteins active) → sell 2× Goat + Banana → complete cash sale → cart clears → open till countCash reflects sale → Settings shows Categories/Attributes/Menu Items managers, rename a category, edit item price, toggle out-of-stock grey-out on the Sell screen → Inventory records a Goat purchase → Waste records waste → Reports daily + item-performance show the numbers.
 5. Coordinator commits any remaining work; update `.superpowers/sdd/.../progress.md` ledger.
