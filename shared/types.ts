@@ -63,6 +63,10 @@ export interface Sale {
   voided_at: string | null
   voided_by: number | null
   void_reason: string | null
+  discount_reason?: string | null
+  debt_cents?: number
+  payment_method?: 'cash' | 'debt' | 'mixed'
+  customer_name?: string | null
 }
 
 export interface SaleItem {
@@ -73,6 +77,7 @@ export interface SaleItem {
   unit_price_cents: number
   quantity: number
   line_total_cents: number
+  starch_id?: number | null
 }
 
 export interface SaleWithItems extends Sale {
@@ -149,14 +154,23 @@ export interface FoodCostSummary {
 }
 
 // === IPC Payloads ===
+export interface SaleItemInput {
+  protein_id: number
+  starch_id?: number | null
+  price_cents: number
+}
+
 export interface CreateSalePayload {
-  items: { protein_id: number; quantity: number }[]
-  starch_id: number
-  discount_cents?: number
-  tax_rate?: number
-  status: 'completed' | 'unpaid'
-  customer_id?: number
   customer_name?: string
+  subtotal_cents: number
+  discount_cents: number
+  discount_reason?: string
+  total_cents: number
+  debt_cents: number
+  payment_method: 'cash' | 'debt' | 'mixed'
+  till_session_id?: number | null
+  created_by: number
+  items: SaleItemInput[]
 }
 
 export interface CreateExpensePayload {
@@ -183,6 +197,8 @@ export interface Api {
   'sales:void': (id: number, reason: string) => Promise<void>
   'sales:list': (filters?: { status?: string; date_from?: string; date_to?: string }) => Promise<SaleWithItems[]>
   'sales:get': (id: number) => Promise<SaleWithItems>
+  'sales:listByDate': (date: string) => Promise<Sale[]>
+  'sales:getById': (id: number) => Promise<Sale | null>
   // Customers
   'customers:create': (name: string, phone?: string) => Promise<Customer>
   'customers:list': () => Promise<CustomerWithBalance[]>

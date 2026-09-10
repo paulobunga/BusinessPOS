@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import path from 'path'
 import { registerAuthHandlers } from './ipc/authHandlers.js'
 import { registerMenuHandlers } from './ipc/menuHandlers.js'
+import { registerSalesHandlers } from './ipc/salesHandlers.js'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -30,13 +31,10 @@ app.on('window-all-closed', () => app.quit())
 
 registerAuthHandlers()
 registerMenuHandlers()
+registerSalesHandlers()
 
 // IPC handler stubs — will be replaced in subsequent tasks
 ipcMain.handle('ping', () => 'pong')
-ipcMain.handle('sales:create', () => { throw new Error('Not implemented') })
-ipcMain.handle('sales:void', () => { throw new Error('Not implemented') })
-ipcMain.handle('sales:list', () => [])
-ipcMain.handle('sales:get', () => null)
 ipcMain.handle('customers:create', () => { throw new Error('Not implemented') })
 ipcMain.handle('customers:list', () => [])
 ipcMain.handle('customers:get', () => null)
@@ -48,9 +46,6 @@ ipcMain.handle('expenses:delete', () => { throw new Error('Not implemented') })
 ipcMain.handle('expenses:list', () => [])
 ipcMain.handle('reimbursements:create', () => { throw new Error('Not implemented') })
 ipcMain.handle('reimbursements:balance', () => ({ owed_to_owner_cents: 0 }))
-ipcMain.handle('till:open', () => { throw new Error('Not implemented') })
-ipcMain.handle('till:close', () => { throw new Error('Not implemented') })
-ipcMain.handle('till:current', () => null)
 ipcMain.handle('foodCost:purchases:list', () => [])
 ipcMain.handle('foodCost:purchases:create', () => { throw new Error('Not implemented') })
 ipcMain.handle('foodCost:cookEvents:list', () => [])

@@ -2,6 +2,7 @@ import Database from 'better-sqlite3'
 import path from 'path'
 import { app } from 'electron'
 import { runMigrations } from './migrations/001_initial.js'
+import { runSalesExtrasMigration } from './migrations/002_sales_extras.js'
 import { usersRepo } from './repositories/usersRepo.js'
 import { settingsRepo } from './repositories/settingsRepo.js'
 import { proteinsRepo } from './repositories/proteinsRepo.js'
@@ -16,6 +17,7 @@ export function getDb(): Database.Database {
     db.pragma('journal_mode = WAL')
     db.pragma('foreign_keys = ON')
     runMigrations(db)
+    runSalesExtrasMigration(db)
     usersRepo.seed()
     settingsRepo.seed()
     proteinsRepo.seed()
