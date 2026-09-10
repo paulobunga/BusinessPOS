@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { ProteinPurchaseWithName } from '../../shared/types'
+import type { ItemPurchaseWithName } from '../../shared/types'
 
 export function useInventory(date: string) {
-  const [purchases, setPurchases] = useState<ProteinPurchaseWithName[]>([])
+  const [purchases, setPurchases] = useState<ItemPurchaseWithName[]>([])
   const [dailyTotal, setDailyTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -15,7 +15,7 @@ export function useInventory(date: string) {
         window.api['inventory:byDate'](date),
         window.api['inventory:dailyTotal'](date),
       ])
-      setPurchases(data as ProteinPurchaseWithName[])
+      setPurchases(data as ItemPurchaseWithName[])
       setDailyTotal(total as number)
     } catch (err) {
       setError((err as Error).message || 'Failed to load inventory')
@@ -28,7 +28,7 @@ export function useInventory(date: string) {
     refresh()
   }, [refresh])
 
-  const record = useCallback(async (payload: { protein_id: number; quantity: number; cost_cents: number; date: string; created_by: number | null }) => {
+  const record = useCallback(async (payload: { item_id: number; quantity: number; cost_cents: number; date: string; created_by: number | null }) => {
     const result = await window.api['inventory:recordPurchase'](payload)
     await refresh()
     return result

@@ -1,18 +1,18 @@
-import type { Protein } from '../../shared/types'
+import type { MenuItemWithCategory } from '../../shared/types'
 
-interface ProteinCardProps {
-  protein: Protein
+interface ItemCardProps {
+  item: MenuItemWithCategory
   selected: boolean
-  onSelect: (protein: Protein) => void
+  onSelect: (item: MenuItemWithCategory) => void
 }
 
-export function ProteinCard({ protein, selected, onSelect }: ProteinCardProps) {
-  const outOfStock = protein.out_of_stock === 1
+export function ItemCard({ item, selected, onSelect }: ItemCardProps) {
+  const outOfStock = item.out_of_stock === 1
   const fmt = (n: number) => new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 }).format(n)
 
   return (
     <button
-      onClick={() => { if (!outOfStock) onSelect(protein) }}
+      onClick={() => { if (!outOfStock) onSelect(item) }}
       disabled={outOfStock}
       style={{
         height: 64,
@@ -32,9 +32,9 @@ export function ProteinCard({ protein, selected, onSelect }: ProteinCardProps) {
         textAlign: 'left',
       }}
     >
-      <span>{protein.name}</span>
-      <span style={{ fontWeight: 700 }}>
-        {outOfStock ? 'Out of stock' : fmt(protein.selling_price_cents)}
+      <span>{item.name}</span>
+      <span style={{ fontWeight: 700, color: item.category_kind === 'free' ? 'var(--color-success)' : undefined }}>
+        {outOfStock ? 'Out of stock' : item.category_kind === 'priced' ? fmt(item.selling_price_cents) : 'Free'}
       </span>
     </button>
   )

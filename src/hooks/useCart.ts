@@ -1,11 +1,11 @@
 import { useState, useCallback, useMemo } from 'react'
 
 export interface CartItemState {
-  proteinId: number
-  proteinName: string
-  proteinPrice: number
-  starchId: number | null
-  starchName: string | null
+  itemId: number
+  itemName: string
+  itemPrice: number
+  addOnId: number | null
+  addOnName: string | null
 }
 
 export function useCart() {
@@ -13,22 +13,22 @@ export function useCart() {
   const [discountCents, setDiscountCents] = useState(0)
   const [discountReason, setDiscountReason] = useState<string>('')
 
-  const addProtein = useCallback((protein: { id: number; name: string; selling_price_cents: number }) => {
+  const addItem = useCallback((item: { id: number; name: string; selling_price_cents: number }) => {
     setItems(prev => [...prev, {
-      proteinId: protein.id,
-      proteinName: protein.name,
-      proteinPrice: protein.selling_price_cents,
-      starchId: null,
-      starchName: null,
+      itemId: item.id,
+      itemName: item.name,
+      itemPrice: item.selling_price_cents,
+      addOnId: null,
+      addOnName: null,
     }])
   }, [])
 
-  const selectStarch = useCallback((starchId: number, starchName: string) => {
+  const setAddOn = useCallback((addOn: { id: number; name: string }) => {
     setItems(prev => {
       const updated = [...prev]
       const last = updated[updated.length - 1]
       if (last) {
-        updated[updated.length - 1] = { ...last, starchId, starchName }
+        updated[updated.length - 1] = { ...last, addOnId: addOn.id, addOnName: addOn.name }
       }
       return updated
     })
@@ -44,13 +44,13 @@ export function useCart() {
     setDiscountReason('')
   }, [])
 
-  const subtotal = useMemo(() => items.reduce((sum, item) => sum + item.proteinPrice, 0), [items])
+  const subtotal = useMemo(() => items.reduce((sum, item) => sum + item.itemPrice, 0), [items])
   const total = useMemo(() => Math.max(0, subtotal - discountCents), [subtotal, discountCents])
 
   return {
     items,
-    addProtein,
-    selectStarch,
+    addItem,
+    setAddOn,
     removeItem,
     clearCart,
     discountCents,

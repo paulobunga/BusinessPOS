@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useWaste } from '../../hooks/useWaste'
-import { useProteins } from '../../hooks/useProteins'
+import { useItems } from '../../hooks/useItems'
 import type { WasteRecord } from '../../../shared/types'
 
 const fmt = new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 })
@@ -14,10 +14,10 @@ const REASONS: { value: 'staff_meal' | 'spoiled' | 'other'; label: string }[] = 
 export function WastePage() {
   const today = new Date().toISOString().slice(0, 10)
   const [date, setDate] = useState(today)
-  const { proteins } = useProteins()
-  const { records, dailyTotal, loading, record } = useWaste(date)
+  const { items } = useItems({ kind: 'priced', activeOnly: true })
+  const { records, dailyTotal, loading, record, byItem, byItemData } = useWaste(date)
 
-  const [proteinId, setProteinId] = useState('')
+  const [itemId, setItemId] = useState('')
   const [quantity, setQuantity] = useState('')
   const [reason, setReason] = useState<'staff_meal' | 'spoiled' | 'other'>('staff_meal')
   const [estimatedValue, setEstimatedValue] = useState('')
@@ -26,14 +26,18 @@ export function WastePage() {
   const [processing, setProcessing] = useState(false)
   const [success, setSuccess] = useState('')
 
-  const selectedProtein = proteins.find(p => String(p.id) === proteinId)
-  const unitCostCents = selectedProtein?.cost_price_cents ?? 0
+  useEffect(() => {
+    byItem(date, date)
+  }, [date, byItem])
+
+  const selectedItem = items.find(p => String(p.id) === itemId)
+  const unitCostCents = selectedItem?.cost_price_cents ?? 0
   const quantityNum = parseFloat(quantity)
   const autoValue = isNaN(quantityNum) || quantityNum <= 0 ? 0 : Math.round(quantityNum * unitCostCents)
   const valueInput = estimatedValue === '' || estimatedValue === null ? autoValue : Math.round(parseFloat(estimatedValue) * 100)
 
-  const handleProteinChange = (v: string) => {
-    setProteinId(v)
+  const handleItemChange = (v: string) => {
+    setItemId(v)
     setEstimatedValue('')
   }
 
@@ -41,8 +45,8 @@ export function WastePage() {
     e.preventDefault()
     setError('')
     setSuccess('')
-    if (!proteinId || !quantity || isNaN(quantityNum) || quantityNum <= 0) {
-      setError('Select a protein and enter a valid quantity')
+    if (!itemId || !quantity || isNaN(quantityNum) || quantityNum <= 0) {
+      setError('Select an item and enter a valid quantity')
       return
     }
     if (isNaN(valueInput) || valueInput < 0) {
@@ -51,16 +55,17 @@ export function WastePage() {
     }
     setProcessing(true)
     await record({
-      protein_id: Number(proteinId),
+      item_id: Number(itemId),
       quantity: quantityNum,
       estimated_value_cents: valueInput,
       reason,
       waste_date: date,
       notes: notes.trim() || undefined,
     })
+    await byItem(date, date)
     setProcessing(false)
     setSuccess(`Recorded waste — ${fmt.format(valueInput / 100)}`)
-    setProteinId('')
+    setItemId('')
     setQuantity('')
     setEstimatedValue('')
     setNotes('')
@@ -112,10 +117,10 @@ export function WastePage() {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <label style={labelStyle}>
-              Protein
-              <select value={proteinId} onChange={e => handleProteinChange(e.target.value)} style={inputStyle}>
-                <option value="">Select protein...</option>
-                {proteins.map(p => (
+              Item
+              <select value={itemId} onChange={e => handleItemChange(e.target.value)} style={inputStyle}>
+                <option value="">Select item...</option>
+                {items.map(p => (
                   <option key={p.id} value={p.id}>{p.name} — {fmt.format(p.cost_price_cents / 100)}/kg</option>
                 ))}
               </select>
@@ -147,7 +152,7 @@ export function WastePage() {
             </label>
           </div>
 
-          {selectedProtein && (
+          {selectedItem && (
             <p style={{ fontSize: '0.8125rem', color: 'var(--color-muted)', margin: 0 }}>
               Auto-calculated as {quantity || '0'} kg × {fmt.format(unitCostCents / 100)}/kg = {fmt.format(autoValue / 100)}. Leave the field empty to use this value.
             </p>
@@ -187,7 +192,7 @@ export function WastePage() {
             }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <p style={{ fontWeight: 700, fontSize: '0.9375rem', margin: 0 }}>{w.protein_name ?? `Protein #${w.protein_id}`}</p>
+                  <p style={{ fontWeight: 700, fontSize: '0.9375rem', margin: 0 }}>{w.item_name ?? `Item #${w.item_id}`}</p>
                   <span style={{
                     fontSize: '0.75rem',
                     padding: '2px 8px',
@@ -207,6 +212,24 @@ export function WastePage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Aggregate by item */}
+      {byItemData.length > 0 && (
+        <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', padding: 16, border: '1px solid var(--color-border)' }}>
+          <h3 style={{ fontSize: '0.9375rem', fontWeight: 700, margin: '0 0 12px', color: 'var(--color-text-primary)' }}>Waste by Item</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {byItemData.map(row => (
+              <div key={row.item_name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid var(--color-border)' }}>
+                <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{row.item_name}</span>
+                <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>{row.total_quantity} kg</span>
+                  <span style={{ fontWeight: 700, fontSize: '0.875rem', width: 100, textAlign: 'right' }}>{fmt.format(row.total_value_cents / 100)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

@@ -141,7 +141,7 @@ export function ReportsPage() {
     startDate, setStartDate,
     endDate, setEndDate,
     dailyData, monthlyData, categories,
-    debtSummary,
+    itemPerf, debtSummary,
     loading,
     navigateDay,
   } = useReports()
@@ -214,6 +214,31 @@ export function ReportsPage() {
           data={viewMode === 'monthly' ? monthlyData : dailyData}
           label={viewMode === 'monthly' ? 'Month' : 'Date'}
         />
+      )}
+
+      {/* Item performance */}
+      {itemPerf.length > 0 && (
+        <div style={{
+          background: 'var(--color-surface)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 'var(--radius-lg)',
+          padding: 16,
+        }}>
+          <h3 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
+            Item Performance
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {itemPerf.map(row => (
+              <div key={row.item_name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid var(--color-border)' }}>
+                <span style={{ fontSize: '0.875rem' }}>{row.category_name} · {row.item_name}</span>
+                <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>{row.portions_sold} sold</span>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{formatUGX(row.revenue_cents)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Accounts Receivable */}

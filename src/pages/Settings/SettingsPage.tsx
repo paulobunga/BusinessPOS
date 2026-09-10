@@ -1,6 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
-import type { Protein, Starch } from '../../../shared/types'
+import { useCategories } from '../../hooks/useCategories'
+import { useAttributes } from '../../hooks/useAttributes'
+import { useItems } from '../../hooks/useItems'
+import type { Category, MenuItemWithCategory, AttributeDef } from '../../../shared/types'
 
 const fmt = new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 })
 const inputStyle: React.CSSProperties = {
@@ -76,6 +79,14 @@ function StatusLine({ type, text }: { type: 'success' | 'error' | 'info'; text: 
   return <p style={{ color, fontWeight: 600, fontSize: '0.875rem', margin: 0 }}>{text}</p>
 }
 
+function KindBadge({ kind }: { kind: 'priced' | 'free' }) {
+  return (
+    <span style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: 'var(--radius-sm)', background: kind === 'priced' ? 'var(--color-primary)' : 'var(--color-success)', color: '#fff', fontWeight: 700 }}>
+      {kind === 'priced' ? 'Priced' : 'Free'}
+    </span>
+  )
+}
+
 export function SettingsPage() {
   const { userId } = useAuth()
 
@@ -83,19 +94,28 @@ export function SettingsPage() {
   const [businessName, setBusinessName] = useState('My Restaurant')
   const [bizStatus, setBizStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
-  // Proteins
-  const [proteins, setProteins] = useState<Protein[]>([])
-  const [editingProteinId, setEditingProteinId] = useState<number | null>(null)
-  const [proteinDraft, setProteinDraft] = useState({ name: '', category: '', selling: '', cost: '' })
-  const [newProtein, setNewProtein] = useState({ name: '', category: '', selling: '', cost: '' })
-  const [proteinStatus, setProteinStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  // Categories
+  const { categories, loading: categoriesLoading, error: categoriesError, retry: retryCategories } = useCategories(false)
+  const [newCategory, setNewCategory] = useState({ name: '', kind: 'priced', sort_order: '0' })
+  const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null)
+  const [categoryDraft, setCategoryDraft] = useState({ name: '', kind: 'priced', sort_order: '0' })
+  const [categoryStatus, setCategoryStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
-  // Starches
-  const [starches, setStarches] = useState<Starch[]>([])
-  const [editingStarchId, setEditingStarchId] = useState<number | null>(null)
-  const [starchDraft, setStarchDraft] = useState('')
-  const [newStarch, setNewStarch] = useState('')
-  const [starchStatus, setStarchStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  // Attributes
+  const { attributes, loading: attributesLoading, error: attributesError, retry: retryAttributes } = useAttributes(null)
+  const [newAttr, setNewAttr] = useState({ name: '', type: 'text', scope: '' })
+  const [editingAttrId, setEditingAttrId] = useState<number | null>(null)
+  const [attrDraft, setAttrDraft] = useState({ name: '', type: 'text', scope: '' })
+  const [attrStatus, setAttrStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // Menu items
+  const { items, loading: itemsLoading, error: itemsError, retry: retryItems } = useItems()
+  const [menuCatId, setMenuCatId] = useState<number | null>(null)
+  const { attributes: categoryDefs, retry: retryCategoryDefs } = useAttributes(menuCatId)
+  const [editingItemId, setEditingItemId] = useState<number | null>(null)
+  const [itemDraft, setItemDraft] = useState<{ name: string; selling: string; cost: string; values: Record<number, { text?: string; number?: string; boolean?: boolean }> }>({ name: '', selling: '', cost: '', values: {} })
+  const [newItem, setNewItem] = useState({ name: '', selling: '', cost: '' })
+  const [itemStatus, setItemStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   // PIN
   const [oldPin, setOldPin] = useState('')
@@ -106,14 +126,6 @@ export function SettingsPage() {
   // Backup
   const [backupStatus, setBackupStatus] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null)
   const [backupBusy, setBackupBusy] = useState(false)
-
-  useEffect(() => {
-    window.api['settings:get']().then(settings => {
-      if (settings.business_name) setBusinessName(settings.business_name)
-    })
-    window.api['proteins:listAll']().then(setProteins)
-    window.api['starches:listAll']().then(setStarches)
-  }, [])
 
   const parseCents = (s: string) => {
     const n = parseFloat(s)
@@ -130,76 +142,156 @@ export function SettingsPage() {
     setTimeout(() => setBizStatus(null), 2500)
   }
 
-  // === Proteins ===
-  const refreshProteins = () => window.api['proteins:listAll']().then(setProteins)
-
-  const startEditProtein = (p: Protein) => {
-    setEditingProteinId(p.id)
-    setProteinDraft({
-      name: p.name,
-      category: p.category,
-      selling: String(p.selling_price_cents / 100),
-      cost: String(p.cost_price_cents / 100),
-    })
+  // === Categories ===
+  const startEditCategory = (c: Category) => {
+    setEditingCategoryId(c.id)
+    setCategoryDraft({ name: c.name, kind: c.kind, sort_order: String(c.sort_order) })
   }
 
-  const saveProtein = async (p: Protein) => {
-    const selling = parseCents(proteinDraft.selling)
-    const cost = parseCents(proteinDraft.cost)
-    if (!proteinDraft.name.trim()) { setProteinStatus({ type: 'error', text: 'Name is required' }); return }
-    if (!proteinDraft.category.trim()) { setProteinStatus({ type: 'error', text: 'Category is required' }); return }
-    if (selling === null || cost === null) { setProteinStatus({ type: 'error', text: 'Enter valid prices' }); return }
-    await window.api['proteins:upsert']({ id: p.id, name: proteinDraft.name.trim(), category: proteinDraft.category.trim(), selling_price_cents: selling, cost_price_cents: cost, active: p.active })
-    setEditingProteinId(null)
-    await refreshProteins()
-    setProteinStatus({ type: 'success', text: 'Protein saved' })
-    setTimeout(() => setProteinStatus(null), 2500)
+  const saveCategory = async (c: Category) => {
+    if (!categoryDraft.name.trim()) { setCategoryStatus({ type: 'error', text: 'Name is required' }); return }
+    await window.api['categories:upsert']({ id: c.id, name: categoryDraft.name.trim(), kind: categoryDraft.kind as 'priced' | 'free', sort_order: parseInt(categoryDraft.sort_order, 10) || 0, active: c.active })
+    setEditingCategoryId(null)
+    await retryCategories()
+    await retryItems()
+    setCategoryStatus({ type: 'success', text: 'Category saved' })
+    setTimeout(() => setCategoryStatus(null), 2500)
   }
 
-  const toggleProteinActive = async (p: Protein) => {
-    await window.api['proteins:upsert']({ ...p, active: p.active ? 0 : 1 })
-    await refreshProteins()
+  const toggleCategoryActive = async (c: Category) => {
+    await window.api['categories:upsert']({ ...c, active: c.active ? 0 : 1 })
+    await retryCategories()
   }
 
-  const addProtein = async () => {
-    const selling = parseCents(newProtein.selling)
-    const cost = parseCents(newProtein.cost)
-    if (!newProtein.name.trim() || !newProtein.category.trim()) { setProteinStatus({ type: 'error', text: 'Name and category are required' }); return }
-    if (selling === null || cost === null) { setProteinStatus({ type: 'error', text: 'Enter valid prices' }); return }
-    await window.api['proteins:upsert']({ name: newProtein.name.trim(), category: newProtein.category.trim(), selling_price_cents: selling, cost_price_cents: cost, active: 1 })
-    setNewProtein({ name: '', category: '', selling: '', cost: '' })
-    await refreshProteins()
-    setProteinStatus({ type: 'success', text: 'Protein added' })
-    setTimeout(() => setProteinStatus(null), 2500)
+  const deleteCategory = async (c: Category) => {
+    if (!window.confirm(`Delete category "${c.name}"? Only allowed if it has no items.`)) return
+    await window.api['categories:delete'](c.id)
+    if (menuCatId === c.id) setMenuCatId(null)
+    await retryCategories()
+    await retryAttributes()
+    await retryItems()
+    setCategoryStatus({ type: 'success', text: 'Category deleted' })
+    setTimeout(() => setCategoryStatus(null), 2500)
   }
 
-  // === Starches ===
-  const refreshStarches = () => window.api['starches:listAll']().then(setStarches)
-
-  const saveStarch = async (s: Starch) => {
-    if (!starchDraft.trim()) { setStarchStatus({ type: 'error', text: 'Name is required' }); return }
-    await window.api['starches:upsert']({ id: s.id, name: starchDraft.trim(), active: s.active })
-    setEditingStarchId(null)
-    await refreshStarches()
-    setStarchStatus({ type: 'success', text: 'Starch saved' })
-    setTimeout(() => setStarchStatus(null), 2500)
+  const addCategory = async () => {
+    if (!newCategory.name.trim()) { setCategoryStatus({ type: 'error', text: 'Name is required' }); return }
+    await window.api['categories:upsert']({ name: newCategory.name.trim(), kind: newCategory.kind as 'priced' | 'free', sort_order: parseInt(newCategory.sort_order, 10) || 0, active: 1 })
+    setNewCategory({ name: '', kind: 'priced', sort_order: '0' })
+    await retryCategories()
+    await retryItems()
+    setCategoryStatus({ type: 'success', text: 'Category added' })
+    setTimeout(() => setCategoryStatus(null), 2500)
   }
 
-  const deleteStarch = async (s: Starch) => {
-    if (!window.confirm(`Delete "${s.name}"? Sales history referencing it will be kept.`)) return
-    await window.api['starches:delete'](s.id)
-    await refreshStarches()
-    setStarchStatus({ type: 'success', text: 'Starch deleted' })
-    setTimeout(() => setStarchStatus(null), 2500)
+  // === Attributes ===
+  const scopeName = (a: AttributeDef) => {
+    if (a.category_id == null) return 'All categories'
+    return categories.find(c => c.id === a.category_id)?.name ?? 'All categories'
   }
 
-  const addStarch = async () => {
-    if (!newStarch.trim()) { setStarchStatus({ type: 'error', text: 'Name is required' }); return }
-    await window.api['starches:upsert']({ name: newStarch.trim(), active: 1 })
-    setNewStarch('')
-    await refreshStarches()
-    setStarchStatus({ type: 'success', text: 'Starch added' })
-    setTimeout(() => setStarchStatus(null), 2500)
+  const startEditAttr = (a: AttributeDef) => {
+    setEditingAttrId(a.id)
+    setAttrDraft({ name: a.name, type: a.type, scope: a.category_id == null ? '' : String(a.category_id) })
+  }
+
+  const saveAttr = async (a: AttributeDef) => {
+    if (!attrDraft.name.trim()) { setAttrStatus({ type: 'error', text: 'Name is required' }); return }
+    await window.api['attributes:upsert']({ id: a.id, name: attrDraft.name.trim(), type: attrDraft.type as 'text' | 'number' | 'boolean', category_id: attrDraft.scope === '' ? null : Number(attrDraft.scope), sort_order: a.sort_order })
+    setEditingAttrId(null)
+    await retryAttributes()
+    setAttrStatus({ type: 'success', text: 'Attribute saved' })
+    setTimeout(() => setAttrStatus(null), 2500)
+  }
+
+  const deleteAttr = async (a: AttributeDef) => {
+    if (!window.confirm('Delete attribute? Its saved values will also be removed.')) return
+    await window.api['attributes:delete'](a.id)
+    await retryAttributes()
+    await retryItems()
+    setAttrStatus({ type: 'success', text: 'Attribute deleted' })
+    setTimeout(() => setAttrStatus(null), 2500)
+  }
+
+  const addAttr = async () => {
+    if (!newAttr.name.trim()) { setAttrStatus({ type: 'error', text: 'Name is required' }); return }
+    await window.api['attributes:upsert']({ name: newAttr.name.trim(), type: newAttr.type as 'text' | 'number' | 'boolean', category_id: newAttr.scope === '' ? null : Number(newAttr.scope), sort_order: 0 })
+    setNewAttr({ name: '', type: 'text', scope: '' })
+    await retryAttributes()
+    setAttrStatus({ type: 'success', text: 'Attribute added' })
+    setTimeout(() => setAttrStatus(null), 2500)
+  }
+
+  // === Menu items ===
+  const menuItems = menuCatId == null ? [] : items.filter(i => i.category_id === menuCatId)
+
+  const startEditItem = (item: MenuItemWithCategory) => {
+    setEditingItemId(item.id)
+    const values: Record<number, { text?: string; number?: string; boolean?: boolean }> = {}
+    for (const def of categoryDefs) {
+      const val = item.attribute_values?.find(v => v.attr_def_id === def.id)
+      if (def.type === 'text') values[def.id] = { text: val?.value_text ?? '' }
+      else if (def.type === 'number') values[def.id] = { number: val?.value_number != null ? String(val.value_number) : '' }
+      else values[def.id] = { boolean: val?.value_boolean === 1 }
+    }
+    setItemDraft({ name: item.name, selling: String(item.selling_price_cents / 100), cost: String(item.cost_price_cents / 100), values })
+  }
+
+  const saveItem = async (item: MenuItemWithCategory) => {
+    if (!itemDraft.name.trim()) { setItemStatus({ type: 'error', text: 'Name is required' }); return }
+    const selling = parseCents(itemDraft.selling)
+    const cost = parseCents(itemDraft.cost)
+    if (selling === null || cost === null) { setItemStatus({ type: 'error', text: 'Enter valid prices' }); return }
+    await window.api['items:upsert']({ id: item.id, name: itemDraft.name.trim(), selling_price_cents: selling, cost_price_cents: cost })
+    if (categoryDefs.length > 0) {
+      const values: Array<{ attr_def_id: number; value_text?: string; value_number?: number; value_boolean?: boolean }> = []
+      for (const def of categoryDefs) {
+        const v = itemDraft.values[def.id]
+        if (def.type === 'text') values.push({ attr_def_id: def.id, value_text: v?.text ?? '' })
+        else if (def.type === 'number') {
+          const n = v?.number !== undefined && v.number !== '' ? Number(v.number) : NaN
+          if (!isNaN(n)) values.push({ attr_def_id: def.id, value_number: n })
+        } else values.push({ attr_def_id: def.id, value_boolean: v?.boolean ?? false })
+      }
+      await window.api['attributes:saveValues']({ itemId: item.id, values })
+    }
+    setEditingItemId(null)
+    await retryItems()
+    await retryCategoryDefs()
+    setItemStatus({ type: 'success', text: 'Item saved' })
+    setTimeout(() => setItemStatus(null), 2500)
+  }
+
+  const toggleOutOfStock = async (item: MenuItemWithCategory) => {
+    await window.api['items:setOutOfStock'](item.id, item.out_of_stock === 0)
+    await retryItems()
+  }
+
+  const toggleItemActive = async (item: MenuItemWithCategory) => {
+    await window.api['items:upsert']({ ...item, id: item.id, active: item.active ? 0 : 1 })
+    await retryItems()
+  }
+
+  const deleteItem = async (item: MenuItemWithCategory) => {
+    if (!window.confirm(`Delete "${item.name}"? Sales history referencing it will be kept (item deactivated).`)) return
+    await window.api['items:delete'](item.id)
+    await retryItems()
+    await retryCategoryDefs()
+    setItemStatus({ type: 'success', text: 'Item deleted' })
+    setTimeout(() => setItemStatus(null), 2500)
+  }
+
+  const addItem = async () => {
+    if (menuCatId == null) { setItemStatus({ type: 'error', text: 'Select a category first' }); return }
+    if (!newItem.name.trim()) { setItemStatus({ type: 'error', text: 'Name is required' }); return }
+    const selling = parseCents(newItem.selling)
+    const cost = parseCents(newItem.cost)
+    if (selling === null || cost === null) { setItemStatus({ type: 'error', text: 'Enter valid prices' }); return }
+    await window.api['items:upsert']({ category_id: menuCatId, name: newItem.name.trim(), selling_price_cents: selling, cost_price_cents: cost, active: 1 })
+    setNewItem({ name: '', selling: '', cost: '' })
+    await retryItems()
+    setItemStatus({ type: 'success', text: 'Item added' })
+    setTimeout(() => setItemStatus(null), 2500)
   }
 
   // === PIN ===
@@ -266,88 +358,239 @@ export function SettingsPage() {
         {bizStatus && <StatusLine type={bizStatus.type} text={bizStatus.text} />}
       </Section>
 
-      {/* Proteins */}
-      <Section title="Manage Proteins" subtitle="Portion prices drive sales and food-cost calculations. Prices in UGX.">
+      {/* Categories */}
+      <Section title="Categories" subtitle="Organize menu items into priced (mains) and free (add-on) categories.">
+        {categoriesError && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <StatusLine type="error" text={categoriesError} />
+            <button style={btnGhost} onClick={retryCategories}>Retry</button>
+          </div>
+        )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {proteins.map(p => (
-            editingProteinId === p.id ? (
-              <div key={p.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', gap: 8, padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>
-                <label style={labelStyle}>Name<input style={inputStyle} value={proteinDraft.name} onChange={e => setProteinDraft(d => ({ ...d, name: e.target.value }))} /></label>
-                <label style={labelStyle}>Category<input style={inputStyle} value={proteinDraft.category} onChange={e => setProteinDraft(d => ({ ...d, category: e.target.value }))} /></label>
-                <label style={labelStyle}>Selling (UGX)<input style={inputStyle} type="number" min="0" value={proteinDraft.selling} onChange={e => setProteinDraft(d => ({ ...d, selling: e.target.value }))} /></label>
-                <label style={labelStyle}>Cost (UGX)<input style={inputStyle} type="number" min="0" value={proteinDraft.cost} onChange={e => setProteinDraft(d => ({ ...d, cost: e.target.value }))} /></label>
+          {categories.map(c => (
+            editingCategoryId === c.id ? (
+              <div key={c.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 8, padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>
+                <label style={labelStyle}>Name<input style={inputStyle} value={categoryDraft.name} onChange={e => setCategoryDraft(d => ({ ...d, name: e.target.value }))} /></label>
+                <label style={labelStyle}>Kind
+                  <select style={inputStyle} value={categoryDraft.kind} onChange={e => setCategoryDraft(d => ({ ...d, kind: e.target.value }))}>
+                    <option value="priced">Priced</option>
+                    <option value="free">Free</option>
+                  </select>
+                </label>
+                <label style={labelStyle}>Sort order<input style={inputStyle} type="number" value={categoryDraft.sort_order} onChange={e => setCategoryDraft(d => ({ ...d, sort_order: e.target.value }))} /></label>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-                  <button style={btnPrimary} onClick={() => saveProtein(p)}>Save</button>
-                  <button style={btnGhost} onClick={() => setEditingProteinId(null)}>Cancel</button>
+                  <button style={btnPrimary} onClick={() => saveCategory(c)}>Save</button>
+                  <button style={btnGhost} onClick={() => setEditingCategoryId(null)}>Cancel</button>
                 </div>
               </div>
             ) : (
-              <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-surface)', opacity: p.active ? 1 : 0.55 }}>
-                <div style={{ minWidth: 0 }}>
-                  <p style={{ fontWeight: 700, fontSize: '0.9375rem', margin: 0, color: 'var(--color-text-primary)' }}>{p.name}</p>
-                  <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)', margin: '2px 0 0' }}>{p.category}{p.active ? '' : ' · inactive'}</p>
+              <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-surface)', opacity: c.active ? 1 : 0.55 }}>
+                <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <p style={{ fontWeight: 700, fontSize: '0.9375rem', margin: 0, color: 'var(--color-text-primary)' }}>{c.name}</p>
+                  <KindBadge kind={c.kind} />
+                  {!c.active && <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)', fontWeight: 600 }}>inactive</span>}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                  <span style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Sell {fmt.format(p.selling_price_cents / 100)}</span>
-                  <span style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Cost {fmt.format(p.cost_price_cents / 100)}</span>
-                  <button style={btnGhost} onClick={() => toggleProteinActive(p)}>{p.active ? 'Deactivate' : 'Activate'}</button>
-                  <button style={btnPrimary} onClick={() => startEditProtein(p)}>Edit</button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button style={btnGhost} onClick={() => toggleCategoryActive(c)}>{c.active ? 'Deactivate' : 'Activate'}</button>
+                  <button style={btnPrimary} onClick={() => startEditCategory(c)}>Edit</button>
+                  <button style={btnDanger} onClick={() => deleteCategory(c)}>Delete</button>
                 </div>
               </div>
             )
           ))}
-          {proteins.length === 0 && <p style={{ color: 'var(--color-text-secondary)', fontWeight: 600, fontSize: '0.9375rem' }}>No proteins yet.</p>}
+          {!categoriesLoading && categories.length === 0 && <p style={{ color: 'var(--color-text-secondary)', fontWeight: 600, fontSize: '0.9375rem' }}>No categories yet.</p>}
         </div>
 
         <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <p style={{ fontWeight: 700, fontSize: '0.9375rem', margin: 0, color: 'var(--color-text-primary)' }}>Add new protein</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 8 }}>
-            <input style={inputStyle} placeholder="Name" value={newProtein.name} onChange={e => setNewProtein(p => ({ ...p, name: e.target.value }))} />
-            <input style={inputStyle} placeholder="Category" value={newProtein.category} onChange={e => setNewProtein(p => ({ ...p, category: e.target.value }))} />
-            <input style={inputStyle} type="number" min="0" placeholder="Selling (UGX)" value={newProtein.selling} onChange={e => setNewProtein(p => ({ ...p, selling: e.target.value }))} />
-            <input style={inputStyle} type="number" min="0" placeholder="Cost (UGX)" value={newProtein.cost} onChange={e => setNewProtein(p => ({ ...p, cost: e.target.value }))} />
+          <p style={{ fontWeight: 700, fontSize: '0.9375rem', margin: 0, color: 'var(--color-text-primary)' }}>Add category</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 8 }}>
+            <input style={inputStyle} placeholder="Name" value={newCategory.name} onChange={e => setNewCategory(c => ({ ...c, name: e.target.value }))} />
+            <select style={inputStyle} value={newCategory.kind} onChange={e => setNewCategory(c => ({ ...c, kind: e.target.value }))}>
+              <option value="priced">Priced</option>
+              <option value="free">Free</option>
+            </select>
+            <input style={inputStyle} type="number" placeholder="Order" value={newCategory.sort_order} onChange={e => setNewCategory(c => ({ ...c, sort_order: e.target.value }))} />
           </div>
           <div>
-            <button style={btnPrimary} onClick={addProtein}>Add Protein</button>
+            <button style={btnPrimary} onClick={addCategory}>Add Category</button>
           </div>
         </div>
-        {proteinStatus && <StatusLine type={proteinStatus.type} text={proteinStatus.text} />}
+        {categoryStatus && <StatusLine type={categoryStatus.type} text={categoryStatus.text} />}
       </Section>
 
-      {/* Starches */}
-      <Section title="Manage Starches" subtitle="A starch is the base item served with a protein.">
+      {/* Attributes */}
+      <Section title="Attributes" subtitle="Track text, number, or boolean details per menu item.">
+        {attributesError && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <StatusLine type="error" text={attributesError} />
+            <button style={btnGhost} onClick={retryAttributes}>Retry</button>
+          </div>
+        )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {starches.map(s => (
-            editingStarchId === s.id ? (
-              <div key={s.id} style={{ display: 'flex', gap: 8, alignItems: 'flex-end', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>
-                <label style={{ ...labelStyle, flex: 1 }}>
-                  Name
-                  <input style={inputStyle} value={starchDraft} onChange={e => setStarchDraft(e.target.value)} />
+          {attributes.map(a => (
+            editingAttrId === a.id ? (
+              <div key={a.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 8, padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>
+                <label style={labelStyle}>Name<input style={inputStyle} value={attrDraft.name} onChange={e => setAttrDraft(d => ({ ...d, name: e.target.value }))} /></label>
+                <label style={labelStyle}>Type
+                  <select style={inputStyle} value={attrDraft.type} onChange={e => setAttrDraft(d => ({ ...d, type: e.target.value }))}>
+                    <option value="text">Text</option>
+                    <option value="number">Number</option>
+                    <option value="boolean">Boolean</option>
+                  </select>
                 </label>
-                <button style={btnPrimary} onClick={() => saveStarch(s)}>Save</button>
-                <button style={btnGhost} onClick={() => setEditingStarchId(null)}>Cancel</button>
+                <label style={labelStyle}>Scope
+                  <select style={inputStyle} value={attrDraft.scope} onChange={e => setAttrDraft(d => ({ ...d, scope: e.target.value }))}>
+                    <option value="">All categories</option>
+                    {categories.filter(c => c.active).map(c => (
+                      <option key={c.id} value={String(c.id)}>{c.name}</option>
+                    ))}
+                  </select>
+                </label>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+                  <button style={btnPrimary} onClick={() => saveAttr(a)}>Save</button>
+                  <button style={btnGhost} onClick={() => setEditingAttrId(null)}>Cancel</button>
+                </div>
               </div>
             ) : (
-              <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-surface)', opacity: s.active ? 1 : 0.55 }}>
-                <p style={{ fontWeight: 700, fontSize: '0.9375rem', margin: 0, color: 'var(--color-text-primary)' }}>{s.name}{s.active ? '' : ' · inactive'}</p>
+              <div key={a.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-surface)' }}>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontWeight: 700, fontSize: '0.9375rem', margin: 0, color: 'var(--color-text-primary)' }}>{a.name}</p>
+                  <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)', margin: '2px 0 0' }}>
+                    {a.type} · {scopeName(a)}
+                  </p>
+                </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button style={btnGhost} onClick={() => { setEditingStarchId(s.id); setStarchDraft(s.name) }}>Edit</button>
-                  <button style={btnDanger} onClick={() => deleteStarch(s)}>Delete</button>
+                  <button style={btnPrimary} onClick={() => startEditAttr(a)}>Edit</button>
+                  <button style={btnDanger} onClick={() => deleteAttr(a)}>Delete</button>
                 </div>
               </div>
             )
           ))}
-          {starches.length === 0 && <p style={{ color: 'var(--color-text-secondary)', fontWeight: 600, fontSize: '0.9375rem' }}>No starches yet.</p>}
+          {!attributesLoading && attributes.length === 0 && <p style={{ color: 'var(--color-text-secondary)', fontWeight: 600, fontSize: '0.9375rem' }}>No attributes yet.</p>}
         </div>
 
-        <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 16, display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-          <label style={{ ...labelStyle, flex: 1 }}>
-            Add new starch
-            <input style={inputStyle} value={newStarch} onChange={e => setNewStarch(e.target.value)} placeholder="Name" />
-          </label>
-          <button style={btnPrimary} onClick={addStarch}>Add Starch</button>
+        <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <p style={{ fontWeight: 700, fontSize: '0.9375rem', margin: 0, color: 'var(--color-text-primary)' }}>Add attribute</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 8 }}>
+            <input style={inputStyle} placeholder="Name" value={newAttr.name} onChange={e => setNewAttr(a => ({ ...a, name: e.target.value }))} />
+            <select style={inputStyle} value={newAttr.type} onChange={e => setNewAttr(a => ({ ...a, type: e.target.value }))}>
+              <option value="text">Text</option>
+              <option value="number">Number</option>
+              <option value="boolean">Boolean</option>
+            </select>
+            <select style={inputStyle} value={newAttr.scope} onChange={e => setNewAttr(a => ({ ...a, scope: e.target.value }))}>
+              <option value="">All categories</option>
+              {categories.filter(c => c.active).map(c => (
+                <option key={c.id} value={String(c.id)}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <button style={btnPrimary} onClick={addAttr}>Add Attribute</button>
+          </div>
         </div>
-        {starchStatus && <StatusLine type={starchStatus.type} text={starchStatus.text} />}
+        {attrStatus && <StatusLine type={attrStatus.type} text={attrStatus.text} />}
+      </Section>
+
+      {/* Menu Items */}
+      <Section title="Menu Items" subtitle="Manage items per category, including prices, out-of-stock state, and attribute values.">
+        {itemsError && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <StatusLine type="error" text={itemsError} />
+            <button style={btnGhost} onClick={retryItems}>Retry</button>
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <label style={{ ...labelStyle, flex: 1, minWidth: 200 }}>
+            Category
+            <select style={inputStyle} value={menuCatId == null ? '' : String(menuCatId)} onChange={e => { setMenuCatId(e.target.value === '' ? null : Number(e.target.value)); setEditingItemId(null) }}>
+              <option value="">Select category...</option>
+              {categories.map(c => (
+                <option key={c.id} value={String(c.id)}>{c.name} ({c.kind})</option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        {menuCatId != null && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {menuItems.map(item => (
+              editingItemId === item.id ? (
+                <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 8 }}>
+                    <label style={labelStyle}>Name<input style={inputStyle} value={itemDraft.name} onChange={e => setItemDraft(d => ({ ...d, name: e.target.value }))} /></label>
+                    <label style={labelStyle}>Selling (UGX)<input style={inputStyle} type="number" min="0" value={itemDraft.selling} onChange={e => setItemDraft(d => ({ ...d, selling: e.target.value }))} /></label>
+                    <label style={labelStyle}>Cost (UGX)<input style={inputStyle} type="number" min="0" value={itemDraft.cost} onChange={e => setItemDraft(d => ({ ...d, cost: e.target.value }))} /></label>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+                      <button style={btnPrimary} onClick={() => saveItem(item)}>Save</button>
+                      <button style={btnGhost} onClick={() => setEditingItemId(null)}>Cancel</button>
+                    </div>
+                  </div>
+                  {categoryDefs.length > 0 && (
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {categoryDefs.map(def => {
+                        const v = itemDraft.values[def.id] ?? {}
+                        if (def.type === 'text') return (
+                          <label key={def.id} style={{ ...labelStyle, flex: 1, minWidth: 160 }}>
+                            {def.name}
+                            <input style={inputStyle} value={v.text ?? ''} onChange={e => setItemDraft(d => ({ ...d, values: { ...d.values, [def.id]: { ...v, text: e.target.value } } }))} />
+                          </label>
+                        )
+                        if (def.type === 'number') return (
+                          <label key={def.id} style={{ ...labelStyle, flex: 1, minWidth: 160 }}>
+                            {def.name}
+                            <input style={inputStyle} type="number" value={v.number ?? ''} onChange={e => setItemDraft(d => ({ ...d, values: { ...d.values, [def.id]: { ...v, number: e.target.value } } }))} />
+                          </label>
+                        )
+                        return (
+                          <label key={def.id} style={{ ...labelStyle, flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 40 }}>
+                            <input type="checkbox" checked={v.boolean ?? false} onChange={e => setItemDraft(d => ({ ...d, values: { ...d.values, [def.id]: { ...v, boolean: e.target.checked } } }))} style={{ width: 20, height: 20 }} />
+                            <span>{def.name}</span>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-surface)', opacity: item.active ? 1 : 0.55 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ fontWeight: 700, fontSize: '0.9375rem', margin: 0, color: 'var(--color-text-primary)' }}>
+                      {item.name}
+                      {item.out_of_stock === 1 && <span style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}> · out of stock</span>}
+                      {item.active ? '' : ' · inactive'}
+                    </p>
+                    <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)', margin: '2px 0 0' }}>
+                      Sell {fmt.format(item.selling_price_cents / 100)} · Cost {fmt.format(item.cost_price_cents / 100)}
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <button style={btnGhost} onClick={() => toggleOutOfStock(item)}>{item.out_of_stock === 1 ? 'In Stock' : 'Out of Stock'}</button>
+                    <button style={btnGhost} onClick={() => toggleItemActive(item)}>{item.active ? 'Deactivate' : 'Activate'}</button>
+                    <button style={btnPrimary} onClick={() => startEditItem(item)}>Edit</button>
+                    <button style={btnDanger} onClick={() => deleteItem(item)}>Delete</button>
+                  </div>
+                </div>
+              )
+            ))}
+            {!itemsLoading && menuItems.length === 0 && <p style={{ color: 'var(--color-text-secondary)', fontWeight: 600, fontSize: '0.9375rem' }}>No items in this category yet.</p>}
+          </div>
+        )}
+
+        {menuCatId != null && (
+          <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <p style={{ fontWeight: 700, fontSize: '0.9375rem', margin: 0, color: 'var(--color-text-primary)' }}>Add item</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 8 }}>
+              <input style={inputStyle} placeholder="Name" value={newItem.name} onChange={e => setNewItem(i => ({ ...i, name: e.target.value }))} />
+              <input style={inputStyle} type="number" min="0" placeholder="Selling (UGX)" value={newItem.selling} onChange={e => setNewItem(i => ({ ...i, selling: e.target.value }))} />
+              <input style={inputStyle} type="number" min="0" placeholder="Cost (UGX)" value={newItem.cost} onChange={e => setNewItem(i => ({ ...i, cost: e.target.value }))} />
+            </div>
+            <div>
+              <button style={btnPrimary} onClick={addItem}>Add Item</button>
+            </div>
+          </div>
+        )}
+        {itemStatus && <StatusLine type={itemStatus.type} text={itemStatus.text} />}
       </Section>
 
       {/* Change PIN */}

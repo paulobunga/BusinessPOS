@@ -1,26 +1,26 @@
 import { useState } from 'react'
 import { useInventory } from '../../hooks/useInventory'
-import { useProteins } from '../../hooks/useProteins'
+import { useItems } from '../../hooks/useItems'
 import { useAuth } from '../../context/AuthContext'
-import type { ProteinPurchaseWithName } from '../../../shared/types'
+import type { ItemPurchaseWithName } from '../../../shared/types'
 
 const fmt = new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 })
 
 export function InventoryPage() {
   const today = new Date().toISOString().slice(0, 10)
   const [date, setDate] = useState(today)
-  const { proteins } = useProteins()
+  const { items } = useItems({ kind: 'priced', activeOnly: true })
   const { purchases, dailyTotal, loading, record } = useInventory(date)
   const { userId } = useAuth()
 
-  const [proteinId, setProteinId] = useState('')
+  const [itemId, setItemId] = useState('')
   const [quantity, setQuantity] = useState('')
   const [error, setError] = useState('')
   const [processing, setProcessing] = useState(false)
   const [success, setSuccess] = useState('')
 
-  const selectedProtein = proteins.find(p => String(p.id) === proteinId)
-  const unitCostCents = selectedProtein?.cost_price_cents ?? 0
+  const selectedItem = items.find(p => String(p.id) === itemId)
+  const unitCostCents = selectedItem?.cost_price_cents ?? 0
   const quantityNum = parseFloat(quantity)
   const computedTotal = isNaN(quantityNum) || quantityNum <= 0 ? 0 : Math.round(quantityNum * unitCostCents)
 
@@ -28,13 +28,13 @@ export function InventoryPage() {
     e.preventDefault()
     setError('')
     setSuccess('')
-    if (!proteinId || !quantity || isNaN(quantityNum) || quantityNum <= 0) {
-      setError('Select a protein and enter a valid quantity')
+    if (!itemId || !quantity || isNaN(quantityNum) || quantityNum <= 0) {
+      setError('Select an item and enter a valid quantity')
       return
     }
     setProcessing(true)
     await record({
-      protein_id: Number(proteinId),
+      item_id: Number(itemId),
       quantity: quantityNum,
       cost_cents: computedTotal,
       date,
@@ -42,7 +42,7 @@ export function InventoryPage() {
     })
     setProcessing(false)
     setSuccess(`Recorded purchase — ${fmt.format(computedTotal / 100)}`)
-    setProteinId('')
+    setItemId('')
     setQuantity('')
   }
 
@@ -69,7 +69,7 @@ export function InventoryPage() {
         <div>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Food Cost (Daily Purchases)</h1>
           <p style={{ fontSize: '0.875rem', color: 'var(--color-muted)', margin: 0 }}>
-            Record the day's protein purchases. This is your daily food cost.
+            Record the day's stock purchases. This is your daily food cost.
           </p>
         </div>
       </div>
@@ -92,10 +92,10 @@ export function InventoryPage() {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <label style={labelStyle}>
-              Protein
-              <select value={proteinId} onChange={e => setProteinId(e.target.value)} style={inputStyle}>
-                <option value="">Select protein...</option>
-                {proteins.map(p => (
+              Item
+              <select value={itemId} onChange={e => setItemId(e.target.value)} style={inputStyle}>
+                <option value="">Select item...</option>
+                {items.map(p => (
                   <option key={p.id} value={p.id}>{p.name} — {fmt.format(p.cost_price_cents / 100)}/kg</option>
                 ))}
               </select>
@@ -117,7 +117,7 @@ export function InventoryPage() {
             border: '1px solid var(--color-border)',
           }}>
             <span style={{ fontSize: '0.875rem', color: 'var(--color-muted)' }}>
-              {selectedProtein ? `${selectedProtein.name} × ${quantity || '0'} kg @ ${fmt.format(unitCostCents / 100)}/kg` : 'Select a protein to preview cost'}
+              {selectedItem ? `${selectedItem.name} × ${quantity || '0'} kg @ ${fmt.format(unitCostCents / 100)}/kg` : 'Select an item to preview cost'}
             </span>
             <span style={{ marginLeft: 'auto', fontWeight: 800, fontSize: '1.125rem' }}>
               {fmt.format(computedTotal / 100)}
@@ -141,7 +141,7 @@ export function InventoryPage() {
         </p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {purchases.map((p: ProteinPurchaseWithName) => (
+          {purchases.map((p: ItemPurchaseWithName) => (
             <div key={p.id} style={{
               display: 'flex',
               alignItems: 'center',
@@ -152,7 +152,7 @@ export function InventoryPage() {
               background: 'var(--color-surface)',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <p style={{ fontWeight: 700, fontSize: '0.9375rem', margin: 0 }}>{p.protein_name ?? `Protein #${p.protein_id}`}</p>
+                <p style={{ fontWeight: 700, fontSize: '0.9375rem', margin: 0 }}>{p.item_name ?? `Item #${p.item_id}`}</p>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                 <span style={{ fontSize: '0.875rem', color: 'var(--color-muted)' }}>{p.quantity_kg} kg</span>
