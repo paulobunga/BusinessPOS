@@ -8,9 +8,6 @@ import { DiscountModal } from '../../components/DiscountModal'
 import { DebtModal } from '../../components/DebtModal'
 import { useAuth } from '../../context/AuthContext'
 import { useTill } from '../../context/TillContext'
-import { TillStatus } from '../Till/TillStatus'
-import { OpenTillModal } from '../Till/OpenTillModal'
-import { CloseTillModal } from '../Till/CloseTillModal'
 import type { Protein } from '../../../shared/types'
 import type { CreateSalePayload } from '../../../shared/types'
 
@@ -18,12 +15,10 @@ export function SellPage() {
   const { proteins, loading } = useProteins()
   const cart = useCart()
   const { userId } = useAuth()
-  const { currentTill, openTill, closeTill } = useTill()
+  const { currentTill } = useTill()
   const [selectedProtein, setSelectedProtein] = useState<Protein | null>(null)
   const [showDiscount, setShowDiscount] = useState(false)
   const [showDebt, setShowDebt] = useState(false)
-  const [showOpenTill, setShowOpenTill] = useState(false)
-  const [showCloseTill, setShowCloseTill] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
@@ -79,17 +74,7 @@ export function SellPage() {
 
   return (
     <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Point of Sale</h1>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <TillStatus onOpenTill={() => setShowOpenTill(true)} />
-          {currentTill && (
-            <button onClick={() => setShowCloseTill(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-danger)', background: 'transparent', color: 'var(--color-danger)', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer' }}>
-              Close Till
-            </button>
-          )}
-        </div>
-      </div>
+      <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Point of Sale</h1>
 
       <div style={{ display: 'flex', gap: 24 }}>
         {/* Protein Grid */}
@@ -142,20 +127,6 @@ export function SellPage() {
           />
         </div>
       </div>
-
-      {showOpenTill && (
-        <OpenTillModal
-          onOpen={(floatCents) => openTill(floatCents)}
-          onClose={() => setShowOpenTill(false)}
-        />
-      )}
-
-      {showCloseTill && (
-        <CloseTillModal
-          onCloseTill={(countedCents) => closeTill(countedCents)}
-          onClose={() => setShowCloseTill(false)}
-        />
-      )}
 
       {showDiscount && (
         <DiscountModal
