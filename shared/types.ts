@@ -187,6 +187,59 @@ export interface FoodCostSummary {
   margin_cents: number
 }
 
+// === Reports ===
+export interface DailyReport {
+  date: string
+  sales_revenue_cents: number
+  debt_sales_cents: number
+  food_purchase_cents: number
+  waste_cents: number
+  expense_cents: number
+  reimbursement_cents: number
+  net_profit_cents: number
+}
+
+export interface MonthlyReport {
+  month: string
+  sales_revenue_cents: number
+  debt_sales_cents: number
+  food_purchase_cents: number
+  waste_cents: number
+  expense_cents: number
+  reimbursement_cents: number
+  net_profit_cents: number
+}
+
+export interface CategoryBreakdown {
+  category: string
+  amount_cents: number
+}
+
+export interface ProteinPerformance {
+  protein_name: string
+  portions_sold: number
+  revenue_cents: number
+  cost_cents: number
+  margin_cents: number
+}
+
+export interface DebtSummaryItem {
+  customer_name: string | null
+  sale_id: number
+  total_debt_cents: number
+  created_at: string
+}
+
+export interface TillSummaryData {
+  till_session_id: number
+  opening_float_cents: number
+  cash_sales_cents: number
+  till_expenses_cents: number
+  reimbursements_cents: number
+  expected_cash_cents: number
+  closed_at: string | null
+}
+
 // === IPC Payloads ===
 export interface SaleItemInput {
   protein_id: number
@@ -267,9 +320,12 @@ export interface Api {
   'waste:byProtein': (start: string, end: string) => Promise<WasteByProtein[]>
   'waste:dailyTotal': (date: string) => Promise<number>
   // Reports
-  'reports:daily': (date: string) => Promise<any>
-  'reports:weekly': (date: string) => Promise<any>
-  'reports:monthly': (date: string) => Promise<any>
+  'reports:daily': (start: string, end: string) => Promise<DailyReport[]>
+  'reports:monthly': (year: number) => Promise<MonthlyReport[]>
+  'reports:categoryBreakdown': (start: string, end: string) => Promise<CategoryBreakdown[]>
+  'reports:proteinPerformance': (start: string, end: string) => Promise<ProteinPerformance[]>
+  'reports:debtSummary': () => Promise<DebtSummaryItem[]>
+  'reports:tillSummary': (tillSessionId: number) => Promise<TillSummaryData | null>
   'reports:exportCsv': (range: { from: string; to: string }) => Promise<string>
   // Menu
   'proteins:list': () => Promise<Protein[]>

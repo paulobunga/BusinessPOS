@@ -1,0 +1,311 @@
+import { getDb } from '../index'
+
+export interface DailyReport {
+  date: string
+  sales_revenue_cents: number
+  debt_sales_cents: number
+  food_purchase_cents: number
+  waste_cents: number
+  expense_cents: number
+  reimbursement_cents: number
+  net_profit_cents: number
+}
+
+export interface MonthlyReport {
+  month: string
+  sales_revenue_cents: number
+  debt_sales_cents: number
+  food_purchase_cents: number
+  waste_cents: number
+  expense_cents: number
+  reimbursement_cents: number
+  net_profit_cents: number
+}
+
+export interface CategoryBreakdown {
+  category: string
+  amount_cents: number
+}
+
+export interface ProteinPerformance {
+  protein_name: string
+  portions_sold: number
+  revenue_cents: number
+  cost_cents: number
+  margin_cents: number
+}
+
+export interface DebtSummaryItem {
+  customer_name: string | null
+  sale_id: number
+  total_debt_cents: number
+  created_at: string
+}
+
+export interface TillSummaryData {
+  till_session_id: number
+  opening_float_cents: number
+  cash_sales_cents: number
+  till_expenses_cents: number
+  reimbursements_cents: number
+  expected_cash_cents: number
+  closed_at: string | null
+}
+
+function getDailyRow(date: string): DailyReport {
+  const db = getDb()
+
+  const salesRow = db.prepare(`
+    SELECT
+      COALESCE(SUM(CASE WHEN status IN ('completed','unpaid') THEN total_cents ELSE 0 END), 0) AS sales_revenue_cents,
+      COALESCE(SUM(CASE WHEN payment_method IN ('debt','mixed') AND status IN ('completed','unpaid') THEN debt_cents ELSE 0 END), 0) AS debt_sales_cents
+    FROM sales
+    WHERE DATE(created_at) = ?
+  `).get(date) as { sales_revenue_cents: number; debt_sales_cents: number }
+
+  const purchaseRow = db.prepare(`
+    SELECT COALESCE(SUM(cost_cents), 0) AS food_purchase_cents
+    FROM protein_purchases
+    WHERE purchase_date = ?
+  `).get(date) as { food_purchase_cents: number }
+
+  const wasteRow = db.prepare(`
+    SELECT COALESCE(SUM(estimated_value_cents), 0) AS waste_cents
+    FROM waste
+    WHERE waste_date = ?
+  `).get(date) as { waste_cents: number }
+
+  const expenseRow = db.prepare(`
+    SELECT COALESCE(SUM(amount_cents), 0) AS expense_cents
+    FROM expenses
+    WHERE date = ?
+  `).get(date) as { expense_cents: number }
+
+  const reimbursementRow = db.prepare(`
+    SELECT COALESCE(SUM(amount_cents), 0) AS reimbursement_cents
+    FROM reimbursements
+    WHERE date = ?
+  `).get(date) as { reimbursement_cents: number }
+
+  const revenue = salesRow.sales_revenue_cents
+  const foodCost = purchaseRow.food_purchase_cents
+  const waste = wasteRow.waste_cents
+  const expenses = expenseRow.expense_cents
+
+  return {
+    date,
+    sales_revenue_cents: revenue,
+    debt_sales_cents: salesRow.debt_sales_cents,
+    food_purchase_cents: foodCost,
+    waste_cents: waste,
+    expense_cents: expenses,
+    reimbursement_cents: reimbursementRow.reimbursement_cents,
+    net_profit_cents: revenue - foodCost - waste - expenses,
+  }
+}
+
+function getMonthlyAggregated(year: number): MonthlyReport[] {
+  const db = getDb()
+
+  const salesRows = db.prepare(`
+    SELECT
+      strftime('%Y-%m', created_at) AS month,
+      COALESCE(SUM(CASE WHEN status IN ('completed','unpaid') THEN total_cents ELSE 0 END), 0) AS sales_revenue_cents,
+      COALESCE(SUM(CASE WHEN payment_method IN ('debt','mixed') AND status IN ('completed','unpaid') THEN debt_cents ELSE 0 END), 0) AS debt_sales_cents
+    FROM sales
+    WHERE strftime('%Y', created_at) = ?
+    GROUP BY month
+  `).all(String(year)) as { month: string; sales_revenue_cents: number; debt_sales_cents: number }[]
+
+  const purchaseRows = db.prepare(`
+    SELECT
+      strftime('%Y-%m', purchase_date) AS month,
+      COALESCE(SUM(cost_cents), 0) AS food_purchase_cents
+    FROM protein_purchases
+    WHERE strftime('%Y', purchase_date) = ?
+    GROUP BY month
+  `).all(String(year)) as { month: string; food_purchase_cents: number }[]
+
+  const wasteRows = db.prepare(`
+    SELECT
+      strftime('%Y-%m', waste_date) AS month,
+      COALESCE(SUM(estimated_value_cents), 0) AS waste_cents
+    FROM waste
+    WHERE strftime('%Y', waste_date) = ?
+    GROUP BY month
+  `).all(String(year)) as { month: string; waste_cents: number }[]
+
+  const expenseRows = db.prepare(`
+    SELECT
+      strftime('%Y-%m', date) AS month,
+      COALESCE(SUM(amount_cents), 0) AS expense_cents
+    FROM expenses
+    WHERE strftime('%Y', date) = ?
+    GROUP BY month
+  `).all(String(year)) as { month: string; expense_cents: number }[]
+
+  const reimbursementRows = db.prepare(`
+    SELECT
+      strftime('%Y-%m', date) AS month,
+      COALESCE(SUM(amount_cents), 0) AS reimbursement_cents
+    FROM reimbursements
+    WHERE strftime('%Y', date) = ?
+    GROUP BY month
+  `).all(String(year)) as { month: string; reimbursement_cents: number }[]
+
+  const map = new Map<string, MonthlyReport>()
+  const months = [
+    ...salesRows.map(r => r.month),
+    ...purchaseRows.map(r => r.month),
+    ...wasteRows.map(r => r.month),
+    ...expenseRows.map(r => r.month),
+    ...reimbursementRows.map(r => r.month),
+  ]
+  for (const m of months) {
+    if (!m) continue
+    if (!map.has(m)) {
+      map.set(m, {
+        month: m,
+        sales_revenue_cents: 0,
+        debt_sales_cents: 0,
+        food_purchase_cents: 0,
+        waste_cents: 0,
+        expense_cents: 0,
+        reimbursement_cents: 0,
+        net_profit_cents: 0,
+      })
+    }
+  }
+
+  for (const r of salesRows) {
+    const row = map.get(r.month!)
+    if (row) {
+      row.sales_revenue_cents = r.sales_revenue_cents
+      row.debt_sales_cents = r.debt_sales_cents
+    }
+  }
+  for (const r of purchaseRows) {
+    const row = map.get(r.month!)
+    if (row) row.food_purchase_cents = r.food_purchase_cents
+  }
+  for (const r of wasteRows) {
+    const row = map.get(r.month!)
+    if (row) row.waste_cents = r.waste_cents
+  }
+  for (const r of expenseRows) {
+    const row = map.get(r.month!)
+    if (row) row.expense_cents = r.expense_cents
+  }
+  for (const r of reimbursementRows) {
+    const row = map.get(r.month!)
+    if (row) row.reimbursement_cents = r.reimbursement_cents
+  }
+
+  const result = Array.from(map.values())
+  for (const row of result) {
+    row.net_profit_cents = row.sales_revenue_cents - row.food_purchase_cents - row.waste_cents - row.expense_cents
+  }
+  result.sort((a, b) => a.month.localeCompare(b.month))
+  return result
+}
+
+export const reportsRepo = {
+  getDaily(start: string, end: string): DailyReport[] {
+    const days: DailyReport[] = []
+    const current = new Date(start + 'T00:00:00')
+    const endDate = new Date(end + 'T00:00:00')
+    while (current <= endDate) {
+      const dateStr = current.toISOString().slice(0, 10)
+      days.push(getDailyRow(dateStr))
+      current.setDate(current.getDate() + 1)
+    }
+    return days
+  },
+
+  getMonthly(year: number): MonthlyReport[] {
+    return getMonthlyAggregated(year)
+  },
+
+  getCategoryBreakdown(start: string, end: string): CategoryBreakdown[] {
+    return getDb().prepare(`
+      SELECT category, SUM(amount_cents) AS amount_cents
+      FROM expenses
+      WHERE date >= ? AND date <= ?
+      GROUP BY category
+      ORDER BY amount_cents DESC
+    `).all(start, end) as CategoryBreakdown[]
+  },
+
+  getProteinPerformance(start: string, end: string): ProteinPerformance[] {
+    return getDb().prepare(`
+      SELECT
+        si.name_snapshot AS protein_name,
+        SUM(si.quantity) AS portions_sold,
+        SUM(si.line_total_cents) AS revenue_cents,
+        0 AS cost_cents,
+        SUM(si.line_total_cents) AS margin_cents
+      FROM sale_items si
+      JOIN sales s ON s.id = si.sale_id
+      WHERE s.status IN ('completed','unpaid')
+        AND DATE(s.created_at) >= ? AND DATE(s.created_at) <= ?
+      GROUP BY si.name_snapshot
+      ORDER BY revenue_cents DESC
+    `).all(start, end) as ProteinPerformance[]
+  },
+
+  getDebtSummary(): DebtSummaryItem[] {
+    return getDb().prepare(`
+      SELECT
+        s.customer_name,
+        s.id AS sale_id,
+        s.debt_cents AS total_debt_cents,
+        s.created_at
+      FROM sales s
+      WHERE s.status IN ('unpaid')
+        AND s.debt_cents > 0
+      ORDER BY s.created_at DESC
+    `).all() as DebtSummaryItem[]
+  },
+
+  getTillSummary(tillSessionId: number): TillSummaryData | null {
+    const session = getDb().prepare(`
+      SELECT
+        ts.id AS till_session_id,
+        ts.opening_float_cents,
+        ts.expected_cash_cents,
+        ts.closed_at
+      FROM till_sessions ts
+      WHERE ts.id = ?
+    `).get(tillSessionId) as { till_session_id: number; opening_float_cents: number; expected_cash_cents: number | null; closed_at: string | null } | undefined
+
+    if (!session) return null
+
+    const salesRow = getDb().prepare(`
+      SELECT COALESCE(SUM(total_cents - debt_cents), 0) AS cash_sales_cents
+      FROM sales
+      WHERE till_session_id = ? AND status IN ('completed','unpaid')
+    `).get(tillSessionId) as { cash_sales_cents: number }
+
+    const expensesRow = getDb().prepare(`
+      SELECT COALESCE(SUM(amount_cents), 0) AS till_expenses_cents
+      FROM expenses
+      WHERE till_session_id = ?
+    `).get(tillSessionId) as { till_expenses_cents: number }
+
+    const reimbursementRow = getDb().prepare(`
+      SELECT COALESCE(SUM(amount_cents), 0) AS reimbursements_cents
+      FROM reimbursements
+      WHERE till_session_id = ?
+    `).get(tillSessionId) as { reimbursements_cents: number }
+
+    return {
+      till_session_id: session.till_session_id,
+      opening_float_cents: session.opening_float_cents,
+      cash_sales_cents: salesRow.cash_sales_cents,
+      till_expenses_cents: expensesRow.till_expenses_cents,
+      reimbursements_cents: reimbursementRow.reimbursements_cents,
+      expected_cash_cents: session.expected_cash_cents ?? (session.opening_float_cents + salesRow.cash_sales_cents - expensesRow.till_expenses_cents),
+      closed_at: session.closed_at,
+    }
+  },
+}
