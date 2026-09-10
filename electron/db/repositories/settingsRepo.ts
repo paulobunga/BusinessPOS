@@ -26,6 +26,7 @@ export const settingsRepo = {
         currency: 'UGX',
         tax_enabled: 'false',
         tax_rate: '0',
+        business_name: 'My Restaurant',
       })
     }
   }

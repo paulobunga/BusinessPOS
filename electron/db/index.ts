@@ -14,9 +14,13 @@ import { starchesRepo } from './repositories/starchesRepo.js'
 
 let db: Database.Database | null = null
 
+export function getDbPath(): string {
+  return path.join(app.getPath('userData'), 'businesspos.sqlite')
+}
+
 export function getDb(): Database.Database {
   if (!db) {
-    const dbPath = path.join(app.getPath('userData'), 'businesspos.sqlite')
+    const dbPath = getDbPath()
     db = new Database(dbPath)
     db.pragma('journal_mode = WAL')
     db.pragma('foreign_keys = ON')

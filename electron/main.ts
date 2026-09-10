@@ -9,6 +9,7 @@ import { registerReimbursementsHandlers } from './ipc/reimbursementsHandlers.js'
 import { registerInventoryHandlers } from './ipc/inventoryHandlers.js'
 import { registerWasteHandlers } from './ipc/wasteHandlers.js'
 import { registerReportsHandlers } from './ipc/reportsHandlers.js'
+import { registerSettingsHandlers } from './ipc/settingsHandlers.js'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -44,6 +45,7 @@ registerReimbursementsHandlers()
 registerInventoryHandlers()
 registerWasteHandlers()
 registerReportsHandlers()
+registerSettingsHandlers()
 ipcMain.handle('ping', () => 'pong')
 ipcMain.handle('customers:create', () => { throw new Error('Not implemented') })
 ipcMain.handle('customers:list', () => [])
@@ -51,7 +53,3 @@ ipcMain.handle('customers:get', () => null)
 ipcMain.handle('payments:create', () => { throw new Error('Not implemented') })
 ipcMain.handle('payments:list', () => [])
 ipcMain.handle('reports:exportCsv', () => '')
-ipcMain.handle('settings:get', () => ({}))
-ipcMain.handle('settings:update', () => { throw new Error('Not implemented') })
-ipcMain.handle('backup:create', () => { throw new Error('Not implemented') })
-ipcMain.handle('backup:restore', () => { throw new Error('Not implemented') })

@@ -8,6 +8,7 @@ const navItems = [
   { to: '/inventory', label: 'Inventory', icon: '\u25A0' },
   { to: '/waste', label: 'Waste', icon: '\u2716' },
   { to: '/reports', label: 'Reports', icon: '\u2630' },
+  { to: '/settings', label: 'Settings', icon: '\u2699' },
 ]
 
 export function Sidebar() {

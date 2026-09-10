@@ -329,15 +329,19 @@ export interface Api {
   'reports:exportCsv': (range: { from: string; to: string }) => Promise<string>
   // Menu
   'proteins:list': () => Promise<Protein[]>
+  'proteins:listAll': () => Promise<Protein[]>
   'proteins:upsert': (payload: Partial<Protein>) => Promise<Protein>
   'proteins:setOutOfStock': (id: number, outOfStock: boolean) => Promise<void>
   'starches:list': () => Promise<Starch[]>
+  'starches:listAll': () => Promise<Starch[]>
   'starches:upsert': (payload: Partial<Starch>) => Promise<Starch>
+  'starches:delete': (id: number) => Promise<void>
   // Settings
   'settings:get': () => Promise<Record<string, string>>
   'settings:update': (partial: Record<string, string>) => Promise<void>
-  'backup:create': () => Promise<string>
-  'backup:restore': (filePath: string) => Promise<void>
+  'users:setPin': (userId: number, oldPin: string, newPin: string) => Promise<boolean>
+  'backup:export': () => Promise<string | null>
+  'backup:import': () => Promise<{ ok: boolean; message: string }>
   // Debts
   'debts:listOpen': () => Promise<any[]>
   'debts:recordPayment': (payload: { sale_id: number; amount_cents: number; payment_method: string; till_session_id: number | null; created_by: number }) => Promise<void>

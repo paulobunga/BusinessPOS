@@ -4,6 +4,9 @@ export const proteinsRepo = {
   list() {
     return getDb().prepare('SELECT * FROM proteins WHERE active = 1 ORDER BY category, name').all()
   },
+  listAll() {
+    return getDb().prepare('SELECT * FROM proteins ORDER BY active DESC, category, name').all()
+  },
   getById(id: number) {
     return getDb().prepare('SELECT * FROM proteins WHERE id = ?').get(id)
   },

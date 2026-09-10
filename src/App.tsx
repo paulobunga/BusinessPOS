@@ -11,6 +11,7 @@ import { ReimbursementsPage } from './pages/Reimbursements/ReimbursementsPage'
 import { InventoryPage } from './pages/Inventory/InventoryPage'
 import { WastePage } from './pages/Waste/WastePage'
 import { ReportsPage } from './pages/Reports/ReportsPage'
+import { SettingsPage } from './pages/Settings/SettingsPage'
 
 export default function App() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
               <Route path="/inventory" element={<InventoryPage />} />
               <Route path="/waste" element={<WastePage />} />
               <Route path="/reports" element={<ReportsPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
             </Route>
           </Route>
         </Routes>
