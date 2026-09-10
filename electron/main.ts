@@ -32,8 +32,6 @@ app.on('window-all-closed', () => app.quit())
 registerAuthHandlers()
 registerMenuHandlers()
 registerSalesHandlers()
-
-// IPC handler stubs — will be replaced in subsequent tasks
 ipcMain.handle('ping', () => 'pong')
 ipcMain.handle('customers:create', () => { throw new Error('Not implemented') })
 ipcMain.handle('customers:list', () => [])

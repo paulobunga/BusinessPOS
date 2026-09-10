@@ -47,6 +47,13 @@ export interface TillSession {
   closed_by: number | null
 }
 
+export interface TillCountData {
+  openingFloatCents: number
+  cashSalesCents: number
+  tillExpensesCents: number
+  expectedClosingCents: number
+}
+
 export interface Sale {
   id: number
   till_session_id: number | null
@@ -218,6 +225,7 @@ export interface Api {
   'till:open': (floatCents: number) => Promise<TillSession>
   'till:close': (countedCents: number) => Promise<{ expected: number; variance: number }>
   'till:current': () => Promise<TillSession | null>
+  'till:countCash': () => Promise<TillCountData | null>
   // Food Cost
   'foodCost:purchases:list': (date: string) => Promise<ProteinPurchase[]>
   'foodCost:purchases:create': (payload: { protein_id: number; quantity_kg: number; cost_cents: number; expected_yield: number }) => Promise<ProteinPurchase>

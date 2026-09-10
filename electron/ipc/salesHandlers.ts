@@ -16,4 +16,19 @@ export function registerSalesHandlers() {
   ipcMain.handle('till:current', () => {
     return tillRepo.current()
   })
+  ipcMain.handle('till:open', (_e, floatCents: number) => {
+    const id = tillRepo.open(floatCents)
+    return tillRepo.current()
+  })
+  ipcMain.handle('till:close', (_e, countedCents: number) => {
+    const current = tillRepo.current()
+    if (!current) throw new Error('No open till session')
+    const countData = tillRepo.countCash()
+    const expected = countData?.expectedClosingCents ?? current.opening_float_cents
+    tillRepo.close(current.id, countedCents)
+    return { expected, variance: countedCents - expected }
+  })
+  ipcMain.handle('till:countCash', () => {
+    return tillRepo.countCash()
+  })
 }

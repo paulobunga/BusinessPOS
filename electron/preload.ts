@@ -24,6 +24,7 @@ const api: Api = {
   'till:open': (float) => ipcRenderer.invoke('till:open', float),
   'till:close': (counted) => ipcRenderer.invoke('till:close', counted),
   'till:current': () => ipcRenderer.invoke('till:current'),
+  'till:countCash': () => ipcRenderer.invoke('till:countCash'),
   'foodCost:purchases:list': (date) => ipcRenderer.invoke('foodCost:purchases:list', date),
   'foodCost:purchases:create': (payload) => ipcRenderer.invoke('foodCost:purchases:create', payload),
   'foodCost:cookEvents:list': (date) => ipcRenderer.invoke('foodCost:cookEvents:list', date),
