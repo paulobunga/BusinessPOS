@@ -113,10 +113,11 @@ export interface Expense {
   id: number
   till_session_id: number | null
   created_at: string
+  date: string
   category: string
   description: string | null
   amount_cents: number
-  payment_source: 'till' | 'personal'
+  payment_source: 'till' | 'personal' | 'mpesa'
   reference: string | null
   created_by: number | null
   deleted_at: string | null
@@ -184,8 +185,9 @@ export interface CreateExpensePayload {
   category: string
   description?: string
   amount_cents: number
-  payment_source: 'till' | 'personal'
+  payment_source: 'till' | 'personal' | 'mpesa'
   reference?: string
+  date?: string
 }
 
 export interface CreatePaymentPayload {
