@@ -4,12 +4,19 @@ import type { Expense, CreateExpensePayload } from '../../shared/types'
 export function useExpenses(filters?: { date_from?: string; date_to?: string; category?: string; payment_source?: string }) {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
     setLoading(true)
-    const data = await window.api['expenses:list'](filters)
-    setExpenses(data as Expense[])
-    setLoading(false)
+    setError(null)
+    try {
+      const data = await window.api['expenses:list'](filters)
+      setExpenses(data as Expense[])
+    } catch (err) {
+      setError((err as Error).message || 'Failed to load expenses')
+    } finally {
+      setLoading(false)
+    }
   }, [filters?.date_from, filters?.date_to, filters?.category, filters?.payment_source])
 
   useEffect(() => {
@@ -33,5 +40,5 @@ export function useExpenses(filters?: { date_from?: string; date_to?: string; ca
     await refresh()
   }, [refresh])
 
-  return { expenses, loading, create, update, remove, refresh }
+  return { expenses, loading, error, create, update, remove, refresh }
 }

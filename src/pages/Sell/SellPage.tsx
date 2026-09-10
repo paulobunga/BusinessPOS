@@ -12,7 +12,7 @@ import type { Protein } from '../../../shared/types'
 import type { CreateSalePayload } from '../../../shared/types'
 
 export function SellPage() {
-  const { proteins, loading } = useProteins()
+  const { proteins, loading, error: proteinsError, retry: retryProteins } = useProteins()
   const cart = useCart()
   const { userId } = useAuth()
   const { currentTill } = useTill()
@@ -21,6 +21,7 @@ export function SellPage() {
   const [showDebt, setShowDebt] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
 
   const handleProteinSelect = (protein: Protein) => {
     setSelectedProtein(protein)
@@ -42,6 +43,7 @@ export function SellPage() {
       setMessage('You must be signed in to complete a sale.')
       return
     }
+    if (!window.confirm('Complete this sale?')) return
     setSaving(true)
     setMessage(null)
     try {
@@ -63,6 +65,8 @@ export function SellPage() {
       }
       await window.api['sales:create'](payload)
       cart.clearCart()
+      setSuccess(true)
+      setTimeout(() => setSuccess(false), 2000)
     } catch (err) {
       setMessage('Sale failed: ' + (err as Error).message)
     } finally {
@@ -71,6 +75,15 @@ export function SellPage() {
   }
 
   if (loading) return <div style={{ padding: 24, textAlign: 'center' }}>Loading menu...</div>
+
+  if (proteinsError) return (
+    <div style={{ padding: 24, textAlign: 'center' }}>
+      <p style={{ color: 'var(--color-danger)', fontWeight: 600, marginBottom: 16 }}>{proteinsError}</p>
+      <button onClick={retryProteins} style={{ padding: '8px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-surface)', fontWeight: 600, cursor: 'pointer' }}>
+        Retry
+      </button>
+    </div>
+  )
 
   return (
     <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -152,6 +165,12 @@ export function SellPage() {
       {saving && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
           <p style={{ background: 'var(--color-surface)', padding: '16px 24px', borderRadius: 'var(--radius-lg)', fontWeight: 700 }}>Saving sale...</p>
+        </div>
+      )}
+
+      {success && (
+        <div style={{ position: 'fixed', top: 24, right: 24, background: 'var(--color-primary)', color: 'white', padding: '12px 24px', borderRadius: 'var(--radius-md)', fontWeight: 700, zIndex: 999, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
+          Sale recorded ✓
         </div>
       )}
     </div>

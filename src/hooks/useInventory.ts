@@ -5,16 +5,23 @@ export function useInventory(date: string) {
   const [purchases, setPurchases] = useState<ProteinPurchaseWithName[]>([])
   const [dailyTotal, setDailyTotal] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
     setLoading(true)
-    const [data, total] = await Promise.all([
-      window.api['inventory:byDate'](date),
-      window.api['inventory:dailyTotal'](date),
-    ])
-    setPurchases(data as ProteinPurchaseWithName[])
-    setDailyTotal(total as number)
-    setLoading(false)
+    setError(null)
+    try {
+      const [data, total] = await Promise.all([
+        window.api['inventory:byDate'](date),
+        window.api['inventory:dailyTotal'](date),
+      ])
+      setPurchases(data as ProteinPurchaseWithName[])
+      setDailyTotal(total as number)
+    } catch (err) {
+      setError((err as Error).message || 'Failed to load inventory')
+    } finally {
+      setLoading(false)
+    }
   }, [date])
 
   useEffect(() => {
@@ -27,5 +34,5 @@ export function useInventory(date: string) {
     return result
   }, [refresh])
 
-  return { purchases, dailyTotal, loading, record, refresh }
+  return { purchases, dailyTotal, loading, error, record, refresh }
 }

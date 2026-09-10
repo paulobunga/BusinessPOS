@@ -4,12 +4,19 @@ import type { Reimbursement } from '../../shared/types'
 export function useReimbursements(start: string, end: string) {
   const [reimbursements, setReimbursements] = useState<Reimbursement[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
     setLoading(true)
-    const data = await window.api['reimbursements:list'](start, end)
-    setReimbursements(data as Reimbursement[])
-    setLoading(false)
+    setError(null)
+    try {
+      const data = await window.api['reimbursements:list'](start, end)
+      setReimbursements(data as Reimbursement[])
+    } catch (err) {
+      setError((err as Error).message || 'Failed to load reimbursements')
+    } finally {
+      setLoading(false)
+    }
   }, [start, end])
 
   useEffect(() => {
@@ -27,5 +34,5 @@ export function useReimbursements(start: string, end: string) {
     await refresh()
   }, [refresh])
 
-  return { reimbursements, loading, create, remove, refresh }
+  return { reimbursements, loading, error, create, remove, refresh }
 }

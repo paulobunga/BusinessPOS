@@ -18,46 +18,81 @@ export function useReports() {
   const [debtSummary, setDebtSummary] = useState<DebtSummaryItem[]>([])
   const [tillSummary, setTillSummary] = useState<TillSummaryData | null>(null)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const loadDaily = useCallback(async (date: string) => {
     setLoading(true)
-    const data = await window.api['reports:daily'](date, date)
-    setDailyData(data)
-    setLoading(false)
+    setError(null)
+    try {
+      const data = await window.api['reports:daily'](date, date)
+      setDailyData(data)
+    } catch (err) {
+      setError((err as Error).message || 'Failed to load reports')
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   const loadCustom = useCallback(async (start: string, end: string) => {
     setLoading(true)
-    const data = await window.api['reports:daily'](start, end)
-    setDailyData(data)
-    setLoading(false)
+    setError(null)
+    try {
+      const data = await window.api['reports:daily'](start, end)
+      setDailyData(data)
+    } catch (err) {
+      setError((err as Error).message || 'Failed to load reports')
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   const loadMonthly = useCallback(async (year: number) => {
     setLoading(true)
-    const data = await window.api['reports:monthly'](year)
-    setMonthlyData(data)
-    setLoading(false)
+    setError(null)
+    try {
+      const data = await window.api['reports:monthly'](year)
+      setMonthlyData(data)
+    } catch (err) {
+      setError((err as Error).message || 'Failed to load reports')
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   const loadCategories = useCallback(async (start: string, end: string) => {
-    const data = await window.api['reports:categoryBreakdown'](start, end)
-    setCategories(data)
+    try {
+      const data = await window.api['reports:categoryBreakdown'](start, end)
+      setCategories(data)
+    } catch (err) {
+      setError((err as Error).message || 'Failed to load categories')
+    }
   }, [])
 
   const loadProteinPerf = useCallback(async (start: string, end: string) => {
-    const data = await window.api['reports:proteinPerformance'](start, end)
-    setProteinPerf(data)
+    try {
+      const data = await window.api['reports:proteinPerformance'](start, end)
+      setProteinPerf(data)
+    } catch (err) {
+      setError((err as Error).message || 'Failed to load protein performance')
+    }
   }, [])
 
   const loadDebts = useCallback(async () => {
-    const data = await window.api['reports:debtSummary']()
-    setDebtSummary(data)
+    try {
+      const data = await window.api['reports:debtSummary']()
+      setDebtSummary(data)
+    } catch (err) {
+      setError((err as Error).message || 'Failed to load debt summary')
+    }
   }, [])
 
   const loadTill = useCallback(async (tillSessionId: number) => {
-    const data = await window.api['reports:tillSummary'](tillSessionId)
-    setTillSummary(data)
+    try {
+      const data = await window.api['reports:tillSummary'](tillSessionId)
+      setTillSummary(data)
+    } catch (err) {
+      setError((err as Error).message || 'Failed to load till summary')
+    }
   }, [])
 
   useEffect(() => {
@@ -92,7 +127,7 @@ export function useReports() {
     endDate, setEndDate,
     selectedYear,
     dailyData, monthlyData, categories, proteinPerf, debtSummary, tillSummary,
-    loading,
+    loading, error,
     navigateDay,
     loadTill,
   }

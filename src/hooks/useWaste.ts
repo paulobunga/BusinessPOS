@@ -5,16 +5,23 @@ export function useWaste(date: string) {
   const [records, setRecords] = useState<WasteRecord[]>([])
   const [dailyTotal, setDailyTotal] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
     setLoading(true)
-    const [data, total] = await Promise.all([
-      window.api['waste:byDate'](date),
-      window.api['waste:dailyTotal'](date),
-    ])
-    setRecords(data as WasteRecord[])
-    setDailyTotal(total as number)
-    setLoading(false)
+    setError(null)
+    try {
+      const [data, total] = await Promise.all([
+        window.api['waste:byDate'](date),
+        window.api['waste:dailyTotal'](date),
+      ])
+      setRecords(data as WasteRecord[])
+      setDailyTotal(total as number)
+    } catch (err) {
+      setError((err as Error).message || 'Failed to load waste records')
+    } finally {
+      setLoading(false)
+    }
   }, [date])
 
   useEffect(() => {
@@ -27,5 +34,5 @@ export function useWaste(date: string) {
     return result
   }, [refresh])
 
-  return { records, dailyTotal, loading, record, refresh }
+  return { records, dailyTotal, loading, error, record, refresh }
 }

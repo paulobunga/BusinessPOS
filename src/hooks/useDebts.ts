@@ -3,12 +3,19 @@ import { useState, useCallback, useEffect } from 'react'
 export function useDebts() {
   const [debts, setDebts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const fetchDebts = useCallback(async () => {
     setLoading(true)
-    const data = await window.api['debts:listOpen']()
-    setDebts(data as any[])
-    setLoading(false)
+    setError(null)
+    try {
+      const data = await window.api['debts:listOpen']()
+      setDebts(data as any[])
+    } catch (err) {
+      setError((err as Error).message || 'Failed to load debts')
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => { fetchDebts() }, [fetchDebts])
@@ -18,5 +25,5 @@ export function useDebts() {
     await fetchDebts()
   }, [fetchDebts])
 
-  return { debts, loading, fetchDebts, recordPayment }
+  return { debts, loading, error, fetchDebts, recordPayment }
 }

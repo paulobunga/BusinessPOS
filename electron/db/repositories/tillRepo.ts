@@ -7,7 +7,7 @@ export const tillRepo = {
   },
 
   open(openingFloatCents: number) {
-    const result = getDb().prepare('INSERT INTO till_sessions (opening_float_cents) VALUES (?)').run(openingFloatCents)
+    const result = getDb().prepare("INSERT INTO till_sessions (opening_float_cents, opened_at) VALUES (?, datetime('now'))").run(openingFloatCents)
     return result.lastInsertRowid
   },
 
