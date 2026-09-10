@@ -1,6 +1,6 @@
-# Design — Kitchen Point of Sale (Offline)
+# Design — BusinessPOS
 
-No reference image was available, so the design system below is proposed from scratch, optimized for a **touch-first kitchen POS**: high contrast, large tap targets, fast scanning under time pressure, and clear separation between "money in" (sales) and "money out" (expenses) actions.
+Optimized for a **touch-first restaurant POS**: high contrast, large tap targets, fast scanning under time pressure, and clear separation between "money in" (sales) and "money out" (expenses) actions. Centered on **cash reconciliation** and **full P&L visibility**.
 
 ---
 
@@ -11,6 +11,7 @@ No reference image was available, so the design system below is proposed from sc
 2. **Speed over elegance** — every extra tap during service has a cost; optimize the sale flow above all else.
 3. **Unambiguous money actions** — sales (green/positive) and expenses (red/negative) are never visually confusable.
 4. **Legible in a busy kitchen** — high contrast, no thin/light font weights, no low-contrast gray-on-gray.
+5. **Financial clarity** — every screen answers: "How much money do we have, and where did it go?"
 
 ### 1.2 Color Palette
 
@@ -26,7 +27,8 @@ No reference image was available, so the design system below is proposed from sc
 | `--color-primary-hover` | `#1D4ED8` | Primary hover/active |
 | `--color-success` | `#16A34A` | Sales / income indicators, "Paid" state |
 | `--color-danger` | `#DC2626` | Expenses / outgoing indicators, void/delete |
-| `--color-warning` | `#D97706` | Held sales, low stock, variance warnings |
+| `--color-warning` | `#D97706` | Held sales, low stock, variance warnings, debt alerts |
+| `--color-info` | `#0EA5E9` | Informational, personal expenses, reimbursements |
 | `--color-focus-ring` | `#60A5FA` | Keyboard/touch focus outline |
 
 Two themes (dark default for low-light kitchens, light optional) share the same token names so components never hardcode colors.
@@ -59,14 +61,14 @@ No text weight below 500 is used — thin fonts read poorly on kiosk displays.
 ### 1.5 Core Components
 
 - **ItemTile** — large tappable card (menu item): name, price, category color accent, out-of-stock overlay state.
-- **CartLine** — row with item name, qty stepper (− / +), unit price, line total, remove icon.
+- **CartLine** — row with item name, qty stepper (− / +), unit price, discount amount, line total, remove icon.
 - **NumPad** — large on-screen numeric keypad for cash tendered / manual amount entry (no physical keyboard dependency).
 - **PrimaryButton / SecondaryButton / DangerButton** — consistent 56px/48px height, full-width in modals, icon+label.
 - **SummaryCard** — used on Dashboard/Reports: label, big number, delta/trend, colored accent (green for sales, red for expenses).
-- **StatusBadge** — Paid / Held / Voided / Refunded, color-coded (success/warning/danger/neutral).
+- **StatusBadge** — Paid / Unpaid / Voided / Refunded, color-coded (success/warning/danger/neutral).
 - **PinPad** — for role login and manager-authorization prompts (void, delete, close till).
 - **DataTable** — for transaction history: sticky header, zebra striping (`--color-surface-alt`), filter bar above.
-- **Modal / Drawer** — used for item details, expense entry, till close reconciliation.
+- **Modal / Drawer** — used for item details, expense entry, till close reconciliation, debt payment.
 - **Toast** — transient confirmation ("Sale saved", "Backup complete").
 
 ### 1.6 Iconography
@@ -74,7 +76,7 @@ Use a single consistent icon set (e.g., **Lucide**, MIT-licensed, tree-shakable)
 
 ### 1.7 Layout Pattern
 
-Persistent left **sidebar** (icon + label nav): Sell, Expenses, Reports, Till, Menu, Settings. Main content area uses a **two-pane pattern on the Sell screen**: left = item grid/categories, right = fixed cart panel (always visible, never a separate step) so the running total is always in view.
+Persistent left **sidebar** (icon + label nav): Sell, Debts, Expenses, Reports, Till, Menu, Food Cost, Settings. Main content area uses a **two-pane pattern on the Sell screen**: left = item grid/categories, right = fixed cart panel (always visible, never a separate step) so the running total is always in view.
 
 ---
 
@@ -103,32 +105,36 @@ Persistent left **sidebar** (icon + label nav): Sell, Expenses, Reports, Till, M
 | Shell | Electron (latest stable) | Packaged with Electron Builder |
 | UI | React 18 | Function components + hooks |
 | Routing | React Router (v6+, HashRouter) | HashRouter avoids file:// path issues in packaged Electron builds |
-| State | React Context + `useReducer` for cart; TanStack Query (or simple SWR-style cache) for server-like data from main process | Keeps cart logic local/fast, DB-backed data cached & revalidated |
+| State | React Context + `useReducer` for cart; TanStack Query for server-like data from main process | Keeps cart logic local/fast, DB-backed data cached & revalidated |
 | DB | SQLite via `better-sqlite3` | Synchronous, fast, ideal for local single-writer use in main process |
-| Styling | CSS variables (tokens above) + CSS Modules or Tailwind (utility classes mapped to tokens) | Either works; Tailwind speeds dev, CSS vars keep theming clean |
+| Styling | CSS variables (tokens above) + CSS Modules or Tailwind | Either works; Tailwind speeds dev, CSS vars keep theming clean |
 | Build | Vite (renderer) + Electron Builder (packaging) | Fast dev loop |
 
 ### 2.3 Routing Map (React Router)
 
 ```
-/                → redirect to /sell (or /login if PIN required)
-/login           → PinPad role login
-/sell            → Sell screen (item grid + cart) — default/home screen
-/sell/:heldId    → Resume a held sale
-/expenses        → Expense list + "Add expense" entry
-/expenses/new    → Add/edit expense form
-/reports         → Daily/period summary + charts
-/reports/history → Transaction history table (sales + expenses, filterable)
-/history/:id     → Transaction detail view
-/till            → Open/close till, cash count reconciliation
-/menu            → Menu items & categories management
-/menu/:id        → Edit item
-/settings        → Currency, tax, payment methods, PIN, backup/export
+/                    → redirect to /sell (or /login if PIN required)
+/login               → PinPad role login
+/sell                → Sell screen (item grid + cart) — default/home screen
+/debts               → Customer debts list (outstanding balances)
+/debts/:customerId   → Customer detail (order history, record payment)
+/expenses            → Expense list + "Add expense" entry
+/expenses/new        → Add/edit expense form
+/reports             → Daily P&L summary + charts
+/reports/weekly      → Weekly P&L comparison
+/reports/monthly     → Monthly P&L comparison
+/reports/history     → Transaction history table (filterable)
+/history/:id         → Transaction detail view
+/till                → Open/close till, cash count reconciliation
+/menu                → Menu items & protein/starch management
+/menu/:id            → Edit item
+/food-cost           → Daily food cost tracker (purchases, cook events, waste)
+/settings            → Currency, tax, PIN, backup/export
 ```
 
 Route guards: a lightweight `RequireRole` wrapper redirects to `/login` or shows a PIN prompt modal for manager-only actions (void, delete, close till, settings) without necessarily leaving the current route.
 
-### 2.4 Data Model (SQLite Schema — core tables)
+### 2.4 Data Model (SQLite Schema)
 
 ```sql
 -- Users/roles (simple, PIN-based)
@@ -140,21 +146,29 @@ CREATE TABLE users (
   active INTEGER NOT NULL DEFAULT 1
 );
 
--- Menu categories & items
-CREATE TABLE categories (
+-- Customers (for debt tracking)
+CREATE TABLE customers (
   id INTEGER PRIMARY KEY,
-  name TEXT NOT NULL,
-  sort_order INTEGER DEFAULT 0
+  name TEXT NOT NULL UNIQUE,
+  phone TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
-CREATE TABLE items (
+-- Menu: proteins (priced items) and starches (free accompaniments)
+CREATE TABLE proteins (
   id INTEGER PRIMARY KEY,
-  category_id INTEGER REFERENCES categories(id),
   name TEXT NOT NULL,
-  price_cents INTEGER NOT NULL,
+  selling_price_cents INTEGER NOT NULL,
+  cost_price_cents INTEGER NOT NULL,
+  category TEXT NOT NULL,          -- e.g., 'Goat', 'Chicken', 'Fish'
   active INTEGER NOT NULL DEFAULT 1,
-  out_of_stock INTEGER NOT NULL DEFAULT 0,
-  icon TEXT
+  out_of_stock INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE starches (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  active INTEGER NOT NULL DEFAULT 1
 );
 
 -- Till sessions
@@ -175,29 +189,47 @@ CREATE TABLE sales (
   id INTEGER PRIMARY KEY,
   till_session_id INTEGER REFERENCES till_sessions(id),
   created_at TEXT NOT NULL,
-  status TEXT NOT NULL CHECK(status IN ('held','completed','voided','refunded')),
+  status TEXT NOT NULL CHECK(status IN ('completed','unpaid','voided','refunded')),
   subtotal_cents INTEGER NOT NULL,
   discount_cents INTEGER NOT NULL DEFAULT 0,
   tax_cents INTEGER NOT NULL DEFAULT 0,
   total_cents INTEGER NOT NULL,
-  payment_method TEXT,
-  tendered_cents INTEGER,
-  change_cents INTEGER,
+  payment_source TEXT NOT NULL DEFAULT 'cash' CHECK(payment_source IN ('cash','unpaid')),
+  customer_id INTEGER REFERENCES customers(id),
+  starch_id INTEGER REFERENCES starches(id),
   created_by INTEGER REFERENCES users(id),
   voided_at TEXT,
   voided_by INTEGER REFERENCES users(id),
   void_reason TEXT
 );
 
--- Sale line items
+-- Sale line items (one protein per line, with starch choice)
 CREATE TABLE sale_items (
   id INTEGER PRIMARY KEY,
   sale_id INTEGER NOT NULL REFERENCES sales(id),
-  item_id INTEGER REFERENCES items(id),
-  name_snapshot TEXT NOT NULL,       -- preserves name even if item later edited/deleted
-  unit_price_cents INTEGER NOT NULL, -- preserves price at time of sale
+  protein_id INTEGER REFERENCES proteins(id),
+  name_snapshot TEXT NOT NULL,
+  unit_price_cents INTEGER NOT NULL,
   quantity INTEGER NOT NULL,
   line_total_cents INTEGER NOT NULL
+);
+
+-- Customer debt payments
+CREATE TABLE payments (
+  id INTEGER PRIMARY KEY,
+  customer_id INTEGER NOT NULL REFERENCES customers(id),
+  amount_cents INTEGER NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  created_by INTEGER REFERENCES users(id),
+  note TEXT
+);
+
+-- Link payments to specific sales (supports partial payment across multiple sales)
+CREATE TABLE payment_allocations (
+  id INTEGER PRIMARY KEY,
+  payment_id INTEGER NOT NULL REFERENCES payments(id),
+  sale_id INTEGER NOT NULL REFERENCES sales(id),
+  amount_cents INTEGER NOT NULL
 );
 
 -- Expenses
@@ -208,11 +240,40 @@ CREATE TABLE expenses (
   category TEXT NOT NULL,
   description TEXT,
   amount_cents INTEGER NOT NULL,
-  payment_method TEXT,
+  payment_source TEXT NOT NULL DEFAULT 'till' CHECK(payment_source IN ('till','personal')),
   reference TEXT,
   created_by INTEGER REFERENCES users(id),
-  deleted_at TEXT,          -- soft delete
+  deleted_at TEXT,
   deleted_by INTEGER REFERENCES users(id)
+);
+
+-- Owner reimbursements (personal → till transfers)
+CREATE TABLE reimbursements (
+  id INTEGER PRIMARY KEY,
+  amount_cents INTEGER NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  created_by INTEGER REFERENCES users(id),
+  note TEXT
+);
+
+-- Daily protein purchases
+CREATE TABLE protein_purchases (
+  id INTEGER PRIMARY KEY,
+  protein_id INTEGER NOT NULL REFERENCES proteins(id),
+  purchase_date TEXT NOT NULL,
+  quantity_kg REAL NOT NULL,
+  cost_cents INTEGER NOT NULL,
+  expected_yield INTEGER NOT NULL,  -- expected servings from this purchase
+  created_by INTEGER REFERENCES users(id)
+);
+
+-- Daily cook events (how many portions cooked today)
+CREATE TABLE cook_events (
+  id INTEGER PRIMARY KEY,
+  protein_id INTEGER NOT NULL REFERENCES proteins(id),
+  cook_date TEXT NOT NULL,
+  portions_cooked INTEGER NOT NULL,
+  created_by INTEGER REFERENCES users(id)
 );
 
 -- App settings (key-value)
@@ -223,35 +284,63 @@ CREATE TABLE settings (
 ```
 
 Design notes:
-- All monetary values as **integer cents** (NFR-7).
+- All monetary values as **integer cents/shillings** (NFR-7).
 - `sale_items` snapshots name/price so historical receipts remain accurate even if the menu changes later.
 - No hard deletes on `sales`/`expenses` — status/soft-delete columns preserve audit trail (NFR-8).
 - SQLite opened in **WAL mode** (`PRAGMA journal_mode=WAL;`) for crash resilience and read/write concurrency between main-process operations.
+- `customers` table is lightweight — just name (and optional phone) for debt tracking.
+- `payments` + `payment_allocations` support partial payments and payment across multiple sales.
+- `protein_purchases` + `cook_events` enable waste calculation: cooked − sold = waste.
 
 ### 2.5 IPC Contract (illustrative)
 
 ```
+-- Sales
 sales:create(payload) → { id, total_cents, ... }
-sales:hold(payload)   → { id }
 sales:void(id, reason, managerPin)
 sales:list(filters)   → Sale[]
 sales:get(id)         → SaleWithItems
 
+-- Customer Debts
+customers:create(name) → Customer
+customers:list()       → Customer[]
+customers:get(id)      → CustomerWithBalance
+payments:create(customerId, amount, allocations) → Payment
+payments:list(customerId) → Payment[]
+
+-- Expenses
 expenses:create(payload)
 expenses:update(id, payload)
 expenses:delete(id, managerPin)
 expenses:list(filters)
 
+-- Reimbursements
+reimbursements:create(amount, note) → Reimbursement
+reimbursements:balance() → { owed_to_owner_cents }
+
+-- Till
 till:open(floatCents, userId)
 till:close(countedCents, userId) → { expected, variance }
 till:current() → TillSession | null
 
-reports:daily(date) → { totalSales, totalExpenses, byCategory, byPaymentMethod }
+-- Food Cost
+foodCost:purchases:list(date) → ProteinPurchase[]
+foodCost:purchases:create(payload)
+foodCost:cookEvents:list(date) → CookEvent[]
+foodCost:cookEvents:create(payload)
+foodCost:summary(date) → { proteins: [{ name, purchased, cooked, sold, waste, cost, revenue, margin }] }
+
+-- Reports
+reports:daily(date) → P&L { sales, expenses_till, expenses_personal, net, reimbursement_balance, waste, discounts }
+reports:weekly(date) → WeeklyP&L
+reports:monthly(date) → MonthlyP&L
 reports:exportCsv(range) → filePath
 
-items:list() / items:upsert() / items:setOutOfStock()
-categories:list() / categories:upsert()
+-- Menu
+proteins:list() / proteins:upsert() / proteins:setOutOfStock()
+starches:list() / starches:upsert()
 
+-- Settings & Auth
 settings:get() / settings:update(partial)
 backup:create() / backup:restore(filePath)
 auth:login(pin) → { userId, role }
@@ -268,26 +357,42 @@ Each handler wraps writes in a SQLite transaction; failures return a typed error
   db/
     index.ts          # better-sqlite3 connection, migrations runner
     migrations/
-    repositories/      # salesRepo, expensesRepo, itemsRepo, tillRepo...
+    repositories/
+      salesRepo.ts
+      customersRepo.ts
+      paymentsRepo.ts
+      expensesRepo.ts
+      reimbursementsRepo.ts
+      tillRepo.ts
+      proteinsRepo.ts
+      starchesRepo.ts
+      foodCostRepo.ts
+      settingsRepo.ts
+      usersRepo.ts
   ipc/
     salesHandlers.ts
+    customersHandlers.ts
     expensesHandlers.ts
+    reimbursementsHandlers.ts
     tillHandlers.ts
+    foodCostHandlers.ts
     ...
 /src (renderer)
   main.tsx
   router.tsx
   pages/
     Sell/
+    Debts/
     Expenses/
     Reports/
     Till/
     Menu/
+    FoodCost/
     Settings/
     Login/
   components/         # ItemTile, CartLine, NumPad, PinPad, DataTable, ...
   context/             # CartContext, AuthContext, TillContext
-  hooks/               # useSales, useExpenses, useTill, useSettings
+  hooks/               # useSales, useExpenses, useTill, useCustomers, useFoodCost, useSettings
   styles/
     tokens.css         # design tokens from §1
     global.css
