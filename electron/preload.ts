@@ -1,6 +1,45 @@
 import { contextBridge, ipcRenderer } from 'electron'
+import type { Api } from '../shared/types'
 
-contextBridge.exposeInMainWorld('api', {
-  // Placeholder — will be filled in Task 3
+const api: Api = {
   ping: () => ipcRenderer.invoke('ping'),
-})
+  'auth:login': (pin) => ipcRenderer.invoke('auth:login', pin),
+  'sales:create': (payload) => ipcRenderer.invoke('sales:create', payload),
+  'sales:void': (id, reason) => ipcRenderer.invoke('sales:void', id, reason),
+  'sales:list': (filters) => ipcRenderer.invoke('sales:list', filters),
+  'sales:get': (id) => ipcRenderer.invoke('sales:get', id),
+  'customers:create': (name, phone) => ipcRenderer.invoke('customers:create', name, phone),
+  'customers:list': () => ipcRenderer.invoke('customers:list'),
+  'customers:get': (id) => ipcRenderer.invoke('customers:get', id),
+  'payments:create': (payload) => ipcRenderer.invoke('payments:create', payload),
+  'payments:list': (customerId) => ipcRenderer.invoke('payments:list', customerId),
+  'expenses:create': (payload) => ipcRenderer.invoke('expenses:create', payload),
+  'expenses:update': (id, payload) => ipcRenderer.invoke('expenses:update', id, payload),
+  'expenses:delete': (id) => ipcRenderer.invoke('expenses:delete', id),
+  'expenses:list': (filters) => ipcRenderer.invoke('expenses:list', filters),
+  'reimbursements:create': (amount, note) => ipcRenderer.invoke('reimbursements:create', amount, note),
+  'reimbursements:balance': () => ipcRenderer.invoke('reimbursements:balance'),
+  'till:open': (float) => ipcRenderer.invoke('till:open', float),
+  'till:close': (counted) => ipcRenderer.invoke('till:close', counted),
+  'till:current': () => ipcRenderer.invoke('till:current'),
+  'foodCost:purchases:list': (date) => ipcRenderer.invoke('foodCost:purchases:list', date),
+  'foodCost:purchases:create': (payload) => ipcRenderer.invoke('foodCost:purchases:create', payload),
+  'foodCost:cookEvents:list': (date) => ipcRenderer.invoke('foodCost:cookEvents:list', date),
+  'foodCost:cookEvents:create': (payload) => ipcRenderer.invoke('foodCost:cookEvents:create', payload),
+  'foodCost:summary': (date) => ipcRenderer.invoke('foodCost:summary', date),
+  'reports:daily': (date) => ipcRenderer.invoke('reports:daily', date),
+  'reports:weekly': (date) => ipcRenderer.invoke('reports:weekly', date),
+  'reports:monthly': (date) => ipcRenderer.invoke('reports:monthly', date),
+  'reports:exportCsv': (range) => ipcRenderer.invoke('reports:exportCsv', range),
+  'proteins:list': () => ipcRenderer.invoke('proteins:list'),
+  'proteins:upsert': (payload) => ipcRenderer.invoke('proteins:upsert', payload),
+  'proteins:setOutOfStock': (id, outOfStock) => ipcRenderer.invoke('proteins:setOutOfStock', id, outOfStock),
+  'starches:list': () => ipcRenderer.invoke('starches:list'),
+  'starches:upsert': (payload) => ipcRenderer.invoke('starches:upsert', payload),
+  'settings:get': () => ipcRenderer.invoke('settings:get'),
+  'settings:update': (partial) => ipcRenderer.invoke('settings:update', partial),
+  'backup:create': () => ipcRenderer.invoke('backup:create'),
+  'backup:restore': (filePath) => ipcRenderer.invoke('backup:restore', filePath),
+}
+
+contextBridge.exposeInMainWorld('api', api)
