@@ -43,6 +43,10 @@ const api: Api = {
   'settings:update': (partial) => ipcRenderer.invoke('settings:update', partial),
   'backup:create': () => ipcRenderer.invoke('backup:create'),
   'backup:restore': (filePath) => ipcRenderer.invoke('backup:restore', filePath),
+  'debts:listOpen': () => ipcRenderer.invoke('debts:listOpen'),
+  'debts:recordPayment': (payload) => ipcRenderer.invoke('debts:recordPayment', payload),
+  'debts:getTotalOwed': (sale_id) => ipcRenderer.invoke('debts:getTotalOwed', sale_id),
+  'debts:history': (sale_id) => ipcRenderer.invoke('debts:history', sale_id),
 }
 
 contextBridge.exposeInMainWorld('api', api)

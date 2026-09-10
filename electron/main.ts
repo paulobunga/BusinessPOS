@@ -4,6 +4,7 @@ import { registerAuthHandlers } from './ipc/authHandlers.js'
 import { registerMenuHandlers } from './ipc/menuHandlers.js'
 import { registerSalesHandlers } from './ipc/salesHandlers.js'
 import { registerExpensesHandlers } from './ipc/expensesHandlers.js'
+import { registerDebtsHandlers } from './ipc/debtsHandlers.js'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -34,6 +35,7 @@ registerAuthHandlers()
 registerMenuHandlers()
 registerSalesHandlers()
 registerExpensesHandlers()
+registerDebtsHandlers()
 ipcMain.handle('ping', () => 'pong')
 ipcMain.handle('customers:create', () => { throw new Error('Not implemented') })
 ipcMain.handle('customers:list', () => [])

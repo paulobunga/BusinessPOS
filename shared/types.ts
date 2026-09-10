@@ -250,4 +250,9 @@ export interface Api {
   'settings:update': (partial: Record<string, string>) => Promise<void>
   'backup:create': () => Promise<string>
   'backup:restore': (filePath: string) => Promise<void>
+  // Debts
+  'debts:listOpen': () => Promise<any[]>
+  'debts:recordPayment': (payload: { sale_id: number; amount_cents: number; payment_method: string; till_session_id: number | null; created_by: number }) => Promise<void>
+  'debts:getTotalOwed': (sale_id: number) => Promise<number>
+  'debts:history': (sale_id: number) => Promise<any[]>
 }
