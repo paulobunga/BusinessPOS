@@ -7,10 +7,11 @@ import { runExpensesMigration } from './migrations/003_expenses_add_date_mpesa.j
 import { runDebtsMigration } from './migrations/004_debts_payment_allocations.js'
 import { runReimbursementsMigration } from './migrations/005_reimbursements_add_columns.js'
 import { runWasteMigration } from './migrations/006_waste_table.js'
+import { runCategoriesMigration } from './migrations/007_categories.js'
 import { usersRepo } from './repositories/usersRepo.js'
 import { settingsRepo } from './repositories/settingsRepo.js'
-import { proteinsRepo } from './repositories/proteinsRepo.js'
-import { starchesRepo } from './repositories/starchesRepo.js'
+import { itemsRepo } from './repositories/itemsRepo.js'
+import { categoriesRepo } from './repositories/categoriesRepo.js'
 
 let db: Database.Database | null = null
 
@@ -30,10 +31,11 @@ export function getDb(): Database.Database {
     runDebtsMigration(db)
     runReimbursementsMigration(db)
     runWasteMigration(db)
+    runCategoriesMigration(db)
     usersRepo.seed()
     settingsRepo.seed()
-    proteinsRepo.seed()
-    starchesRepo.seed()
+    itemsRepo.seed()
+    categoriesRepo.seedIfEmpty()
   }
   return db
 }

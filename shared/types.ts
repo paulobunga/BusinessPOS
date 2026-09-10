@@ -19,20 +19,45 @@ export interface CustomerWithBalance extends Customer {
   last_order_date: string
 }
 
-export interface Protein {
+export interface Category {
   id: number
+  name: string
+  kind: 'priced' | 'free'
+  sort_order: number
+  active: number
+}
+
+export interface MenuItem {
+  id: number
+  category_id: number
   name: string
   selling_price_cents: number
   cost_price_cents: number
-  category: string
-  active: number
   out_of_stock: number
+  active: number
 }
 
-export interface Starch {
+export interface AttributeDef {
   id: number
+  category_id: number | null
   name: string
-  active: number
+  type: 'text' | 'number' | 'boolean'
+  sort_order: number
+}
+
+export interface AttributeValue {
+  attr_def_id: number
+  name: string
+  type: 'text' | 'number' | 'boolean'
+  value_text: string | null
+  value_number: number | null
+  value_boolean: number | null
+}
+
+export interface MenuItemWithCategory extends MenuItem {
+  category_name: string
+  category_kind: 'priced' | 'free'
+  attribute_values?: AttributeValue[]
 }
 
 export interface TillSession {
@@ -65,7 +90,6 @@ export interface Sale {
   total_cents: number
   payment_source: 'cash' | 'unpaid'
   customer_id: number | null
-  starch_id: number | null
   created_by: number | null
   voided_at: string | null
   voided_by: number | null
@@ -79,18 +103,17 @@ export interface Sale {
 export interface SaleItem {
   id: number
   sale_id: number
-  protein_id: number | null
+  item_id: number | null
   name_snapshot: string
   unit_price_cents: number
   quantity: number
   line_total_cents: number
-  starch_id?: number | null
+  free_item_id?: number | null
 }
 
 export interface SaleWithItems extends Sale {
   items: SaleItem[]
   customer_name?: string
-  starch_name?: string
 }
 
 export interface Payment {
@@ -135,9 +158,9 @@ export interface Reimbursement {
   created_at: string
 }
 
-export interface ProteinPurchase {
+export interface ItemPurchase {
   id: number
-  protein_id: number
+  item_id: number
   purchase_date: string
   quantity_kg: number
   cost_cents: number
@@ -145,39 +168,40 @@ export interface ProteinPurchase {
   created_by: number | null
 }
 
-export interface CookEvent {
-  id: number
-  protein_id: number
-  cook_date: string
-  portions_cooked: number
-  created_by: number | null
-}
-
 export interface WasteRecord {
   id: number
-  protein_id: number
+  item_id: number
   quantity: number
   estimated_value_cents: number
   reason: 'staff_meal' | 'spoiled' | 'other'
   waste_date: string
   notes: string | null
   created_at: string
-  protein_name?: string
+  item_name?: string
 }
 
-export interface ProteinPurchaseWithName extends ProteinPurchase {
-  protein_name?: string
+export interface ItemPurchaseWithName extends ItemPurchase {
+  item_name?: string
   unit_cost_cents?: number
 }
 
-export interface WasteByProtein {
-  protein_name: string
+export interface WasteByItem {
+  item_name: string
   total_quantity: number
   total_value_cents: number
 }
 
+export interface ItemPerformance {
+  category_name: string
+  item_name: string
+  portions_sold: number
+  revenue_cents: number
+  cost_cents: number
+  margin_cents: number
+}
+
 export interface FoodCostSummary {
-  protein_name: string
+  item_name: string
   purchased: number
   cooked: number
   sold: number
@@ -215,14 +239,6 @@ export interface CategoryBreakdown {
   amount_cents: number
 }
 
-export interface ProteinPerformance {
-  protein_name: string
-  portions_sold: number
-  revenue_cents: number
-  cost_cents: number
-  margin_cents: number
-}
-
 export interface DebtSummaryItem {
   customer_name: string | null
   sale_id: number
@@ -242,8 +258,8 @@ export interface TillSummaryData {
 
 // === IPC Payloads ===
 export interface SaleItemInput {
-  protein_id: number
-  starch_id?: number | null
+  item_id: number
+  free_item_id?: number | null
   price_cents: number
 }
 
@@ -278,71 +294,61 @@ export interface CreatePaymentPayload {
 // === API Shape ===
 export interface Api {
   ping: () => Promise<string>
-  // Auth
   'auth:login': (pin: string) => Promise<{ userId: number; role: string } | null>
-  // Sales
   'sales:create': (payload: CreateSalePayload) => Promise<Sale>
   'sales:void': (id: number, reason: string) => Promise<void>
   'sales:list': (filters?: { status?: string; date_from?: string; date_to?: string }) => Promise<SaleWithItems[]>
   'sales:get': (id: number) => Promise<SaleWithItems>
   'sales:listByDate': (date: string) => Promise<Sale[]>
   'sales:getById': (id: number) => Promise<Sale | null>
-  // Customers
   'customers:create': (name: string, phone?: string) => Promise<Customer>
   'customers:list': () => Promise<CustomerWithBalance[]>
   'customers:get': (id: number) => Promise<CustomerWithBalance & { orders: SaleWithItems[] }>
-  // Payments
   'payments:create': (payload: CreatePaymentPayload) => Promise<Payment>
   'payments:list': (customerId: number) => Promise<Payment[]>
-  // Expenses
   'expenses:create': (payload: CreateExpensePayload) => Promise<Expense>
   'expenses:update': (id: number, payload: Partial<CreateExpensePayload>) => Promise<Expense>
   'expenses:delete': (id: number) => Promise<void>
   'expenses:list': (filters?: { date_from?: string; date_to?: string; category?: string; payment_source?: string }) => Promise<Expense[]>
-  // Reimbursements
   'reimbursements:create': (payload: { description: string; amount_cents: number; till_session_id?: number | null; created_by: number; date: string; paid_to: 'till' | 'mpesa' }) => Promise<Reimbursement>
   'reimbursements:list': (start: string, end: string) => Promise<Reimbursement[]>
   'reimbursements:delete': (id: number) => Promise<void>
-  // Till
   'till:open': (floatCents: number) => Promise<TillSession>
   'till:close': (countedCents: number) => Promise<{ expected: number; variance: number }>
   'till:current': () => Promise<TillSession | null>
   'till:countCash': () => Promise<TillCountData | null>
-  // Food Cost / Inventory
-  'inventory:recordPurchase': (payload: { protein_id: number; quantity: number; cost_cents: number; date: string; created_by: number | null }) => Promise<ProteinPurchaseWithName>
-  'inventory:byDate': (date: string) => Promise<ProteinPurchaseWithName[]>
-  'inventory:byDateRange': (start: string, end: string) => Promise<ProteinPurchaseWithName[]>
+  'inventory:recordPurchase': (payload: { item_id: number; quantity: number; cost_cents: number; date: string; created_by: number | null }) => Promise<ItemPurchaseWithName>
+  'inventory:byDate': (date: string) => Promise<ItemPurchaseWithName[]>
+  'inventory:byDateRange': (start: string, end: string) => Promise<ItemPurchaseWithName[]>
   'inventory:dailyTotal': (date: string) => Promise<number>
-  // Waste
-  'waste:record': (payload: { protein_id: number; quantity: number; estimated_value_cents: number; reason: 'staff_meal' | 'spoiled' | 'other'; waste_date: string; notes?: string }) => Promise<WasteRecord>
+  'waste:record': (payload: { item_id: number; quantity: number; estimated_value_cents: number; reason: 'staff_meal' | 'spoiled' | 'other'; waste_date: string; notes?: string }) => Promise<WasteRecord>
   'waste:byDate': (date: string) => Promise<WasteRecord[]>
   'waste:byDateRange': (start: string, end: string) => Promise<WasteRecord[]>
-  'waste:byProtein': (start: string, end: string) => Promise<WasteByProtein[]>
+  'waste:byItem': (start: string, end: string) => Promise<WasteByItem[]>
   'waste:dailyTotal': (date: string) => Promise<number>
-  // Reports
   'reports:daily': (start: string, end: string) => Promise<DailyReport[]>
   'reports:monthly': (year: number) => Promise<MonthlyReport[]>
   'reports:categoryBreakdown': (start: string, end: string) => Promise<CategoryBreakdown[]>
-  'reports:proteinPerformance': (start: string, end: string) => Promise<ProteinPerformance[]>
+  'reports:itemPerformance': (start: string, end: string) => Promise<ItemPerformance[]>
   'reports:debtSummary': () => Promise<DebtSummaryItem[]>
   'reports:tillSummary': (tillSessionId: number) => Promise<TillSummaryData | null>
   'reports:exportCsv': (range: { from: string; to: string }) => Promise<string>
-  // Menu
-  'proteins:list': () => Promise<Protein[]>
-  'proteins:listAll': () => Promise<Protein[]>
-  'proteins:upsert': (payload: Partial<Protein>) => Promise<Protein>
-  'proteins:setOutOfStock': (id: number, outOfStock: boolean) => Promise<void>
-  'starches:list': () => Promise<Starch[]>
-  'starches:listAll': () => Promise<Starch[]>
-  'starches:upsert': (payload: Partial<Starch>) => Promise<Starch>
-  'starches:delete': (id: number) => Promise<void>
-  // Settings
+  'items:list': (filters?: { categoryId?: number; kind?: 'priced' | 'free'; activeOnly?: boolean }) => Promise<MenuItemWithCategory[]>
+  'items:upsert': (payload: Partial<MenuItem> & { id?: number }) => Promise<MenuItemWithCategory>
+  'items:setOutOfStock': (id: number, outOfStock: boolean) => Promise<void>
+  'items:delete': (id: number) => Promise<void>
+  'categories:list': (activeOnly?: boolean) => Promise<Category[]>
+  'categories:upsert': (payload: Partial<Category> & { id?: number }) => Promise<Category>
+  'categories:delete': (id: number) => Promise<void>
+  'attributes:list': (filters?: { categoryId?: number | null }) => Promise<AttributeDef[]>
+  'attributes:upsert': (payload: Partial<AttributeDef> & { id?: number }) => Promise<AttributeDef>
+  'attributes:delete': (id: number) => Promise<void>
+  'attributes:saveValues': (payload: { itemId: number; values: Array<{ attr_def_id: number; value_text?: string; value_number?: number; value_boolean?: boolean }> }) => Promise<void>
   'settings:get': () => Promise<Record<string, string>>
   'settings:update': (partial: Record<string, string>) => Promise<void>
   'users:setPin': (userId: number, oldPin: string, newPin: string) => Promise<boolean>
   'backup:export': () => Promise<string | null>
   'backup:import': () => Promise<{ ok: boolean; message: string }>
-  // Debts
   'debts:listOpen': () => Promise<any[]>
   'debts:recordPayment': (payload: { sale_id: number; amount_cents: number; payment_method: string; till_session_id: number | null; created_by: number }) => Promise<void>
   'debts:getTotalOwed': (sale_id: number) => Promise<number>

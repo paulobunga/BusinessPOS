@@ -11,7 +11,7 @@ export const salesRepo = {
     payment_method: 'cash' | 'debt' | 'mixed'
     till_session_id?: number | null
     created_by: number
-    items: Array<{ protein_id: number; starch_id?: number | null; price_cents: number }>
+    items: Array<{ item_id: number; free_item_id?: number | null; price_cents: number }>
   }) {
     const db = getDb()
     const status = data.payment_method === 'cash' ? 'completed' : 'unpaid'
@@ -36,13 +36,13 @@ export const salesRepo = {
     )
     const saleId = result.lastInsertRowid as number
     const insertItem = db.prepare(`
-      INSERT INTO sale_items (sale_id, protein_id, starch_id, name_snapshot, unit_price_cents, quantity, line_total_cents)
+      INSERT INTO sale_items (sale_id, item_id, free_item_id, name_snapshot, unit_price_cents, quantity, line_total_cents)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `)
-    const getProtein = db.prepare('SELECT name FROM proteins WHERE id = ?')
+    const getItem = db.prepare('SELECT name FROM menu_items WHERE id = ?')
     for (const item of data.items) {
-      const protein = getProtein.get(item.protein_id) as { name: string } | undefined
-      insertItem.run(saleId, item.protein_id, item.starch_id ?? null, protein?.name ?? '', item.price_cents, 1, item.price_cents)
+      const mi = getItem.get(item.item_id) as { name: string } | undefined
+      insertItem.run(saleId, item.item_id, item.free_item_id ?? null, mi?.name ?? '', item.price_cents, 1, item.price_cents)
     }
     return saleId
   },

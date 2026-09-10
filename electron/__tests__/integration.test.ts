@@ -6,6 +6,7 @@ import { runExpensesMigration } from '../db/migrations/003_expenses_add_date_mpe
 import { runDebtsMigration } from '../db/migrations/004_debts_payment_allocations'
 import { runReimbursementsMigration } from '../db/migrations/005_reimbursements_add_columns'
 import { runWasteMigration } from '../db/migrations/006_waste_table'
+import { runCategoriesMigration } from '../db/migrations/007_categories'
 
 let db: Database.Database
 
@@ -13,25 +14,23 @@ vi.mock('../db/index', () => ({
   getDb: () => db,
 }))
 
-import { proteinsRepo } from '../db/repositories/proteinsRepo'
-import { starchesRepo } from '../db/repositories/starchesRepo'
+import { categoriesRepo } from '../db/repositories/categoriesRepo'
+import { itemsRepo } from '../db/repositories/itemsRepo'
 import { usersRepo } from '../db/repositories/usersRepo'
 import { tillRepo } from '../db/repositories/tillRepo'
 import { salesRepo } from '../db/repositories/salesRepo'
 import { expensesRepo } from '../db/repositories/expensesRepo'
-import { inventoryRepo } from '../db/repositories/inventoryRepo'
+import { purchasesRepo } from '../db/repositories/purchasesRepo'
 import { reportsRepo } from '../db/repositories/reportsRepo'
 
 describe('Full day at the restaurant (integration)', () => {
   const today = new Date().toISOString().slice(0, 10)
-  // reportsRepo.getDaily processes dates through new Date(date+'T00:00:00').toISOString()
-  // which may shift the date due to timezone. Compute the actual query date.
   const reportDate = new Date(today + 'T00:00:00').toISOString().slice(0, 10)
   let userId: number
   let tillId: number
-  let goatProtein: any
-  let chickenProtein: any
-  let starchId: number
+  let goat: any
+  let chicken: any
+  let bananaId: number
 
   beforeAll(() => {
     db = new Database(':memory:')
@@ -43,17 +42,18 @@ describe('Full day at the restaurant (integration)', () => {
     runDebtsMigration(db)
     runReimbursementsMigration(db)
     runWasteMigration(db)
+    runCategoriesMigration(db)
 
     const user = usersRepo.create('Test Manager', 'manager', '1234')
     userId = user.id as number
 
-    starchesRepo.upsert({ name: 'Banana' })
-    starchesRepo.upsert({ name: 'Cassava' })
-    const starches = starchesRepo.listAll() as any[]
-    starchId = starches[0].id
+    const meatCat = categoriesRepo.upsert({ name: 'Test Meats', kind: 'priced', sort_order: 0 })
+    const sideCat = categoriesRepo.upsert({ name: 'Test Sides', kind: 'free', sort_order: 1 })
 
-    goatProtein = proteinsRepo.upsert({ name: 'Goat Meat', selling_price_cents: 10000, cost_price_cents: 6000, category: 'Goat' })
-    chickenProtein = proteinsRepo.upsert({ name: 'Chicken', selling_price_cents: 8000, cost_price_cents: 5000, category: 'Chicken' })
+    goat = itemsRepo.upsert({ category_id: meatCat.id, name: 'Goat Meat', selling_price_cents: 10000, cost_price_cents: 6000 })
+    chicken = itemsRepo.upsert({ category_id: meatCat.id, name: 'Chicken', selling_price_cents: 8000, cost_price_cents: 5000 })
+    const banana = itemsRepo.upsert({ category_id: sideCat.id, name: 'Banana' })
+    bananaId = banana.id
   })
 
   afterAll(() => {
@@ -68,7 +68,7 @@ describe('Full day at the restaurant (integration)', () => {
     expect(current!.opening_float_cents).toBe(0)
   })
 
-  test('2. Create a cash sale: 2 goat meat + 1 chicken with starches', () => {
+  test('2. Create a cash sale: 2 goat meat + 1 chicken with banana add-on', () => {
     const saleId = salesRepo.create({
       subtotal_cents: 10000 + 10000 + 8000,
       discount_cents: 0,
@@ -78,9 +78,9 @@ describe('Full day at the restaurant (integration)', () => {
       till_session_id: tillId,
       created_by: userId,
       items: [
-        { protein_id: goatProtein.id, starch_id: starchId, price_cents: 10000 },
-        { protein_id: goatProtein.id, starch_id: starchId, price_cents: 10000 },
-        { protein_id: chickenProtein.id, starch_id: starchId, price_cents: 8000 },
+        { item_id: goat.id, free_item_id: bananaId, price_cents: 10000 },
+        { item_id: goat.id, free_item_id: bananaId, price_cents: 10000 },
+        { item_id: chicken.id, free_item_id: bananaId, price_cents: 8000 },
       ],
     })
     expect(saleId).toBeGreaterThan(0)
@@ -93,8 +93,8 @@ describe('Full day at the restaurant (integration)', () => {
     expect(sale.till_session_id).toBe(tillId)
   })
 
-  test('3. Record a food purchase (protein purchase)', () => {
-    const purchase = inventoryRepo.recordPurchase(goatProtein.id, 5, 30000, reportDate, userId) as any
+  test('3. Record a food purchase', () => {
+    const purchase = purchasesRepo.recordPurchase(goat.id, 5, 30000, reportDate, userId) as any
     expect(purchase.id).toBeGreaterThan(0)
     expect(purchase.cost_cents).toBe(30000)
     expect(purchase.quantity_kg).toBe(5)
@@ -137,5 +137,15 @@ describe('Full day at the restaurant (integration)', () => {
     expect(r.food_purchase_cents).toBe(30000)
     expect(r.expense_cents).toBe(5000)
     expect(r.net_profit_cents).toBe(28000 - 30000 - 5000)
+  })
+
+  test('8. Item performance returns correct data', () => {
+    const perf = reportsRepo.getItemPerformance(reportDate, reportDate)
+    expect(perf.length).toBeGreaterThan(0)
+    const goatRow = perf.find((p: any) => p.item_name === 'Goat Meat')
+    expect(goatRow).toBeDefined()
+    expect(goatRow!.portions_sold).toBe(2)
+    expect(goatRow!.revenue_cents).toBe(20000)
+    expect(goatRow!.category_name).toBe('Test Meats')
   })
 })

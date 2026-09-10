@@ -3,6 +3,13 @@ import Database from 'better-sqlite3'
 import path from 'path'
 import fs from 'fs'
 import { runMigrations } from '../migrations/001_initial'
+import { runSalesExtrasMigration } from '../migrations/002_sales_extras'
+import { runExpensesMigration } from '../migrations/003_expenses_add_date_mpesa'
+import { runDebtsMigration } from '../migrations/004_debts_payment_allocations'
+import { runReimbursementsMigration } from '../migrations/005_reimbursements_add_columns'
+import { runWasteMigration } from '../migrations/006_waste_table'
+import { runCategoriesMigration } from '../migrations/007_categories'
+import { itemsRepo } from '../repositories/itemsRepo'
 
 const TEST_DB_PATH = path.join(__dirname, '..', '__test.sqlite')
 
@@ -15,6 +22,12 @@ describe('Database initialization', () => {
     db.pragma('journal_mode = WAL')
     db.pragma('foreign_keys = ON')
     runMigrations(db)
+    runSalesExtrasMigration(db)
+    runExpensesMigration(db)
+    runDebtsMigration(db)
+    runReimbursementsMigration(db)
+    runWasteMigration(db)
+    runCategoriesMigration(db)
   })
 
   afterAll(() => {
@@ -29,8 +42,10 @@ describe('Database initialization', () => {
     const tableNames = tables.map(t => t.name)
     expect(tableNames).toContain('users')
     expect(tableNames).toContain('customers')
-    expect(tableNames).toContain('proteins')
-    expect(tableNames).toContain('starches')
+    expect(tableNames).toContain('categories')
+    expect(tableNames).toContain('menu_items')
+    expect(tableNames).toContain('attribute_defs')
+    expect(tableNames).toContain('item_attribute_values')
     expect(tableNames).toContain('till_sessions')
     expect(tableNames).toContain('sales')
     expect(tableNames).toContain('sale_items')
@@ -38,7 +53,7 @@ describe('Database initialization', () => {
     expect(tableNames).toContain('payment_allocations')
     expect(tableNames).toContain('expenses')
     expect(tableNames).toContain('reimbursements')
-    expect(tableNames).toContain('protein_purchases')
+    expect(tableNames).toContain('item_purchases')
     expect(tableNames).toContain('cook_events')
     expect(tableNames).toContain('settings')
   })
@@ -51,5 +66,15 @@ describe('Database initialization', () => {
   test('enables foreign keys', () => {
     const fk = db.pragma('foreign_keys', { simple: true })
     expect(fk).toBe(1)
+  })
+
+  test('migration seeded 2 categories', () => {
+    const count = db.prepare('SELECT COUNT(*) as c FROM categories').get() as { c: number }
+    expect(count.c).toBe(2)
+  })
+
+  test('legacy proteins/starches tables are gone', () => {
+    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('proteins','starches','protein_purchases')").all() as { name: string }[]
+    expect(tables).toHaveLength(0)
   })
 })

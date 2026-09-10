@@ -1,7 +1,9 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import path from 'path'
 import { registerAuthHandlers } from './ipc/authHandlers.js'
-import { registerMenuHandlers } from './ipc/menuHandlers.js'
+import { registerItemsHandlers } from './ipc/itemsHandlers.js'
+import { registerCategoriesHandlers } from './ipc/categoriesHandlers.js'
+import { registerAttributesHandlers } from './ipc/attributesHandlers.js'
 import { registerSalesHandlers } from './ipc/salesHandlers.js'
 import { registerExpensesHandlers } from './ipc/expensesHandlers.js'
 import { registerDebtsHandlers } from './ipc/debtsHandlers.js'
@@ -37,7 +39,9 @@ app.whenReady().then(createWindow)
 app.on('window-all-closed', () => app.quit())
 
 registerAuthHandlers()
-registerMenuHandlers()
+registerItemsHandlers()
+registerCategoriesHandlers()
+registerAttributesHandlers()
 registerSalesHandlers()
 registerExpensesHandlers()
 registerDebtsHandlers()

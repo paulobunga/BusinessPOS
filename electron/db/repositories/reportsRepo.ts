@@ -1,4 +1,5 @@
 import { getDb } from '../index'
+import type { ItemPerformance } from '../../../shared/types'
 
 export interface DailyReport {
   date: string
@@ -25,14 +26,6 @@ export interface MonthlyReport {
 export interface CategoryBreakdown {
   category: string
   amount_cents: number
-}
-
-export interface ProteinPerformance {
-  protein_name: string
-  portions_sold: number
-  revenue_cents: number
-  cost_cents: number
-  margin_cents: number
 }
 
 export interface DebtSummaryItem {
@@ -65,7 +58,7 @@ function getDailyRow(date: string): DailyReport {
 
   const purchaseRow = db.prepare(`
     SELECT COALESCE(SUM(cost_cents), 0) AS food_purchase_cents
-    FROM protein_purchases
+    FROM item_purchases
     WHERE purchase_date = ?
   `).get(date) as { food_purchase_cents: number }
 
@@ -121,7 +114,7 @@ function getMonthlyAggregated(year: number): MonthlyReport[] {
     SELECT
       strftime('%Y-%m', purchase_date) AS month,
       COALESCE(SUM(cost_cents), 0) AS food_purchase_cents
-    FROM protein_purchases
+    FROM item_purchases
     WHERE strftime('%Y', purchase_date) = ?
     GROUP BY month
   `).all(String(year)) as { month: string; food_purchase_cents: number }[]
@@ -236,21 +229,24 @@ export const reportsRepo = {
     `).all(start, end) as CategoryBreakdown[]
   },
 
-  getProteinPerformance(start: string, end: string): ProteinPerformance[] {
+  getItemPerformance(start: string, end: string): ItemPerformance[] {
     return getDb().prepare(`
       SELECT
-        si.name_snapshot AS protein_name,
+        c.name AS category_name,
+        mi.name AS item_name,
         SUM(si.quantity) AS portions_sold,
         SUM(si.line_total_cents) AS revenue_cents,
         0 AS cost_cents,
         SUM(si.line_total_cents) AS margin_cents
       FROM sale_items si
+      LEFT JOIN menu_items mi ON mi.id = si.item_id
+      LEFT JOIN categories c ON c.id = mi.category_id
       JOIN sales s ON s.id = si.sale_id
       WHERE s.status IN ('completed','unpaid')
         AND DATE(s.created_at) >= ? AND DATE(s.created_at) <= ?
-      GROUP BY si.name_snapshot
+      GROUP BY c.name, mi.name
       ORDER BY revenue_cents DESC
-    `).all(start, end) as ProteinPerformance[]
+    `).all(start, end) as ItemPerformance[]
   },
 
   getDebtSummary(): DebtSummaryItem[] {

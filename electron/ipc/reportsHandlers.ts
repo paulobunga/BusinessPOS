@@ -14,8 +14,8 @@ export function registerReportsHandlers() {
     return reportsRepo.getCategoryBreakdown(start, end)
   })
 
-  ipcMain.handle('reports:proteinPerformance', (_e, start: string, end: string) => {
-    return reportsRepo.getProteinPerformance(start, end)
+  ipcMain.handle('reports:itemPerformance', (_e, start: string, end: string) => {
+    return reportsRepo.getItemPerformance(start, end)
   })
 
   ipcMain.handle('reports:debtSummary', () => {

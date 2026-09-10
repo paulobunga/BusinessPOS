@@ -2,7 +2,7 @@ import { ipcMain } from 'electron'
 import { wasteRepo } from '../db/repositories/wasteRepo'
 
 export function registerWasteHandlers() {
-  ipcMain.handle('waste:record', (_e, payload: { protein_id: number; quantity: number; estimated_value_cents: number; reason: string; waste_date: string; notes?: string }) => {
+  ipcMain.handle('waste:record', (_e, payload: { item_id: number; quantity: number; estimated_value_cents: number; reason: string; waste_date: string; notes?: string }) => {
     return wasteRepo.record(payload)
   })
 
@@ -14,8 +14,8 @@ export function registerWasteHandlers() {
     return wasteRepo.getByDateRange(start, end)
   })
 
-  ipcMain.handle('waste:byProtein', (_e, start: string, end: string) => {
-    return wasteRepo.getAggregatedByProtein(start, end)
+  ipcMain.handle('waste:byItem', (_e, start: string, end: string) => {
+    return wasteRepo.getAggregatedByItem(start, end)
   })
 
   ipcMain.handle('waste:dailyTotal', (_e, date: string) => {
