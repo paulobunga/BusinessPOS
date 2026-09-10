@@ -6,6 +6,7 @@ import { runSalesExtrasMigration } from './migrations/002_sales_extras.js'
 import { runExpensesMigration } from './migrations/003_expenses_add_date_mpesa.js'
 import { runDebtsMigration } from './migrations/004_debts_payment_allocations.js'
 import { runReimbursementsMigration } from './migrations/005_reimbursements_add_columns.js'
+import { runWasteMigration } from './migrations/006_waste_table.js'
 import { usersRepo } from './repositories/usersRepo.js'
 import { settingsRepo } from './repositories/settingsRepo.js'
 import { proteinsRepo } from './repositories/proteinsRepo.js'
@@ -24,6 +25,7 @@ export function getDb(): Database.Database {
     runExpensesMigration(db)
     runDebtsMigration(db)
     runReimbursementsMigration(db)
+    runWasteMigration(db)
     usersRepo.seed()
     settingsRepo.seed()
     proteinsRepo.seed()

@@ -7,6 +7,8 @@ import { SellPage } from './pages/Sell/SellPage'
 import { ExpensesPage } from './pages/Expenses/ExpensesPage'
 import { DebtsPage } from './pages/Debts/DebtsPage'
 import { ReimbursementsPage } from './pages/Reimbursements/ReimbursementsPage'
+import { InventoryPage } from './pages/Inventory/InventoryPage'
+import { WastePage } from './pages/Waste/WastePage'
 
 export default function App() {
   return (
@@ -19,6 +21,8 @@ export default function App() {
           <Route path="/expenses" element={<RequireAuth><ExpensesPage /></RequireAuth>} />
           <Route path="/debts" element={<RequireAuth><DebtsPage /></RequireAuth>} />
           <Route path="/reimbursements" element={<RequireAuth><ReimbursementsPage /></RequireAuth>} />
+          <Route path="/inventory" element={<RequireAuth><InventoryPage /></RequireAuth>} />
+          <Route path="/waste" element={<RequireAuth><WastePage /></RequireAuth>} />
         </Routes>
       </TillProvider>
     </AuthProvider>

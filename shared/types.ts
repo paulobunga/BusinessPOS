@@ -153,6 +153,29 @@ export interface CookEvent {
   created_by: number | null
 }
 
+export interface WasteRecord {
+  id: number
+  protein_id: number
+  quantity: number
+  estimated_value_cents: number
+  reason: 'staff_meal' | 'spoiled' | 'other'
+  waste_date: string
+  notes: string | null
+  created_at: string
+  protein_name?: string
+}
+
+export interface ProteinPurchaseWithName extends ProteinPurchase {
+  protein_name?: string
+  unit_cost_cents?: number
+}
+
+export interface WasteByProtein {
+  protein_name: string
+  total_quantity: number
+  total_value_cents: number
+}
+
 export interface FoodCostSummary {
   protein_name: string
   purchased: number
@@ -232,12 +255,17 @@ export interface Api {
   'till:close': (countedCents: number) => Promise<{ expected: number; variance: number }>
   'till:current': () => Promise<TillSession | null>
   'till:countCash': () => Promise<TillCountData | null>
-  // Food Cost
-  'foodCost:purchases:list': (date: string) => Promise<ProteinPurchase[]>
-  'foodCost:purchases:create': (payload: { protein_id: number; quantity_kg: number; cost_cents: number; expected_yield: number }) => Promise<ProteinPurchase>
-  'foodCost:cookEvents:list': (date: string) => Promise<CookEvent[]>
-  'foodCost:cookEvents:create': (payload: { protein_id: number; portions_cooked: number }) => Promise<CookEvent>
-  'foodCost:summary': (date: string) => Promise<FoodCostSummary[]>
+  // Food Cost / Inventory
+  'inventory:recordPurchase': (payload: { protein_id: number; quantity: number; cost_cents: number; date: string; created_by: number | null }) => Promise<ProteinPurchaseWithName>
+  'inventory:byDate': (date: string) => Promise<ProteinPurchaseWithName[]>
+  'inventory:byDateRange': (start: string, end: string) => Promise<ProteinPurchaseWithName[]>
+  'inventory:dailyTotal': (date: string) => Promise<number>
+  // Waste
+  'waste:record': (payload: { protein_id: number; quantity: number; estimated_value_cents: number; reason: 'staff_meal' | 'spoiled' | 'other'; waste_date: string; notes?: string }) => Promise<WasteRecord>
+  'waste:byDate': (date: string) => Promise<WasteRecord[]>
+  'waste:byDateRange': (start: string, end: string) => Promise<WasteRecord[]>
+  'waste:byProtein': (start: string, end: string) => Promise<WasteByProtein[]>
+  'waste:dailyTotal': (date: string) => Promise<number>
   // Reports
   'reports:daily': (date: string) => Promise<any>
   'reports:weekly': (date: string) => Promise<any>
