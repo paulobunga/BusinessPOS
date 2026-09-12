@@ -22,6 +22,10 @@ export function registerReportsHandlers() {
     return reportsRepo.getDebtSummary()
   })
 
+  ipcMain.handle('reports:sales', (_e, start: string, end: string) => {
+    return reportsRepo.getSales(start, end)
+  })
+
   ipcMain.handle('reports:tillSummary', (_e, tillSessionId: number) => {
     return reportsRepo.getTillSummary(tillSessionId)
   })

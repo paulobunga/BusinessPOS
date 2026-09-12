@@ -6,7 +6,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/ta
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
 import { DatePicker } from '../../components/ui/date-picker'
-import type { DailyReport, MonthlyReport, ItemPerformance, DebtSummaryItem } from '../../../shared/types'
+import type { DailyReport, MonthlyReport, ItemPerformance, DebtSummaryItem, SaleWithItems } from '../../../shared/types'
 
 function formatUGX(cents: number): string {
   return `UGX ${cents.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
@@ -120,6 +120,97 @@ function ItemPerformanceView({ rows }: { rows: ItemPerformance[] }) {
           </Table>
         </div>
       </div>
+    </div>
+  )
+}
+
+function SalesView({ sales }: { sales: SaleWithItems[] }) {
+  if (sales.length === 0) {
+    return <p className="p-12 text-center text-muted-foreground">No sales in this period.</p>
+  }
+
+  const fmtTime = (iso: string) =>
+    new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+
+  const byDate = new Map<string, SaleWithItems[]>()
+  for (const s of sales) {
+    const d = s.created_at.slice(0, 10)
+    const arr = byDate.get(d) ?? []
+    arr.push(s)
+    byDate.set(d, arr)
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="rounded-[var(--radius-md)] border border-border bg-muted px-4 py-2.5 text-[0.8125rem] text-muted-foreground">
+        Each order shows its items at the price charged, the discount and the total. Debt sales also show the amount owed.
+      </div>
+
+      {Array.from(byDate.keys()).map(date => {
+        const daySales = byDate.get(date)!
+        const dayTotal = daySales.reduce((sum, s) => sum + s.total_cents, 0)
+        return (
+          <div key={date} className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-card">
+            <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+              <h3 className="text-[0.875rem] font-bold tracking-[0.05em] text-muted-foreground uppercase">
+                {new Date(date + 'T00:00:00').toLocaleDateString()}
+              </h3>
+              <span className="text-[0.875rem] font-bold">{formatUGX(dayTotal)}</span>
+            </div>
+            <div className="flex flex-col divide-y divide-border">
+              {daySales.map(s => (
+                <div key={s.id} className="flex flex-col gap-2 px-4 py-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-semibold text-muted-foreground">{fmtTime(s.created_at)}</span>
+                      <span className="text-[0.875rem] font-bold">Sale #{s.id}</span>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[0.6875rem] font-bold uppercase ${
+                          s.payment_method === 'debt'
+                            ? 'border border-warning/40 bg-warning/10 text-warning'
+                            : s.payment_method === 'mixed'
+                              ? 'border border-primary/40 bg-primary/10 text-primary'
+                              : 'border border-border bg-background text-muted-foreground'
+                        }`}
+                      >
+                        {s.payment_method ?? 'cash'}
+                      </span>
+                      {s.customer_name && (
+                        <span className="text-[0.8125rem] text-muted-foreground">{s.customer_name}</span>
+                      )}
+                    </div>
+                    <span className="text-[0.9375rem] font-bold">{formatUGX(s.total_cents)}</span>
+                  </div>
+
+                  <div className="flex flex-col gap-0.5 pl-1 text-[0.8125rem]">
+                    {s.items.map(it => (
+                      <div key={it.id} className="flex items-center justify-between">
+                        <span className="text-muted-foreground">
+                          {it.quantity} × {it.name_snapshot}
+                          {it.free_item_id != null ? ' (free)' : ''}
+                        </span>
+                        <span>{formatUGX(it.line_total_cents)}</span>
+                      </div>
+                    ))}
+                    {s.discount_cents > 0 && (
+                      <div className="flex items-center justify-between text-muted-foreground">
+                        <span>Discount{s.discount_reason ? ` (${s.discount_reason})` : ''}</span>
+                        <span>-{formatUGX(s.discount_cents)}</span>
+                      </div>
+                    )}
+                    {(s.debt_cents ?? 0) > 0 && (
+                      <div className="flex items-center justify-between font-semibold text-warning">
+                        <span>Debt owed</span>
+                        <span>{formatUGX(s.debt_cents!)}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -239,7 +330,7 @@ function TableView({ data, label }: { data: (DailyReport | MonthlyReport)[]; lab
   )
 }
 
-type Section = 'pnl' | 'items' | 'receivables'
+type Section = 'pnl' | 'items' | 'receivables' | 'sales'
 
 export function ReportsPage() {
   const {
@@ -248,7 +339,7 @@ export function ReportsPage() {
     startDate, setStartDate,
     endDate, setEndDate,
     dailyData, monthlyData, categories,
-    itemPerf, debtSummary,
+    itemPerf, debtSummary, sales,
     loading,
     navigateDay,
   } = useReports()
@@ -328,6 +419,7 @@ export function ReportsPage() {
           <TabsTrigger value="pnl">P&amp;L</TabsTrigger>
           <TabsTrigger value="items">Item Performance</TabsTrigger>
           <TabsTrigger value="receivables">Receivables</TabsTrigger>
+          <TabsTrigger value="sales">Sales</TabsTrigger>
         </TabsList>
 
         <TabsContent value="pnl">
@@ -393,6 +485,22 @@ export function ReportsPage() {
                 <p className="p-12 text-center text-muted-foreground">Loading...</p>
               ) : (
                 <ReceivablesView rows={debtSummary} />
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="sales">
+          <Card>
+            <CardHeader>
+              <CardTitle>Sales</CardTitle>
+              <CardDescription>Every order in this period, item by item, in execution order.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col">
+              {loading ? (
+                <p className="p-12 text-center text-muted-foreground">Loading...</p>
+              ) : (
+                <SalesView sales={sales} />
               )}
             </CardContent>
           </Card>

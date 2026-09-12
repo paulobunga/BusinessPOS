@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { DailyReport, MonthlyReport, CategoryBreakdown, ItemPerformance, DebtSummaryItem, TillSummaryData } from '../../shared/types'
+import type { DailyReport, MonthlyReport, CategoryBreakdown, ItemPerformance, DebtSummaryItem, TillSummaryData, SaleWithItems } from '../../shared/types'
 
 export type ViewMode = 'daily' | 'monthly' | 'custom'
 
@@ -16,6 +16,7 @@ export function useReports() {
   const [categories, setCategories] = useState<CategoryBreakdown[]>([])
   const [itemPerf, setItemPerf] = useState<ItemPerformance[]>([])
   const [debtSummary, setDebtSummary] = useState<DebtSummaryItem[]>([])
+  const [sales, setSales] = useState<SaleWithItems[]>([])
   const [tillSummary, setTillSummary] = useState<TillSummaryData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -86,6 +87,15 @@ export function useReports() {
     }
   }, [])
 
+  const loadSales = useCallback(async (start: string, end: string) => {
+    try {
+      const data = await window.api['reports:sales'](start, end)
+      setSales(data)
+    } catch (err) {
+      setError((err as Error).message || 'Failed to load sales')
+    }
+  }, [])
+
   const loadTill = useCallback(async (tillSessionId: number) => {
     try {
       const data = await window.api['reports:tillSummary'](tillSessionId)
@@ -98,21 +108,24 @@ export function useReports() {
   useEffect(() => {
     if (viewMode === 'daily') {
       loadDaily(selectedDate)
+      loadSales(selectedDate, selectedDate)
       loadCategories(selectedDate, selectedDate)
       loadItemPerf(selectedDate, selectedDate)
     } else if (viewMode === 'monthly') {
       loadMonthly(selectedYear)
       const yearStart = `${selectedYear}-01-01`
       const yearEnd = `${selectedYear}-12-31`
+      loadSales(yearStart, yearEnd)
       loadCategories(yearStart, yearEnd)
       loadItemPerf(yearStart, yearEnd)
     } else {
       loadCustom(startDate, endDate)
+      loadSales(startDate, endDate)
       loadCategories(startDate, endDate)
       loadItemPerf(startDate, endDate)
     }
     loadDebts()
-  }, [viewMode, selectedDate, startDate, endDate, selectedYear, loadDaily, loadCustom, loadMonthly, loadCategories, loadItemPerf, loadDebts])
+  }, [viewMode, selectedDate, startDate, endDate, selectedYear, loadDaily, loadCustom, loadMonthly, loadSales, loadCategories, loadItemPerf, loadDebts])
 
   const navigateDay = (offset: number) => {
     const d = new Date(selectedDate + 'T00:00:00')
@@ -126,7 +139,7 @@ export function useReports() {
     startDate, setStartDate,
     endDate, setEndDate,
     selectedYear,
-    dailyData, monthlyData, categories, itemPerf, debtSummary, tillSummary,
+    dailyData, monthlyData, categories, itemPerf, debtSummary, sales, tillSummary,
     loading, error,
     navigateDay,
     loadTill,

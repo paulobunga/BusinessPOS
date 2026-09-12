@@ -348,6 +348,7 @@ export interface Api {
   'reports:categoryBreakdown': (start: string, end: string) => Promise<CategoryBreakdown[]>
   'reports:itemPerformance': (start: string, end: string) => Promise<ItemPerformance[]>
   'reports:debtSummary': () => Promise<DebtSummaryItem[]>
+  'reports:sales': (start: string, end: string) => Promise<SaleWithItems[]>
   'reports:tillSummary': (tillSessionId: number) => Promise<TillSummaryData | null>
   'reports:exportCsv': (range: { from: string; to: string }) => Promise<string>
   'items:list': (filters?: { categoryId?: number; kind?: 'priced' | 'free'; activeOnly?: boolean }) => Promise<MenuItemWithCategory[]>

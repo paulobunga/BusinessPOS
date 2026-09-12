@@ -40,6 +40,7 @@ const api: Api = {
   'reports:categoryBreakdown': (start, end) => ipcRenderer.invoke('reports:categoryBreakdown', start, end),
   'reports:itemPerformance': (start, end) => ipcRenderer.invoke('reports:itemPerformance', start, end),
   'reports:debtSummary': () => ipcRenderer.invoke('reports:debtSummary'),
+  'reports:sales': (start, end) => ipcRenderer.invoke('reports:sales', start, end),
   'reports:tillSummary': (tillSessionId) => ipcRenderer.invoke('reports:tillSummary', tillSessionId),
   'reports:exportCsv': (range) => ipcRenderer.invoke('reports:exportCsv', range),
   'items:list': (filters) => ipcRenderer.invoke('items:list', filters),

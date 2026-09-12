@@ -1,5 +1,5 @@
 import { getDb } from '../index'
-import type { ItemPerformance } from '../../../shared/types'
+import type { ItemPerformance, SaleWithItems, SaleItem } from '../../../shared/types'
 
 export interface DailyReport {
   date: string
@@ -251,6 +251,42 @@ export const reportsRepo = {
       GROUP BY c.name, mi.name
       ORDER BY amount_sold_cents DESC
     `).all(start, end) as ItemPerformance[]
+  },
+
+  getSales(start: string, end: string): SaleWithItems[] {
+    const db = getDb()
+
+    const saleRows = db.prepare(`
+      SELECT
+        id, till_session_id, created_at, status, subtotal_cents, discount_cents,
+        tax_cents, total_cents, payment_source, customer_id, customer_name,
+        created_by, voided_at, voided_by, void_reason, discount_reason,
+        debt_cents, payment_method
+      FROM sales
+      WHERE status IN ('completed','unpaid')
+        AND DATE(created_at) >= ? AND DATE(created_at) <= ?
+      ORDER BY id DESC
+    `).all(start, end) as SaleWithItems[]
+
+    const saleIds = saleRows.map(r => r.id)
+
+    const itemRows: SaleItem[] = saleIds.length
+      ? db.prepare(`
+          SELECT id, sale_id, item_id, free_item_id, name_snapshot, unit_price_cents, quantity, line_total_cents
+          FROM sale_items
+          WHERE sale_id IN (${saleIds.map(() => '?').join(',')})
+          ORDER BY id ASC
+        `).all(...saleIds) as SaleItem[]
+      : []
+
+    const bySale = new Map<number, SaleItem[]>()
+    for (const it of itemRows) {
+      const arr = bySale.get(it.sale_id) ?? []
+      arr.push(it)
+      bySale.set(it.sale_id, arr)
+    }
+
+    return saleRows.map(s => ({ ...s, items: bySale.get(s.id) ?? [] }))
   },
 
   getDebtSummary(): DebtSummaryItem[] {

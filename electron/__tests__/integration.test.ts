@@ -274,4 +274,27 @@ describe('Full day at the restaurant (integration)', () => {
     expect(itemsRepo.getById(boiled.id)!.cost_price_cents).toBe(3400)
     expect(itemsRepo.getById(fried.id)!.cost_price_cents).toBe(3400)
   })
+
+  test('13. Sales ledger groups items per order for the period', () => {
+    const sales = reportsRepo.getSales(reportDate, reportDate)
+    expect(sales).toHaveLength(2)
+
+    const debtSale = sales[0]
+    expect(debtSale.total_cents).toBe(20000)
+    expect(debtSale.discount_cents).toBe(4000)
+    expect(debtSale.payment_method).toBe('debt')
+    expect(debtSale.debt_cents).toBe(20000)
+    expect(debtSale.items).toHaveLength(3)
+    expect(debtSale.items[0].name_snapshot).toBe('Goat Meat')
+    expect(debtSale.items[2].name_snapshot).toBe('Chicken')
+    expect(debtSale.items[2].quantity).toBe(1)
+    expect(debtSale.created_at.slice(11, 16)).toBe('15:00')
+
+    const cashSale = sales[1]
+    expect(cashSale.total_cents).toBe(28000)
+    expect(cashSale.payment_method).toBe('cash')
+    expect(cashSale.items).toHaveLength(3)
+    expect(cashSale.items[0].free_item_id).toBe(bananaId)
+    expect(cashSale.created_at.slice(11, 16)).toBe('12:00')
+  })
 })
