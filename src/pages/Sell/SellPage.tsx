@@ -1,3 +1,4 @@
+import { cn } from '@/lib/utils'
 import { useState } from 'react'
 import { useCategories } from '../../hooks/useCategories'
 import { useItems } from '../../hooks/useItems'
@@ -49,7 +50,15 @@ export function SellPage() {
   }
 
   const handleAddOnSelect = (item: MenuItemWithCategory) => {
-    cart.setAddOn(item)
+    if (selectedItem) {
+      cart.attachAddOn({
+        pricedItemId: selectedItem.id,
+        pricedItemName: selectedItem.name,
+        pricedPrice: selectedItem.selling_price_cents,
+        addOnId: item.id,
+        addOnName: item.name,
+      })
+    }
     setSelectedItem(null)
   }
 
@@ -85,6 +94,7 @@ export function SellPage() {
           item_id: item.itemId,
           free_item_id: item.addOnId ?? null,
           price_cents: item.itemPrice,
+          quantity: item.quantity,
         })),
       }
       await window.api['sales:create'](payload)
@@ -128,7 +138,10 @@ export function SellPage() {
                 type="button"
                 onClick={() => handleCategorySelect(c)}
                 variant={isSelected ? 'default' : 'outline'}
-                className="h-12 rounded-[var(--radius-md)] px-4 text-[0.875rem] font-bold"
+                className={cn(
+                  'h-11 min-h-11 rounded-full px-4 text-[0.875rem] font-bold',
+                  !isSelected && 'bg-card'
+                )}
               >
                 {c.name}
               </Button>
@@ -140,7 +153,7 @@ export function SellPage() {
           {/* Item Grid */}
           <div className="flex-[2]">
             <h2 className="mb-4 text-xl font-bold">Select {selectedCategory?.name ?? 'Item'}</h2>
-            <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(200px,1fr))]">
+            <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(180px,1fr))]">
               {categoryItems.map(item => (
                 <ItemCard
                   key={item.id}
@@ -162,9 +175,7 @@ export function SellPage() {
           </div>
 
           {/* Cart */}
-          <div className="flex w-[340px] min-w-[340px] flex-col rounded-[var(--radius-lg)] border border-border bg-card p-6">
-            <h2 className="mb-4 text-xl font-bold">Current Sale</h2>
-
+          <div className="flex w-[360px] min-w-[360px] flex-col rounded-[var(--radius-lg)] border border-border bg-card p-6">
             {!currentTill && (
               <p className="mb-4 font-semibold text-warning">
                 No till session is open. Sales cannot be completed until the till is opened.
@@ -181,6 +192,9 @@ export function SellPage() {
               discountReason={cart.discountReason}
               total={cart.total}
               onRemoveItem={cart.removeItem}
+              onIncrement={cart.increment}
+              onDecrement={cart.decrement}
+              onClear={cart.clearCart}
               onSetDiscount={() => setShowDiscount(true)}
               onDebtSale={() => setShowDebt(true)}
               onCompleteSale={() => requestSale('cash')}

@@ -11,9 +11,6 @@ import {
 
 export type { CartLine }
 
-/** @deprecated removed in Task 7 (CartItemState → CartLine) */
-export type CartItemState = CartLine
-
 export function useCart() {
   const [items, setItems] = useState<CartLine[]>([])
   const [discountCents, setDiscountCents] = useState(0)
@@ -45,17 +42,6 @@ export function useCart() {
     setItems(prev => attachAddOnToCart(prev, data))
   }, [])
 
-  /** @deprecated removed in Task 8 (use cart.attachAddOn directly) */
-  const setAddOn = useCallback((addOn: { id: number; name: string }) => {
-    setItems(prev => attachAddOnToCart(prev, {
-      pricedItemId: prev[prev.length - 1]?.itemId ?? 0,
-      pricedItemName: prev[prev.length - 1]?.itemName ?? '',
-      pricedPrice: prev[prev.length - 1]?.itemPrice ?? 0,
-      addOnId: addOn.id,
-      addOnName: addOn.name,
-    }))
-  }, [])
-
   const clearCart = useCallback(() => {
     setItems([])
     setDiscountCents(0)
@@ -73,7 +59,6 @@ export function useCart() {
     decrement,
     removeItem,
     attachAddOn,
-    setAddOn,
     clearCart,
     discountCents,
     setDiscountCents,
