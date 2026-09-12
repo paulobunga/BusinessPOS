@@ -32,7 +32,7 @@ const REASONS: { value: 'staff_meal' | 'spoiled' | 'other'; label: string }[] = 
 ]
 
 const REASON_COLORS: Record<string, string> = {
-  staff_meal: 'bg-[#4CAF50] text-white',
+  staff_meal: 'bg-success text-white',
   spoiled: 'bg-warning text-white',
   other: 'bg-muted text-foreground',
 }
@@ -96,7 +96,7 @@ export function WastePage() {
     setOpen(false)
   }
 
-  const inputClass = 'h-10 rounded-[var(--radius-md)] bg-background text-[0.875rem]'
+  const inputClass = 'h-11 rounded-[var(--radius-md)] bg-background text-[0.875rem]'
 
   return (
     <div className="flex flex-col gap-4 p-6">
@@ -141,7 +141,7 @@ export function WastePage() {
               <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
                 Item
                 <Select value={itemId} onValueChange={handleItemChange}>
-                  <SelectTrigger className="h-10 w-full rounded-[var(--radius-md)]">
+                  <SelectTrigger className="h-11 w-full rounded-[var(--radius-md)]">
                     <SelectValue placeholder="Select item..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -162,7 +162,7 @@ export function WastePage() {
               <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
                 Reason
                 <Select value={reason} onValueChange={v => setReason(v as typeof reason)}>
-                  <SelectTrigger className="h-10 w-full rounded-[var(--radius-md)]">
+                  <SelectTrigger className="h-11 w-full rounded-[var(--radius-md)]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

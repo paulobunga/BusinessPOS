@@ -55,7 +55,7 @@ export function DebtsPage() {
         <p className="p-12 text-center text-lg text-muted-foreground">No open debts</p>
       ) : (
         <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
-          <Table>
+          <Table className="table-zebra">
             <TableHeader>
               <TableRow className="bg-card hover:bg-card">
                 <TableHead>Customer</TableHead>

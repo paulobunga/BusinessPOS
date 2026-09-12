@@ -53,8 +53,8 @@ export function ExpenseForm({ initial, onSubmit, onCancel }: Props) {
     })
   }
 
-  const selectClass = 'h-10 w-full rounded-[var(--radius-md)]'
-  const inputClass = 'h-10 rounded-[var(--radius-md)] bg-background text-[0.875rem]'
+  const selectClass = 'h-11 w-full rounded-[var(--radius-md)]'
+  const inputClass = 'h-11 rounded-[var(--radius-md)] bg-background text-[0.875rem]'
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">

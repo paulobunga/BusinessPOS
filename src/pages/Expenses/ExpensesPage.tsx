@@ -39,7 +39,7 @@ export function ExpensesPage() {
 
   const totalCents = expenses.reduce((sum, e) => sum + e.amount_cents, 0)
 
-  const selectClass = 'h-10 w-full rounded-[var(--radius-md)]'
+  const selectClass = 'h-11 w-full rounded-[var(--radius-md)]'
 
   return (
     <div className="flex flex-col gap-4 p-6">

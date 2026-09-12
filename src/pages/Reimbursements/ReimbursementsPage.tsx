@@ -72,8 +72,8 @@ export function ReimbursementsPage() {
 
   const totalCents = reimbursements.reduce((sum, r) => sum + r.amount_cents, 0)
 
-  const selectClass = 'h-10 w-full rounded-[var(--radius-md)]'
-  const inputClass = 'h-10 rounded-[var(--radius-md)] bg-background text-[0.875rem]'
+  const selectClass = 'h-11 w-full rounded-[var(--radius-md)]'
+  const inputClass = 'h-11 rounded-[var(--radius-md)] bg-background text-[0.875rem]'
 
   return (
     <div className="flex flex-col gap-4 p-6">
@@ -180,7 +180,7 @@ export function ReimbursementsPage() {
             <div key={r.id} className="flex items-center justify-between rounded-[var(--radius-md)] border border-border bg-card px-4 py-3">
               <div className="flex flex-1 flex-col gap-0.5">
                 <div className="flex items-center gap-2">
-                  <Badge className={r.paid_to === 'till' ? 'bg-primary text-white' : 'bg-[#4CAF50] text-white'}>
+                  <Badge className={r.paid_to === 'till' ? 'bg-primary text-white' : 'bg-success text-white'}>
                     {r.paid_to}
                   </Badge>
                   {r.till_session_id && (

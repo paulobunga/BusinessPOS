@@ -15,7 +15,7 @@ function formatCents(cents: number) {
 const SOURCE_COLORS: Record<string, string> = {
   till: 'bg-primary text-white',
   personal: 'bg-warning text-white',
-  mpesa: 'bg-[#4CAF50] text-white',
+  mpesa: 'bg-success text-white',
 }
 
 export function ExpenseList({ expenses, onEdit, onDelete }: Props) {

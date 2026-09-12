@@ -28,7 +28,7 @@ import type { Category, MenuItemWithCategory, AttributeDef } from '../../../shar
 
 const fmt = new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 })
 const inputClass = 'min-h-10 rounded-[var(--radius-md)] border-border bg-background text-[0.875rem]'
-const selectClass = 'h-10 w-full rounded-[var(--radius-md)]'
+const selectClass = 'h-11 w-full rounded-[var(--radius-md)]'
 const pinClass = `${inputClass} max-w-[120px] text-center text-base font-bold tracking-[8px]`
 
 function Section({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
@@ -342,7 +342,7 @@ export function SettingsPage() {
             Business name
             <Input className={inputClass} value={businessName} onChange={e => setBusinessName(e.target.value)} />
           </Label>
-          <Button className="h-10 bg-primary font-semibold" onClick={saveBusinessName}>Save</Button>
+          <Button className="h-11 bg-primary font-semibold" onClick={saveBusinessName}>Save</Button>
         </div>
         {bizStatus && <StatusLine type={bizStatus.type} text={bizStatus.text} />}
       </Section>
@@ -352,7 +352,7 @@ export function SettingsPage() {
         {categoriesError && (
           <div className="flex items-center gap-3">
             <StatusLine type="error" text={categoriesError} />
-            <Button variant="outline" className="h-10 border-border bg-card font-semibold" onClick={retryCategories}>Retry</Button>
+            <Button variant="outline" className="h-11 border-border bg-card font-semibold" onClick={retryCategories}>Retry</Button>
           </div>
         )}
         <div className="flex flex-col gap-2">
@@ -364,9 +364,9 @@ export function SettingsPage() {
                 {!c.active && <span className="text-[0.8125rem] font-semibold text-muted-foreground">inactive</span>}
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="outline" className="h-10 border-border bg-card font-semibold" onClick={() => toggleCategoryActive(c)}>{c.active ? 'Deactivate' : 'Activate'}</Button>
-                <Button className="h-10 bg-primary font-semibold" onClick={() => openEditCategory(c)}>Edit</Button>
-                <Button variant="outline" className="h-10 border-destructive text-destructive" onClick={() => askConfirm({ title: `Delete category "${c.name}"?`, description: 'Only allowed if it has no items.', action: () => deleteCategory(c) })}>Delete</Button>
+                <Button variant="outline" className="h-11 border-border bg-card font-semibold" onClick={() => toggleCategoryActive(c)}>{c.active ? 'Deactivate' : 'Activate'}</Button>
+                <Button className="h-11 bg-primary font-semibold" onClick={() => openEditCategory(c)}>Edit</Button>
+                <Button variant="outline" className="h-11 border-destructive text-destructive" onClick={() => askConfirm({ title: `Delete category "${c.name}"?`, description: 'Only allowed if it has no items.', action: () => deleteCategory(c) })}>Delete</Button>
               </div>
             </div>
           ))}
@@ -374,7 +374,7 @@ export function SettingsPage() {
         </div>
 
         <div className="flex flex-col gap-3 border-t border-border pt-4">
-          <Button className="h-10 w-fit bg-primary font-semibold" onClick={openAddCategory}>+ Add Category</Button>
+          <Button className="h-11 w-fit bg-primary font-semibold" onClick={openAddCategory}>+ Add Category</Button>
         </div>
         {categoryStatus && <StatusLine type={categoryStatus.type} text={categoryStatus.text} />}
       </Section>
@@ -384,7 +384,7 @@ export function SettingsPage() {
         {attributesError && (
           <div className="flex items-center gap-3">
             <StatusLine type="error" text={attributesError} />
-            <Button variant="outline" className="h-10 border-border bg-card font-semibold" onClick={retryAttributes}>Retry</Button>
+            <Button variant="outline" className="h-11 border-border bg-card font-semibold" onClick={retryAttributes}>Retry</Button>
           </div>
         )}
         <div className="flex flex-col gap-2">
@@ -397,8 +397,8 @@ export function SettingsPage() {
                 </p>
               </div>
               <div className="flex gap-2">
-                <Button className="h-10 bg-primary font-semibold" onClick={() => openEditAttr(a)}>Edit</Button>
-                <Button variant="outline" className="h-10 border-destructive text-destructive" onClick={() => askConfirm({ title: 'Delete attribute?', description: 'Its saved values will also be removed.', action: () => deleteAttr(a) })}>Delete</Button>
+                <Button className="h-11 bg-primary font-semibold" onClick={() => openEditAttr(a)}>Edit</Button>
+                <Button variant="outline" className="h-11 border-destructive text-destructive" onClick={() => askConfirm({ title: 'Delete attribute?', description: 'Its saved values will also be removed.', action: () => deleteAttr(a) })}>Delete</Button>
               </div>
             </div>
           ))}
@@ -406,7 +406,7 @@ export function SettingsPage() {
         </div>
 
         <div className="flex flex-col gap-3 border-t border-border pt-4">
-          <Button className="h-10 w-fit bg-primary font-semibold" onClick={openAddAttr}>+ Add Attribute</Button>
+          <Button className="h-11 w-fit bg-primary font-semibold" onClick={openAddAttr}>+ Add Attribute</Button>
         </div>
         {attrStatus && <StatusLine type={attrStatus.type} text={attrStatus.text} />}
       </Section>
@@ -416,7 +416,7 @@ export function SettingsPage() {
         {itemsError && (
           <div className="flex items-center gap-3">
             <StatusLine type="error" text={itemsError} />
-            <Button variant="outline" className="h-10 border-border bg-card font-semibold" onClick={retryItems}>Retry</Button>
+            <Button variant="outline" className="h-11 border-border bg-card font-semibold" onClick={retryItems}>Retry</Button>
           </div>
         )}
         <div className="flex flex-wrap items-end gap-3">
@@ -451,10 +451,10 @@ export function SettingsPage() {
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button variant="outline" className="h-10 border-border bg-card font-semibold" onClick={() => toggleOutOfStock(item)}>{item.out_of_stock === 1 ? 'In Stock' : 'Out of Stock'}</Button>
-                  <Button variant="outline" className="h-10 border-border bg-card font-semibold" onClick={() => toggleItemActive(item)}>{item.active ? 'Deactivate' : 'Activate'}</Button>
-                  <Button className="h-10 bg-primary font-semibold" onClick={() => openEditItem(item)}>Edit</Button>
-                  <Button variant="outline" className="h-10 border-destructive text-destructive" onClick={() => askConfirm({ title: `Delete "${item.name}"?`, description: 'Sales history referencing it will be kept (item deactivated).', action: () => deleteItem(item) })}>Delete</Button>
+                  <Button variant="outline" className="h-11 border-border bg-card font-semibold" onClick={() => toggleOutOfStock(item)}>{item.out_of_stock === 1 ? 'In Stock' : 'Out of Stock'}</Button>
+                  <Button variant="outline" className="h-11 border-border bg-card font-semibold" onClick={() => toggleItemActive(item)}>{item.active ? 'Deactivate' : 'Activate'}</Button>
+                  <Button className="h-11 bg-primary font-semibold" onClick={() => openEditItem(item)}>Edit</Button>
+                  <Button variant="outline" className="h-11 border-destructive text-destructive" onClick={() => askConfirm({ title: `Delete "${item.name}"?`, description: 'Sales history referencing it will be kept (item deactivated).', action: () => deleteItem(item) })}>Delete</Button>
                 </div>
               </div>
             ))}
@@ -464,7 +464,7 @@ export function SettingsPage() {
 
         {menuCatId != null && (
           <div className="flex flex-col gap-3 border-t border-border pt-4">
-            <Button className="h-10 w-fit bg-primary font-semibold" onClick={openAddItem}>+ Add Item</Button>
+            <Button className="h-11 w-fit bg-primary font-semibold" onClick={openAddItem}>+ Add Item</Button>
           </div>
         )}
         {itemStatus && <StatusLine type={itemStatus.type} text={itemStatus.text} />}
@@ -473,7 +473,7 @@ export function SettingsPage() {
       {/* Change PIN */}
       <Section title="Change PIN" subtitle="Your 4-digit security PIN for logging in.">
         <div>
-          <Button className="h-10 w-fit bg-primary font-semibold" onClick={() => { setOldPin(''); setNewPin(''); setConfirmPin(''); setPinStatus(null); setPinOpen(true) }}>Change PIN</Button>
+          <Button className="h-11 w-fit bg-primary font-semibold" onClick={() => { setOldPin(''); setNewPin(''); setConfirmPin(''); setPinStatus(null); setPinOpen(true) }}>Change PIN</Button>
         </div>
         {pinStatus && pinStatus.type === 'success' && <StatusLine type="success" text={pinStatus.text} />}
       </Section>
@@ -481,8 +481,8 @@ export function SettingsPage() {
       {/* Backup */}
       <Section title="Backup" subtitle="Export a full copy of your database or restore from a previous backup.">
         <div className="flex flex-wrap gap-3">
-          <Button className="h-10 min-w-[140px] bg-primary font-semibold" onClick={exportBackup} disabled={backupBusy}>Export Backup</Button>
-          <Button className="h-10 min-w-[140px] bg-destructive font-semibold text-white hover:bg-destructive/80" onClick={() => askConfirm({ title: 'Import backup?', description: 'Importing a backup will REPLACE all current data in this app. Continue?',
+          <Button className="h-11 min-w-[140px] bg-primary font-semibold" onClick={exportBackup} disabled={backupBusy}>Export Backup</Button>
+          <Button className="h-11 min-w-[140px] bg-destructive font-semibold text-white hover:bg-destructive/80" onClick={() => askConfirm({ title: 'Import backup?', description: 'Importing a backup will REPLACE all current data in this app. Continue?',
             confirmText: 'Import',
             action: importBackup })} disabled={backupBusy}>Import Backup</Button>
         </div>

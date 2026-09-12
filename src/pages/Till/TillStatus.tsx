@@ -15,7 +15,7 @@ export function TillStatus({ onOpenTill }: TillStatusProps) {
       <Button
         onClick={onOpenTill}
         variant="outline"
-        className="flex h-[34px] items-center gap-2 rounded-[var(--radius-md)] border-warning bg-[#fff8e1] px-3 text-[0.875rem] font-semibold text-warning"
+        className="flex h-[34px] items-center gap-2 rounded-[var(--radius-md)] border-warning bg-warning/10 px-3 text-[0.875rem] font-semibold text-warning"
       >
         <span className="size-2 rounded-full bg-warning" />
         Till Closed — Open Till
@@ -24,7 +24,7 @@ export function TillStatus({ onOpenTill }: TillStatusProps) {
   }
 
   return (
-    <div className="flex h-[34px] items-center gap-2 rounded-[var(--radius-md)] border border-success bg-[#e6f9e6] px-3 text-[0.875rem] font-semibold">
+    <div className="flex h-[34px] items-center gap-2 rounded-[var(--radius-md)] border border-success bg-success/10 px-3 text-[0.875rem] font-semibold">
       <span className="size-2 rounded-full bg-success" />
       Till Open — {fmt(currentTill.opening_float_cents)}
     </div>

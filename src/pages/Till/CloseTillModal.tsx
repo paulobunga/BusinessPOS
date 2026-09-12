@@ -67,7 +67,7 @@ export function CloseTillModal({ onCloseTill, onClose }: CloseTillModalProps) {
         {actualCash && countData && (
           <div
             className={`rounded-[var(--radius-md)] px-3 py-3 font-bold ${
-              parseInt(actualCash, 10) >= countData.expectedClosingCents ? 'bg-[#e6f9e6]' : 'bg-[#fce8e8]'
+              parseInt(actualCash, 10) >= countData.expectedClosingCents ? 'bg-success/10' : 'bg-destructive/10'
             }`}
           >
             Variance: {fmt(parseInt(actualCash, 10) - countData.expectedClosingCents)}

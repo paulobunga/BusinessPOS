@@ -82,7 +82,7 @@ function TableView({ data, label }: { data: (DailyReport | MonthlyReport)[]; lab
   return (
     <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-card">
       <div className="overflow-x-auto">
-        <Table>
+        <Table className="table-zebra">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead>{label}</TableHead>
@@ -144,14 +144,14 @@ export function ReportsPage() {
       {viewMode === 'daily' && (
         <div className="flex items-center gap-3">
           <Button onClick={() => navigateDay(-1)} variant="outline" size="sm" className="bg-card text-[0.875rem]">
-            &#9664; Prev
+            ◀ Prev
           </Button>
           <DatePicker value={selectedDate} onValueChange={setSelectedDate} />
           <Button onClick={() => setSelectedDate(new Date().toISOString().slice(0, 10))} variant="outline" size="sm" className="bg-card text-[0.875rem] font-semibold">
             Today
           </Button>
           <Button onClick={() => navigateDay(1)} variant="outline" size="sm" className="bg-card text-[0.875rem]">
-            Next &#9654;
+            Next ▶
           </Button>
         </div>
       )}
