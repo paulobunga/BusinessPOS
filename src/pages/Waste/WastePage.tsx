@@ -60,7 +60,7 @@ export function WastePage() {
   const unitCostCents = selectedItem?.cost_price_cents ?? 0
   const quantityNum = parseFloat(quantity)
   const autoValue = isNaN(quantityNum) || quantityNum <= 0 ? 0 : Math.round(quantityNum * unitCostCents)
-  const valueInput = estimatedValue === '' || estimatedValue === null ? autoValue : Math.round(parseFloat(estimatedValue) * 100)
+  const valueInput = estimatedValue === '' || estimatedValue === null ? autoValue : Math.round(parseFloat(estimatedValue))
 
   const handleItemChange = (v: string) => {
     setItemId(v)
@@ -116,7 +116,7 @@ export function WastePage() {
           <DatePicker value={date} onValueChange={setDate} />
         </Label>
         <span className="ml-auto pb-1 text-base font-bold">
-          Daily Waste Value: {fmt.format(dailyTotal / 100)}
+          Daily Waste Value: {fmt.format(dailyTotal)}
         </span>
       </div>
 
@@ -149,7 +149,7 @@ export function WastePage() {
                   <SelectContent>
                     {items.map(p => (
                       <SelectItem key={p.id} value={String(p.id)}>
-                        {p.name} — {fmt.format(p.cost_price_cents / 100)}/kg
+                        {p.name} — {fmt.format(p.cost_price_cents)}/kg
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -179,7 +179,7 @@ export function WastePage() {
                 Estimated Value (UGX)
                 <Input
                   type="number"
-                  placeholder={autoValue > 0 ? String(autoValue / 100) : 'auto'}
+                  placeholder={autoValue > 0 ? String(autoValue) : 'auto'}
                   value={estimatedValue}
                   onChange={e => setEstimatedValue(e.target.value)}
                   className={inputClass}
@@ -191,7 +191,7 @@ export function WastePage() {
 
             {selectedItem && (
               <p className="m-0 text-[0.8125rem] text-muted-foreground">
-                Auto-calculated as {quantity || '0'} kg × {fmt.format(unitCostCents / 100)}/kg = {fmt.format(autoValue / 100)}. Leave the field empty to use this value.
+                Auto-calculated as {quantity || '0'} kg × {fmt.format(unitCostCents)}/kg = {fmt.format(autoValue)}. Leave the field empty to use this value.
               </p>
             )}
 
@@ -231,7 +231,7 @@ export function WastePage() {
               </div>
               <div className="flex items-center gap-4">
                 <span className="text-[0.875rem] text-muted-foreground">{w.quantity} kg</span>
-                <span className="w-[100px] text-right text-[0.9375rem] font-bold">{fmt.format(w.estimated_value_cents / 100)}</span>
+                <span className="w-[100px] text-right text-[0.9375rem] font-bold">{fmt.format(w.estimated_value_cents)}</span>
               </div>
             </div>
           ))}
@@ -248,7 +248,7 @@ export function WastePage() {
                 <span className="text-[0.875rem] font-semibold">{row.item_name}</span>
                 <div className="flex items-center gap-4">
                   <span className="text-[0.8125rem] text-muted-foreground">{row.total_quantity} kg</span>
-                  <span className="w-[100px] text-right text-[0.875rem] font-bold">{fmt.format(row.total_value_cents / 100)}</span>
+                  <span className="w-[100px] text-right text-[0.875rem] font-bold">{fmt.format(row.total_value_cents)}</span>
                 </div>
               </div>
             ))}

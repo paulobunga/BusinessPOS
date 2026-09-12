@@ -9,7 +9,7 @@ interface Props {
 }
 
 function formatCents(cents: number) {
-  return `UGX ${(cents / 100).toLocaleString()}`
+  return `UGX ${cents.toLocaleString()}`
 }
 
 const SOURCE_COLORS: Record<string, string> = {

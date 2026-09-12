@@ -84,7 +84,7 @@ export function InventoryPage() {
           <DatePicker value={date} onValueChange={setDate} />
         </Label>
         <span className="ml-auto pb-1 text-base font-bold">
-          Daily Food Cost: {fmt.format(dailyTotal / 100)}
+          Daily Food Cost: {fmt.format(dailyTotal)}
         </span>
       </div>
 
@@ -117,7 +117,7 @@ export function InventoryPage() {
                   <SelectContent>
                     {items.map(p => (
                       <SelectItem key={p.id} value={String(p.id)}>
-                        {p.name} — {fmt.format(p.cost_price_cents / 100)}/kg
+                        {p.name} — {fmt.format(p.cost_price_cents)}/kg
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -132,10 +132,10 @@ export function InventoryPage() {
 
             <div className="flex items-center gap-3 rounded-[var(--radius-md)] border border-border bg-background px-4 py-3">
               <span className="text-[0.875rem] text-muted-foreground">
-                {selectedItem ? `${selectedItem.name} × ${quantity || '0'} kg @ ${fmt.format(unitCostCents / 100)}/kg` : 'Select an item to preview cost'}
+                {selectedItem ? `${selectedItem.name} × ${quantity || '0'} kg @ ${fmt.format(unitCostCents)}/kg` : 'Select an item to preview cost'}
               </span>
               <span className="ml-auto text-lg font-extrabold">
-                {fmt.format(computedTotal / 100)}
+                {fmt.format(computedTotal)}
               </span>
             </div>
 
@@ -164,8 +164,8 @@ export function InventoryPage() {
               </div>
               <div className="flex items-center gap-4">
                 <span className="text-[0.875rem] text-muted-foreground">{p.quantity_kg} kg</span>
-                <span className="text-[0.8125rem] text-muted-foreground">@{fmt.format((p.unit_cost_cents ?? p.cost_cents) / 100)}/kg</span>
-                <span className="w-[100px] text-right text-[0.9375rem] font-bold">{fmt.format(p.cost_cents / 100)}</span>
+                <span className="text-[0.8125rem] text-muted-foreground">@{fmt.format(p.unit_cost_cents ?? p.cost_cents)}/kg</span>
+                <span className="w-[100px] text-right text-[0.9375rem] font-bold">{fmt.format(p.cost_cents)}</span>
               </div>
             </div>
           ))}

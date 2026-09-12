@@ -30,7 +30,7 @@ interface Props {
 export function ExpenseForm({ initial, onSubmit, onCancel }: Props) {
   const [category, setCategory] = useState(initial?.category ?? CATEGORIES[0])
   const [description, setDescription] = useState(initial?.description ?? '')
-  const [amount, setAmount] = useState(initial?.amount_cents ? String(initial.amount_cents / 100) : '')
+  const [amount, setAmount] = useState(initial?.amount_cents ? String(initial.amount_cents) : '')
   const [paymentSource, setPaymentSource] = useState<'till' | 'personal' | 'mpesa'>(initial?.payment_source ?? 'till')
   const [reference, setReference] = useState(initial?.reference ?? '')
   const [date, setDate] = useState(initial?.date ?? new Date().toISOString().slice(0, 10))
@@ -38,7 +38,7 @@ export function ExpenseForm({ initial, onSubmit, onCancel }: Props) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    const amtCents = Math.round(parseFloat(amount) * 100)
+    const amtCents = Math.round(parseFloat(amount))
     if (!amount || isNaN(amtCents) || amtCents <= 0) {
       setError('Enter a valid amount')
       return

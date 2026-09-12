@@ -8,6 +8,7 @@ import { runDebtsMigration } from './migrations/004_debts_payment_allocations.js
 import { runReimbursementsMigration } from './migrations/005_reimbursements_add_columns.js'
 import { runWasteMigration } from './migrations/006_waste_table.js'
 import { runCategoriesMigration } from './migrations/007_categories.js'
+import { runMoneyWholeUgxMigration } from './migrations/008_money_whole_ugx.js'
 import { usersRepo } from './repositories/usersRepo.js'
 import { settingsRepo } from './repositories/settingsRepo.js'
 import { itemsRepo } from './repositories/itemsRepo.js'
@@ -32,6 +33,7 @@ export function getDb(): Database.Database {
     runReimbursementsMigration(db)
     runWasteMigration(db)
     runCategoriesMigration(db)
+    runMoneyWholeUgxMigration(db)
     usersRepo.seed()
     settingsRepo.seed()
     itemsRepo.seed()

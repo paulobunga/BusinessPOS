@@ -39,7 +39,7 @@ export function ReimbursementsPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
-    const amtCents = Math.round(parseFloat(amount) * 100)
+    const amtCents = Math.round(parseFloat(amount))
     if (!amount || isNaN(amtCents) || amtCents <= 0) {
       setError('Enter a valid amount')
       return
@@ -100,7 +100,7 @@ export function ReimbursementsPage() {
           <DatePicker value={endDate} onValueChange={setEndDate} />
         </label>
         <span className="ml-auto pb-1 text-[0.9375rem] font-bold">
-          Total: {fmt.format(totalCents / 100)}
+          Total: {fmt.format(totalCents)}
         </span>
       </div>
 
@@ -195,7 +195,7 @@ export function ReimbursementsPage() {
               </div>
 
               <div className="flex items-center gap-3">
-                <span className="text-[0.9375rem] font-bold">{fmt.format(r.amount_cents / 100)}</span>
+                <span className="text-[0.9375rem] font-bold">{fmt.format(r.amount_cents)}</span>
                 <span className="text-xs text-muted-foreground">{r.date}</span>
                 <Button onClick={() => setDeleteId(r.id)} variant="outline" size="xs" className="border-destructive text-destructive">
                   Delete

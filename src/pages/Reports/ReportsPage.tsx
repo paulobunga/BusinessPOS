@@ -6,7 +6,7 @@ import { DatePicker } from '../../components/ui/date-picker'
 import type { DailyReport, MonthlyReport } from '../../../shared/types'
 
 function formatUGX(cents: number): string {
-  return `UGX ${(cents / 100).toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+  return `UGX ${cents.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
 }
 
 function ProfitText({ cents }: { cents: number }) {

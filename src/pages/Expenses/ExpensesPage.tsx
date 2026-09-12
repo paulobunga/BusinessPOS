@@ -75,7 +75,7 @@ export function ExpensesPage() {
           </Select>
         </label>
         <span className="ml-auto pb-1 text-[0.9375rem] font-bold">
-          Total: UGX {(totalCents / 100).toLocaleString()}
+          Total: UGX {totalCents.toLocaleString()}
         </span>
       </div>
 

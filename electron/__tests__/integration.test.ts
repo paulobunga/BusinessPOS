@@ -7,6 +7,7 @@ import { runDebtsMigration } from '../db/migrations/004_debts_payment_allocation
 import { runReimbursementsMigration } from '../db/migrations/005_reimbursements_add_columns'
 import { runWasteMigration } from '../db/migrations/006_waste_table'
 import { runCategoriesMigration } from '../db/migrations/007_categories'
+import { runMoneyWholeUgxMigration } from '../db/migrations/008_money_whole_ugx'
 
 let db: Database.Database
 
@@ -43,6 +44,7 @@ describe('Full day at the restaurant (integration)', () => {
     runReimbursementsMigration(db)
     runWasteMigration(db)
     runCategoriesMigration(db)
+    runMoneyWholeUgxMigration(db)
 
     const user = usersRepo.create('Test Manager', 'manager', '1234')
     userId = user.id as number
