@@ -31,7 +31,7 @@ export function DebtModal({ total, onConfirm, onClose }: DebtModalProps) {
             value={name}
             onChange={e => setName(e.target.value)}
             placeholder="Enter customer name"
-            className="bg-background text-base"
+            className="h-11 bg-background text-base"
             autoFocus
           />
         </div>

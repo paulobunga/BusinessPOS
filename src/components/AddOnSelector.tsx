@@ -16,7 +16,7 @@ export function AddOnSelector({ addOns, onSelect }: AddOnSelectorProps) {
           key={item.id}
           onClick={() => onSelect(item)}
           variant="outline"
-          className="flex h-12 flex-col items-start rounded-[var(--radius-md)] bg-card px-4 text-[0.875rem] font-semibold"
+          className="flex h-11 min-h-11 flex-col items-start rounded-full bg-card px-4 text-[0.875rem] font-semibold"
         >
           <span>{item.name}</span>
           {freeCategoryCount > 1 && (

@@ -30,11 +30,11 @@ export function DiscountModal({ onApply, onClose }: DiscountModalProps) {
         <div className="space-y-3">
           <div className="flex flex-col gap-1.5">
             <Label className="font-semibold">Amount (UGX)</Label>
-            <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="bg-background text-base" autoFocus />
+            <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="h-11 bg-background text-base" autoFocus />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label className="font-semibold">Reason</Label>
-            <Input type="text" value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. Waste discount" className="bg-background text-base" />
+            <Input type="text" value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. Waste discount" className="h-11 bg-background text-base" />
           </div>
         </div>
         <DialogFooter>
