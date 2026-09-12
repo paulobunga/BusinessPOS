@@ -1,6 +1,26 @@
 import { useState, useEffect } from 'react'
 import { useWaste } from '../../hooks/useWaste'
 import { useItems } from '../../hooks/useItems'
+import { Button } from '../../components/ui/button'
+import { Input } from '../../components/ui/input'
+import { Label } from '../../components/ui/label'
+import { Badge } from '../../components/ui/badge'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../../components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../components/ui/select'
+import { DatePicker } from '../../components/ui/date-picker'
 import type { WasteRecord } from '../../../shared/types'
 
 const fmt = new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 })
@@ -11,12 +31,19 @@ const REASONS: { value: 'staff_meal' | 'spoiled' | 'other'; label: string }[] = 
   { value: 'other', label: 'Other' },
 ]
 
+const REASON_COLORS: Record<string, string> = {
+  staff_meal: 'bg-[#4CAF50] text-white',
+  spoiled: 'bg-warning text-white',
+  other: 'bg-muted text-foreground',
+}
+
 export function WastePage() {
   const today = new Date().toISOString().slice(0, 10)
   const [date, setDate] = useState(today)
   const { items } = useItems({ kind: 'priced', activeOnly: true })
   const { records, dailyTotal, loading, record, byItem, byItemData } = useWaste(date)
 
+  const [open, setOpen] = useState(false)
   const [itemId, setItemId] = useState('')
   const [quantity, setQuantity] = useState('')
   const [reason, setReason] = useState<'staff_meal' | 'spoiled' | 'other'>('staff_meal')
@@ -24,7 +51,6 @@ export function WastePage() {
   const [notes, setNotes] = useState('')
   const [error, setError] = useState('')
   const [processing, setProcessing] = useState(false)
-  const [success, setSuccess] = useState('')
 
   useEffect(() => {
     byItem(date, date)
@@ -44,7 +70,6 @@ export function WastePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    setSuccess('')
     if (!itemId || !quantity || isNaN(quantityNum) || quantityNum <= 0) {
       setError('Select an item and enter a valid quantity')
       return
@@ -64,151 +89,147 @@ export function WastePage() {
     })
     await byItem(date, date)
     setProcessing(false)
-    setSuccess(`Recorded waste — ${fmt.format(valueInput / 100)}`)
     setItemId('')
     setQuantity('')
     setEstimatedValue('')
     setNotes('')
+    setOpen(false)
   }
 
-  const inputStyle: React.CSSProperties = {
-    padding: '6px 10px',
-    borderRadius: 'var(--radius-md)',
-    border: '1px solid var(--color-border)',
-    background: 'var(--color-bg)',
-    color: 'var(--color-text)',
-    fontSize: '0.875rem',
-  }
-
-  const labelStyle: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 4,
-    fontSize: '0.875rem',
-    fontWeight: 600,
-  }
+  const inputClass = 'h-10 rounded-[var(--radius-md)] bg-background text-[0.875rem]'
 
   return (
-    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <div className="flex flex-col gap-4 p-6">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Waste Recording</h1>
-          <p style={{ fontSize: '0.875rem', color: 'var(--color-muted)', margin: 0 }}>
+          <h1 className="text-2xl font-bold">Waste Recording</h1>
+          <p className="m-0 text-[0.875rem] text-muted-foreground">
             Food bought but not sold is a loss. Record cooked leftovers given to staff or raw leftovers thrown out.
           </p>
         </div>
       </div>
 
       {/* Date picker */}
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-        <label style={{ fontSize: '0.875rem', fontWeight: 600 }}>Date</label>
-        <input type="date" value={date} onChange={e => setDate(e.target.value)} style={inputStyle} />
-        <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '1rem' }}>
+      <div className="flex items-center gap-3">
+        <Label className="text-sm font-semibold">Date</Label>
+        <DatePicker value={date} onValueChange={setDate} />
+        <span className="ml-auto text-base font-bold">
           Daily Waste Value: {fmt.format(dailyTotal / 100)}
         </span>
       </div>
 
       {/* Record form */}
-      <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', padding: 20, border: '1px solid var(--color-border)' }}>
-        <h2 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: 16 }}>Record Waste</h2>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {error && <p style={{ color: 'var(--color-danger)', fontWeight: 600, margin: 0 }}>{error}</p>}
-          {success && <p style={{ color: '#4CAF50', fontWeight: 600, margin: 0 }}>{success}</p>}
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <label style={labelStyle}>
-              Item
-              <select value={itemId} onChange={e => handleItemChange(e.target.value)} style={inputStyle}>
-                <option value="">Select item...</option>
-                {items.map(p => (
-                  <option key={p.id} value={p.id}>{p.name} — {fmt.format(p.cost_price_cents / 100)}/kg</option>
-                ))}
-              </select>
-            </label>
-
-            <label style={labelStyle}>
-              Quantity (kg)
-              <input type="number" placeholder="0" value={quantity} onChange={e => setQuantity(e.target.value)} style={inputStyle} min="0" step="0.1" />
-            </label>
-
-            <label style={labelStyle}>
-              Reason
-              <select value={reason} onChange={e => setReason(e.target.value as typeof reason)} style={inputStyle}>
-                {REASONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-              </select>
-            </label>
-
-            <label style={labelStyle}>
-              Estimated Value (UGX)
-              <input
-                type="number"
-                placeholder={autoValue > 0 ? String(autoValue / 100) : 'auto'}
-                value={estimatedValue}
-                onChange={e => setEstimatedValue(e.target.value)}
-                style={inputStyle}
-                min="0"
-                step="0.01"
-              />
-            </label>
-          </div>
-
-          {selectedItem && (
-            <p style={{ fontSize: '0.8125rem', color: 'var(--color-muted)', margin: 0 }}>
-              Auto-calculated as {quantity || '0'} kg × {fmt.format(unitCostCents / 100)}/kg = {fmt.format(autoValue / 100)}. Leave the field empty to use this value.
-            </p>
-          )}
-
-          <label style={labelStyle}>
-            Notes (optional)
-            <input type="text" placeholder="e.g. 5 portions of goat curry given to staff" value={notes} onChange={e => setNotes(e.target.value)} style={inputStyle} />
-          </label>
-
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button type="submit" disabled={processing} style={{ padding: '8px 16px', borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--color-primary)', color: '#fff', fontWeight: 600, fontSize: '0.875rem', cursor: processing ? 'not-allowed' : 'pointer', opacity: processing ? 0.5 : 1 }}>
-              {processing ? 'Saving...' : 'Record Waste'}
-            </button>
-          </div>
-        </form>
+      <div className="flex justify-end">
+        <Button onClick={() => { setError(''); setOpen(true) }} className="bg-primary font-semibold">
+          + Record Waste
+        </Button>
       </div>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Record Waste</DialogTitle>
+            <DialogDescription>
+              Food bought but not sold is a loss. Record cooked leftovers given to staff or raw leftovers thrown out.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {error && <p className="m-0 font-semibold text-destructive">{error}</p>}
+
+            <div className="grid grid-cols-2 gap-4">
+              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+                Item
+                <Select value={itemId} onValueChange={handleItemChange}>
+                  <SelectTrigger className="h-10 w-full rounded-[var(--radius-md)]">
+                    <SelectValue placeholder="Select item..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {items.map(p => (
+                      <SelectItem key={p.id} value={String(p.id)}>
+                        {p.name} — {fmt.format(p.cost_price_cents / 100)}/kg
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Label>
+
+              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+                Quantity (kg)
+                <Input type="number" placeholder="0" value={quantity} onChange={e => setQuantity(e.target.value)} className={inputClass} min="0" step="0.1" />
+              </Label>
+
+              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+                Reason
+                <Select value={reason} onValueChange={v => setReason(v as typeof reason)}>
+                  <SelectTrigger className="h-10 w-full rounded-[var(--radius-md)]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {REASONS.map(r => (
+                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Label>
+
+              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+                Estimated Value (UGX)
+                <Input
+                  type="number"
+                  placeholder={autoValue > 0 ? String(autoValue / 100) : 'auto'}
+                  value={estimatedValue}
+                  onChange={e => setEstimatedValue(e.target.value)}
+                  className={inputClass}
+                  min="0"
+                  step="0.01"
+                />
+              </Label>
+            </div>
+
+            {selectedItem && (
+              <p className="m-0 text-[0.8125rem] text-muted-foreground">
+                Auto-calculated as {quantity || '0'} kg × {fmt.format(unitCostCents / 100)}/kg = {fmt.format(autoValue / 100)}. Leave the field empty to use this value.
+              </p>
+            )}
+
+            <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+              Notes (optional)
+              <Input type="text" placeholder="e.g. 5 portions of goat curry given to staff" value={notes} onChange={e => setNotes(e.target.value)} className={inputClass} />
+            </Label>
+
+            <DialogFooter>
+              <Button type="submit" disabled={processing} className="bg-primary font-semibold">
+                {processing ? 'Saving...' : 'Record Waste'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* List */}
       {loading ? (
-        <p style={{ textAlign: 'center', color: 'var(--color-muted)' }}>Loading...</p>
+        <p className="text-center text-muted-foreground">Loading...</p>
       ) : records.length === 0 ? (
-        <p style={{ textAlign: 'center', color: 'var(--color-muted)', padding: 48, fontSize: '1.125rem' }}>
+        <p className="p-12 text-center text-lg text-muted-foreground">
           No waste recorded for this date.
         </p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="flex flex-col gap-2">
           {records.map((w: WasteRecord) => (
-            <div key={w.id} style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '12px 16px',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--color-border)',
-              background: 'var(--color-surface)',
-            }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <p style={{ fontWeight: 700, fontSize: '0.9375rem', margin: 0 }}>{w.item_name ?? `Item #${w.item_id}`}</p>
-                  <span style={{
-                    fontSize: '0.75rem',
-                    padding: '2px 8px',
-                    borderRadius: 'var(--radius-sm)',
-                    background: w.reason === 'staff_meal' ? '#4CAF50' : w.reason === 'spoiled' ? 'var(--color-warning)' : 'var(--color-muted)',
-                    color: '#fff',
-                    fontWeight: 600,
-                  }}>
+            <div key={w.id} className="flex items-center justify-between rounded-[var(--radius-md)] border border-border bg-card px-4 py-3">
+              <div className="flex flex-1 flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <p className="m-0 text-[0.9375rem] font-bold">{w.item_name ?? `Item #${w.item_id}`}</p>
+                  <Badge className={REASON_COLORS[w.reason] ?? 'bg-muted text-foreground'}>
                     {REASONS.find(r => r.value === w.reason)?.label ?? w.reason}
-                  </span>
+                  </Badge>
                 </div>
-                {w.notes && <p style={{ fontSize: '0.8125rem', color: 'var(--color-muted)', margin: 0 }}>{w.notes}</p>}
+                {w.notes && <p className="m-0 text-[0.8125rem] text-muted-foreground">{w.notes}</p>}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <span style={{ fontSize: '0.875rem', color: 'var(--color-muted)' }}>{w.quantity} kg</span>
-                <span style={{ fontWeight: 700, fontSize: '0.9375rem', width: 100, textAlign: 'right' }}>{fmt.format(w.estimated_value_cents / 100)}</span>
+              <div className="flex items-center gap-4">
+                <span className="text-[0.875rem] text-muted-foreground">{w.quantity} kg</span>
+                <span className="w-[100px] text-right text-[0.9375rem] font-bold">{fmt.format(w.estimated_value_cents / 100)}</span>
               </div>
             </div>
           ))}
@@ -217,15 +238,15 @@ export function WastePage() {
 
       {/* Aggregate by item */}
       {byItemData.length > 0 && (
-        <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', padding: 16, border: '1px solid var(--color-border)' }}>
-          <h3 style={{ fontSize: '0.9375rem', fontWeight: 700, margin: '0 0 12px', color: 'var(--color-text-primary)' }}>Waste by Item</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="rounded-[var(--radius-lg)] border border-border bg-card p-4">
+          <h3 className="m-0 mb-3 text-[0.9375rem] font-bold text-foreground">Waste by Item</h3>
+          <div className="flex flex-col gap-2">
             {byItemData.map(row => (
-              <div key={row.item_name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid var(--color-border)' }}>
-                <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{row.item_name}</span>
-                <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>{row.total_quantity} kg</span>
-                  <span style={{ fontWeight: 700, fontSize: '0.875rem', width: 100, textAlign: 'right' }}>{fmt.format(row.total_value_cents / 100)}</span>
+              <div key={row.item_name} className="flex items-center justify-between border-b border-border py-1.5">
+                <span className="text-[0.875rem] font-semibold">{row.item_name}</span>
+                <div className="flex items-center gap-4">
+                  <span className="text-[0.8125rem] text-muted-foreground">{row.total_quantity} kg</span>
+                  <span className="w-[100px] text-right text-[0.875rem] font-bold">{fmt.format(row.total_value_cents / 100)}</span>
                 </div>
               </div>
             ))}

@@ -7,6 +7,8 @@ import { AddOnSelector } from '../../components/AddOnSelector'
 import { Cart } from '../../components/Cart'
 import { DiscountModal } from '../../components/DiscountModal'
 import { DebtModal } from '../../components/DebtModal'
+import { Button } from '../../components/ui/button'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useAuth } from '../../context/AuthContext'
 import { useTill } from '../../context/TillContext'
 import type { Category, MenuItemWithCategory } from '../../../shared/types'
@@ -25,6 +27,7 @@ export function SellPage() {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [pendingSale, setPendingSale] = useState<{ paymentMethod: 'cash' | 'debt'; customerName?: string } | null>(null)
 
   const activeCategories = categories.filter(c => c.active)
   const pricedCategories = activeCategories.filter(c => c.kind === 'priced')
@@ -50,7 +53,7 @@ export function SellPage() {
     setSelectedItem(null)
   }
 
-  const completeSale = async (paymentMethod: 'cash' | 'debt', customerName?: string) => {
+  const requestSale = (paymentMethod: 'cash' | 'debt', customerName?: string) => {
     if (cart.items.length === 0) return
     if (!currentTill) {
       setMessage('No till session is open. Open the till before completing a sale.')
@@ -60,7 +63,11 @@ export function SellPage() {
       setMessage('You must be signed in to complete a sale.')
       return
     }
-    if (!window.confirm('Complete this sale?')) return
+    setPendingSale({ paymentMethod, customerName })
+  }
+
+  const completeSale = async (paymentMethod: 'cash' | 'debt', customerName?: string) => {
+    if (!currentTill || userId == null || cart.items.length === 0) return
     setSaving(true)
     setMessage(null)
     try {
@@ -95,51 +102,45 @@ export function SellPage() {
   const loading = categoriesLoading || itemsLoading
   const error = categoriesError || itemsError
 
-  if (loading) return <div style={{ padding: 24, textAlign: 'center' }}>Loading menu...</div>
+  if (loading) return <div className="p-6 text-center">Loading menu...</div>
 
   if (error) return (
-    <div style={{ padding: 24, textAlign: 'center' }}>
-      <p style={{ color: 'var(--color-danger)', fontWeight: 600, marginBottom: 16 }}>{error}</p>
-      <button onClick={() => { retryCategories(); retryItems() }} style={{ padding: '8px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-surface)', fontWeight: 600, cursor: 'pointer' }}>
+    <div className="p-6 text-center">
+      <p className="mb-4 font-semibold text-destructive">{error}</p>
+      <Button onClick={() => { retryCategories(); retryItems() }} variant="outline" className="border-border bg-card font-semibold">
         Retry
-      </button>
+      </Button>
     </div>
   )
 
   return (
-    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Point of Sale</h1>
+    <div className="flex flex-col gap-4 p-6">
+      <h1 className="text-2xl font-bold">Point of Sale</h1>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="flex flex-col gap-4">
         {/* Category chips */}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {activeCategories.map(c => (
-            <button
-              key={c.id}
-              onClick={() => handleCategorySelect(c)}
-              style={{
-                height: 48,
-                padding: '8px 16px',
-                borderRadius: 'var(--radius-md)',
-                border: 'none',
-                background: selectedCategory?.id === c.id ? 'var(--color-primary)' : 'var(--color-surface)',
-                color: selectedCategory?.id === c.id ? '#fff' : 'var(--color-text-primary)',
-                fontWeight: 700,
-                fontSize: '0.875rem',
-                cursor: 'pointer',
-                boxShadow: selectedCategory?.id === c.id ? 'none' : 'inset 0 0 0 1px var(--color-border)',
-              }}
-            >
-              {c.name}
-            </button>
-          ))}
+        <div className="flex flex-wrap gap-2">
+          {activeCategories.map(c => {
+            const isSelected = selectedCategory?.id === c.id
+            return (
+              <Button
+                key={c.id}
+                type="button"
+                onClick={() => handleCategorySelect(c)}
+                variant={isSelected ? 'default' : 'outline'}
+                className="h-12 rounded-[var(--radius-md)] px-4 text-[0.875rem] font-bold"
+              >
+                {c.name}
+              </Button>
+            )
+          })}
         </div>
 
-        <div style={{ display: 'flex', gap: 24 }}>
+        <div className="flex gap-6">
           {/* Item Grid */}
-          <div style={{ flex: 2 }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 16 }}>Select {selectedCategory?.name ?? 'Item'}</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+          <div className="flex-[2]">
+            <h2 className="mb-4 text-xl font-bold">Select {selectedCategory?.name ?? 'Item'}</h2>
+            <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(200px,1fr))]">
               {categoryItems.map(item => (
                 <ItemCard
                   key={item.id}
@@ -151,8 +152,8 @@ export function SellPage() {
             </div>
 
             {selectedItem && freeCategories.length > 0 && (
-              <div style={{ marginTop: 16, background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', padding: 16, border: '1px solid var(--color-border)' }}>
-                <p style={{ fontWeight: 600 }}>
+              <div className="mt-4 rounded-[var(--radius-lg)] border border-border bg-card p-4">
+                <p className="font-semibold">
                   {selectedItem.name} — pick a free add-on
                 </p>
                 <AddOnSelector addOns={freeItems} onSelect={handleAddOnSelect} />
@@ -161,16 +162,16 @@ export function SellPage() {
           </div>
 
           {/* Cart */}
-          <div style={{ flex: 1, background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', padding: 24, border: '1px solid var(--color-border)' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 16 }}>Current Sale</h2>
+          <div className="flex w-[340px] min-w-[340px] flex-col rounded-[var(--radius-lg)] border border-border bg-card p-6">
+            <h2 className="mb-4 text-xl font-bold">Current Sale</h2>
 
             {!currentTill && (
-              <p style={{ color: 'var(--color-warning)', fontWeight: 600, marginBottom: 16 }}>
+              <p className="mb-4 font-semibold text-warning">
                 No till session is open. Sales cannot be completed until the till is opened.
               </p>
             )}
             {message && (
-              <p style={{ color: 'var(--color-danger)', fontWeight: 600, marginBottom: 16 }}>{message}</p>
+              <p className="mb-4 font-semibold text-destructive">{message}</p>
             )}
 
             <Cart
@@ -182,7 +183,7 @@ export function SellPage() {
               onRemoveItem={cart.removeItem}
               onSetDiscount={() => setShowDiscount(true)}
               onDebtSale={() => setShowDebt(true)}
-              onCompleteSale={() => completeSale('cash')}
+              onCompleteSale={() => requestSale('cash')}
             />
           </div>
         </div>
@@ -203,20 +204,33 @@ export function SellPage() {
           total={cart.total}
           onConfirm={(name) => {
             setShowDebt(false)
-            completeSale('debt', name)
+            requestSale('debt', name)
           }}
           onClose={() => setShowDebt(false)}
         />
       )}
 
+      <ConfirmDialog
+        open={pendingSale != null}
+        onOpenChange={o => { if (!o) setPendingSale(null) }}
+        title="Complete this sale?"
+        destructive={false}
+        confirmText="Complete Sale"
+        onConfirm={() => {
+          const p = pendingSale
+          setPendingSale(null)
+          if (p) completeSale(p.paymentMethod, p.customerName)
+        }}
+      />
+
       {saving && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
-          <p style={{ background: 'var(--color-surface)', padding: '16px 24px', borderRadius: 'var(--radius-lg)', fontWeight: 700 }}>Saving sale...</p>
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/40">
+          <p className="rounded-[var(--radius-lg)] bg-card px-6 py-4 font-bold">Saving sale...</p>
         </div>
       )}
 
       {success && (
-        <div style={{ position: 'fixed', top: 24, right: 24, background: 'var(--color-primary)', color: 'white', padding: '12px 24px', borderRadius: 'var(--radius-md)', fontWeight: 700, zIndex: 999, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
+        <div className="fixed top-6 right-6 z-[999] rounded-[var(--radius-md)] bg-primary px-6 py-3 font-bold text-white shadow-lg">
           Sale recorded ✓
         </div>
       )}

@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import { cn } from '@/lib/utils'
 
 const navItems = [
   { to: '/sell', label: 'Sell', icon: '\u25B6' },
@@ -13,27 +14,9 @@ const navItems = [
 
 export function Sidebar() {
   return (
-    <nav style={{
-      width: 220,
-      minWidth: 220,
-      background: 'var(--color-surface)',
-      borderRight: '1px solid var(--color-border)',
-      display: 'flex',
-      flexDirection: 'column',
-      padding: '16px 0',
-      overflowY: 'auto',
-    }}>
-      <div style={{
-        padding: '0 16px 16px',
-        borderBottom: '1px solid var(--color-border)',
-        marginBottom: 8,
-      }}>
-        <span style={{
-          fontWeight: 700,
-          fontSize: '1.125rem',
-          color: 'var(--color-primary)',
-          letterSpacing: '-0.01em',
-        }}>
+    <nav className="flex w-[220px] min-w-[220px] flex-col overflow-y-auto bg-card py-4 border-r border-border">
+      <div className="mb-2 border-b border-border px-4 pb-4">
+        <span className="text-lg font-bold tracking-tight text-primary">
           BusinessPOS
         </span>
       </div>
@@ -42,23 +25,16 @@ export function Sidebar() {
         <NavLink
           key={item.to}
           to={item.to}
-          style={({ isActive }) => ({
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            padding: '0 16px',
-            height: 48,
-            minHeight: 48,
-            textDecoration: 'none',
-            fontSize: '0.9375rem',
-            fontWeight: 500,
-            color: isActive ? 'var(--color-primary)' : 'var(--color-text-primary)',
-            background: isActive ? 'var(--color-surface-alt)' : 'transparent',
-            borderRight: isActive ? '3px solid var(--color-primary)' : '3px solid transparent',
-            transition: 'background 120ms, color 120ms',
-          })}
+          className={({ isActive }) =>
+            cn(
+              'flex h-12 min-h-12 items-center gap-3 border-r-[3px] px-4 text-[0.9375rem] font-medium no-underline transition-colors duration-100',
+              isActive
+                ? 'border-primary bg-muted text-primary'
+                : 'border-transparent text-foreground'
+            )
+          }
         >
-          <span style={{ width: 20, textAlign: 'center', fontSize: '0.875rem' }}>{item.icon}</span>
+          <span className="w-5 text-center text-sm">{item.icon}</span>
           {item.label}
         </NavLink>
       ))}

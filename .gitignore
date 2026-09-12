@@ -4,3 +4,4 @@ dist-electron/
 release/
 *.sqlite
 .superpowers/
+# SDD process scaffolding.superpowers/

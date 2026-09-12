@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react'
 import type { TillCountData } from '../../../shared/types'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog'
+import { Input } from '../../components/ui/input'
+import { Label } from '../../components/ui/label'
+import { Button } from '../../components/ui/button'
 
 interface CloseTillModalProps {
   onCloseTill: (countedCents: number) => void
@@ -25,46 +29,59 @@ export function CloseTillModal({ onCloseTill, onClose }: CloseTillModalProps) {
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-      <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', padding: 24, width: 400 }}>
-        <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 16 }}>Close Till</h3>
+    <Dialog open onOpenChange={(o) => { if (!o) onClose() }}>
+      <DialogContent className="max-w-[400px]">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-bold">Close Till</DialogTitle>
+        </DialogHeader>
         {countData && (
-          <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontWeight: 600 }}>Opening Float</span>
+          <div className="mb-4 flex flex-col gap-2">
+            <div className="flex justify-between">
+              <span className="font-semibold">Opening Float</span>
               <span>{fmt(countData.openingFloatCents)}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontWeight: 600 }}>Cash Sales</span>
-              <span style={{ color: 'var(--color-success)' }}>+{fmt(countData.cashSalesCents)}</span>
+            <div className="flex justify-between">
+              <span className="font-semibold">Cash Sales</span>
+              <span className="text-success">+{fmt(countData.cashSalesCents)}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontWeight: 600 }}>Till Expenses</span>
-              <span style={{ color: 'var(--color-danger)' }}>-{fmt(countData.tillExpensesCents)}</span>
+            <div className="flex justify-between">
+              <span className="font-semibold">Till Expenses</span>
+              <span className="text-destructive">-{fmt(countData.tillExpensesCents)}</span>
             </div>
-            <div style={{ borderTop: '2px solid var(--color-border)', paddingTop: 8, display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
+            <div className="flex justify-between border-t-2 border-border pt-2 font-bold">
               <span>Expected Cash</span>
-              <span style={{ color: 'var(--color-primary)' }}>{fmt(countData.expectedClosingCents)}</span>
+              <span className="text-primary">{fmt(countData.expectedClosingCents)}</span>
             </div>
           </div>
         )}
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>Actual Cash Counted (UGX)</label>
-          <input type="number" value={actualCash} onChange={e => setActualCash(e.target.value)}
-            style={{ width: '100%', padding: 8, borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', fontSize: '1rem' }} />
+        <div className="flex flex-col gap-1.5">
+          <Label className="font-semibold">Actual Cash Counted (UGX)</Label>
+          <Input
+            type="number"
+            value={actualCash}
+            onChange={e => setActualCash(e.target.value)}
+            className="bg-background text-base"
+            autoFocus
+          />
         </div>
         {actualCash && countData && (
-          <div style={{ marginBottom: 16, padding: 12, borderRadius: 'var(--radius-md)', background: parseInt(actualCash, 10) >= countData.expectedClosingCents ? 'var(--color-success-bg, #e6f9e6)' : 'var(--color-danger-bg, #fce8e8)' }}>
-            <span style={{ fontWeight: 700 }}>
-              Variance: {fmt(parseInt(actualCash, 10) - countData.expectedClosingCents)}
-            </span>
+          <div
+            className={`rounded-[var(--radius-md)] px-3 py-3 font-bold ${
+              parseInt(actualCash, 10) >= countData.expectedClosingCents ? 'bg-[#e6f9e6]' : 'bg-[#fce8e8]'
+            }`}
+          >
+            Variance: {fmt(parseInt(actualCash, 10) - countData.expectedClosingCents)}
           </div>
         )}
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={onClose} style={{ flex: 1, height: 48, borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-surface)', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-          <button onClick={handleClose} style={{ flex: 1, height: 48, borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--color-danger)', color: 'white', fontWeight: 700, cursor: 'pointer' }}>Close Till</button>
-        </div>
-      </div>
-    </div>
+        <DialogFooter>
+          <Button onClick={onClose} variant="outline" className="h-12 flex-1 font-semibold">
+            Cancel
+          </Button>
+          <Button onClick={handleClose} className="h-12 flex-1 bg-destructive font-bold text-white hover:bg-destructive/80">
+            Close Till
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

@@ -1,4 +1,6 @@
 import type { MenuItemWithCategory } from '../../shared/types'
+import { Button } from './ui/button'
+import { cn } from '@/lib/utils'
 
 interface ItemCardProps {
   item: MenuItemWithCategory
@@ -11,31 +13,29 @@ export function ItemCard({ item, selected, onSelect }: ItemCardProps) {
   const fmt = (n: number) => new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 }).format(n)
 
   return (
-    <button
+    <Button
       onClick={() => { if (!outOfStock) onSelect(item) }}
       disabled={outOfStock}
-      style={{
-        height: 64,
-        padding: '8px 16px',
-        borderRadius: 'var(--radius-md)',
-        background: outOfStock ? 'var(--color-surface)' : selected ? 'var(--color-primary)' : 'var(--color-surface)',
-        color: outOfStock ? 'var(--color-text-secondary)' : selected ? 'white' : 'var(--color-text-primary)',
-        border: outOfStock ? '1px dashed var(--color-border)' : selected ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
-        fontWeight: 600,
-        fontSize: '1rem',
-        cursor: outOfStock ? 'not-allowed' : 'pointer',
-        opacity: outOfStock ? 0.5 : 1,
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        width: '100%',
-        textAlign: 'left',
-      }}
+      variant="outline"
+      className={cn(
+        'h-16 w-full justify-between rounded-[var(--radius-md)] px-4 text-base font-semibold',
+        outOfStock
+          ? 'cursor-not-allowed border-dashed opacity-50'
+          : selected
+            ? 'border-2 border-primary bg-primary text-white'
+            : 'bg-card text-foreground'
+      )}
     >
       <span>{item.name}</span>
-      <span style={{ fontWeight: 700, color: item.category_kind === 'free' ? 'var(--color-success)' : undefined }}>
+      <span
+        className={cn(
+          'font-bold',
+          !outOfStock && item.category_kind === 'free' && 'text-success',
+          selected && 'text-white'
+        )}
+      >
         {outOfStock ? 'Out of stock' : item.category_kind === 'priced' ? fmt(item.selling_price_cents) : 'Free'}
       </span>
-    </button>
+    </Button>
   )
 }

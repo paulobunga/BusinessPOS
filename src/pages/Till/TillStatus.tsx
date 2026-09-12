@@ -1,4 +1,5 @@
 import { useTill } from '../../context/TillContext'
+import { Button } from '../../components/ui/button'
 
 interface TillStatusProps {
   onOpenTill: () => void
@@ -11,16 +12,20 @@ export function TillStatus({ onOpenTill }: TillStatusProps) {
 
   if (!currentTill) {
     return (
-      <button onClick={onOpenTill} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-warning)', background: 'var(--color-warning-bg, #fff8e1)', color: 'var(--color-warning)', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer' }}>
-        <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-warning)' }} />
+      <Button
+        onClick={onOpenTill}
+        variant="outline"
+        className="flex h-[34px] items-center gap-2 rounded-[var(--radius-md)] border-warning bg-[#fff8e1] px-3 text-[0.875rem] font-semibold text-warning"
+      >
+        <span className="size-2 rounded-full bg-warning" />
         Till Closed — Open Till
-      </button>
+      </Button>
     )
   }
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-success)', background: 'var(--color-success-bg, #e6f9e6)', fontWeight: 600, fontSize: '0.875rem' }}>
-      <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-success)' }} />
+    <div className="flex h-[34px] items-center gap-2 rounded-[var(--radius-md)] border border-success bg-[#e6f9e6] px-3 text-[0.875rem] font-semibold">
+      <span className="size-2 rounded-full bg-success" />
       Till Open — {fmt(currentTill.opening_float_cents)}
     </div>
   )

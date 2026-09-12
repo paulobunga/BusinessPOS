@@ -1,4 +1,5 @@
 import type { CartItemState } from '../hooks/useCart'
+import { Button } from './ui/button'
 
 interface CartItemProps {
   item: CartItemState
@@ -8,20 +9,25 @@ interface CartItemProps {
 
 export function CartItem({ item, index, onRemove }: CartItemProps) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--color-border)' }}>
+    <div className="flex items-center justify-between border-b border-border py-2">
       <div>
-        <span style={{ fontWeight: 600 }}>{item.itemName}</span>
+        <span className="font-semibold">{item.itemName}</span>
         {item.addOnName && (
-          <span style={{ color: 'var(--color-text-secondary)', marginLeft: 8 }}>+ {item.addOnName}</span>
+          <span className="ml-2 text-muted-foreground">+ {item.addOnName}</span>
         )}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <span style={{ fontWeight: 700 }}>
+      <div className="flex items-center gap-3">
+        <span className="font-bold">
           {new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 }).format(item.itemPrice)}
         </span>
-        <button onClick={() => onRemove(index)} style={{ background: 'none', border: 'none', color: 'var(--color-danger)', cursor: 'pointer', fontWeight: 600, fontSize: '1.2rem' }}>
+        <Button
+          onClick={() => onRemove(index)}
+          variant="ghost"
+          size="icon-sm"
+          className="text-xl font-semibold text-destructive"
+        >
           ×
-        </button>
+        </Button>
       </div>
     </div>
   )

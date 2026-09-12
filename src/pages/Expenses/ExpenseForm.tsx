@@ -1,4 +1,15 @@
 import { useState } from 'react'
+import { Input } from '../../components/ui/input'
+import { Label } from '../../components/ui/label'
+import { Button } from '../../components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../components/ui/select'
+import { DatePicker } from '../../components/ui/date-picker'
 
 const CATEGORIES = ['Rent', 'Utilities', 'Salaries', 'Supplies', 'Maintenance', 'Transport', 'Marketing', 'Other']
 const PAYMENT_SOURCES = ['till', 'personal', 'mpesa'] as const
@@ -42,71 +53,66 @@ export function ExpenseForm({ initial, onSubmit, onCancel }: Props) {
     })
   }
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '8px 12px',
-    borderRadius: 'var(--radius-md)',
-    border: '1px solid var(--color-border)',
-    background: 'var(--color-bg)',
-    color: 'var(--color-text)',
-    fontSize: '0.875rem',
-  }
-
-  const labelStyle: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 4,
-    fontSize: '0.875rem',
-    fontWeight: 600,
-  }
+  const selectClass = 'h-10 w-full rounded-[var(--radius-md)]'
+  const inputClass = 'h-10 rounded-[var(--radius-md)] bg-background text-[0.875rem]'
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {error && <p style={{ color: 'var(--color-danger)', fontWeight: 600 }}>{error}</p>}
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      {error && <p className="font-semibold text-destructive">{error}</p>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        <label style={labelStyle}>
+      <div className="grid grid-cols-2 gap-4">
+        <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
           Date
-          <input type="date" value={date} onChange={e => setDate(e.target.value)} style={inputStyle} />
-        </label>
+          <DatePicker value={date} onValueChange={setDate} />
+        </Label>
 
-        <label style={labelStyle}>
+        <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
           Category
-          <select value={category} onChange={e => setCategory(e.target.value)} style={inputStyle}>
-            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </label>
+          <Select value={category} onValueChange={setCategory}>
+            <SelectTrigger className={selectClass}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </Label>
 
-        <label style={labelStyle}>
+        <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
           Amount (UGX)
-          <input type="number" placeholder="0" value={amount} onChange={e => setAmount(e.target.value)} style={inputStyle} min="0" step="0.01" />
-        </label>
+          <Input type="number" placeholder="0" value={amount} onChange={e => setAmount(e.target.value)} className={inputClass} min="0" step="0.01" />
+        </Label>
 
-        <label style={labelStyle}>
+        <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
           Payment Source
-          <select value={paymentSource} onChange={e => setPaymentSource(e.target.value as typeof paymentSource)} style={inputStyle}>
-            {PAYMENT_SOURCES.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-          </select>
-        </label>
+          <Select value={paymentSource} onValueChange={v => setPaymentSource(v as typeof paymentSource)}>
+            <SelectTrigger className={selectClass}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PAYMENT_SOURCES.map(s => <SelectItem key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </Label>
       </div>
 
-      <label style={labelStyle}>
+      <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
         Description
-        <input type="text" placeholder="What was this expense for?" value={description} onChange={e => setDescription(e.target.value)} style={inputStyle} />
-      </label>
+        <Input type="text" placeholder="What was this expense for?" value={description} onChange={e => setDescription(e.target.value)} className={inputClass} />
+      </Label>
 
-      <label style={labelStyle}>
+      <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
         Reference
-        <input type="text" placeholder="Receipt #, Mpesa code, etc." value={reference} onChange={e => setReference(e.target.value)} style={inputStyle} />
-      </label>
+        <Input type="text" placeholder="Receipt #, Mpesa code, etc." value={reference} onChange={e => setReference(e.target.value)} className={inputClass} />
+      </Label>
 
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-        <button type="button" onClick={onCancel} style={{ padding: '8px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'transparent', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem' }}>
+      <div className="flex justify-end gap-2">
+        <Button type="button" onClick={onCancel} variant="outline" className="bg-transparent font-semibold">
           Cancel
-        </button>
-        <button type="submit" style={{ padding: '8px 16px', borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--color-primary)', color: '#fff', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer' }}>
+        </Button>
+        <Button type="submit" className="bg-primary font-semibold">
           Save Expense
-        </button>
+        </Button>
       </div>
     </form>
   )

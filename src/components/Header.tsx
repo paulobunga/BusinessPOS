@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { Button } from './ui/button'
 import { useAuth } from '../context/AuthContext'
 import { useTill } from '../context/TillContext'
 import { TillStatus } from '../pages/Till/TillStatus'
@@ -18,35 +19,15 @@ export function Header({ onOpenTill }: HeaderProps) {
   }
 
   return (
-    <header style={{
-      height: 56,
-      minHeight: 56,
-      background: 'var(--color-surface)',
-      borderBottom: '1px solid var(--color-border)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'flex-end',
-      padding: '0 24px',
-      gap: 12,
-    }}>
+    <header className="flex h-14 min-h-14 items-center justify-end gap-3 bg-card px-6 border-b border-border">
       <TillStatus onOpenTill={onOpenTill} />
-      <button
+      <Button
         onClick={handleLogout}
-        style={{
-          height: 40,
-          padding: '0 16px',
-          borderRadius: 'var(--radius-sm)',
-          border: '1px solid var(--color-border)',
-          background: 'var(--color-surface)',
-          color: 'var(--color-text-primary)',
-          fontWeight: 600,
-          fontSize: '0.875rem',
-          cursor: 'pointer',
-          minHeight: 40,
-        }}
+        variant="outline"
+        className="h-10 min-h-10 text-sm font-semibold"
       >
         Logout
-      </button>
+      </Button>
     </header>
   )
 }

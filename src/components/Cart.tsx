@@ -1,4 +1,5 @@
 import { CartItem } from './CartItem'
+import { Button } from './ui/button'
 import type { CartItemState } from '../hooks/useCart'
 
 interface CartProps {
@@ -17,41 +18,54 @@ export function Cart({ items, subtotal, discountCents, discountReason, total, on
   const fmt = (n: number) => new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 }).format(n)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ flex: 1, overflow: 'auto', padding: '0 8px' }}>
+    <div className="flex h-full flex-col">
+      <div className="flex-1 overflow-auto px-2">
         {items.length === 0 ? (
-          <p style={{ color: 'var(--color-text-secondary)', textAlign: 'center', marginTop: 24 }}>Cart is empty</p>
+          <p className="mt-6 text-center text-muted-foreground">Cart is empty</p>
         ) : (
           items.map((item, i) => <CartItem key={i} item={item} index={i} onRemove={onRemoveItem} />)
         )}
       </div>
 
-      <div style={{ borderTop: '2px solid var(--color-border)', padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span style={{ fontWeight: 600 }}>Subtotal</span>
-          <span style={{ fontWeight: 700 }}>{fmt(subtotal)}</span>
+      <div className="flex flex-col gap-2 border-t-2 border-border p-4">
+        <div className="flex justify-between">
+          <span className="font-semibold">Subtotal</span>
+          <span className="font-bold">{fmt(subtotal)}</span>
         </div>
         {discountCents > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-danger)' }}>
-            <span style={{ fontWeight: 600 }}>Discount ({discountReason})</span>
-            <span style={{ fontWeight: 700 }}>-{fmt(discountCents)}</span>
+          <div className="flex justify-between text-destructive">
+            <span className="font-semibold">Discount ({discountReason})</span>
+            <span className="font-bold">-{fmt(discountCents)}</span>
           </div>
         )}
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.25rem' }}>
-          <span style={{ fontWeight: 700 }}>Total</span>
-          <span style={{ fontWeight: 800, color: 'var(--color-primary)' }}>{fmt(total)}</span>
+        <div className="flex justify-between text-xl">
+          <span className="font-bold">Total</span>
+          <span className="font-extrabold text-primary">{fmt(total)}</span>
         </div>
 
-        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-          <button onClick={onSetDiscount} style={{ flex: 1, height: 48, borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-surface)', fontWeight: 600, cursor: 'pointer' }}>
+        <div className="mt-2 flex gap-2">
+          <Button
+            onClick={onSetDiscount}
+            variant="outline"
+            className="h-12 flex-1 bg-card font-semibold"
+          >
             Discount
-          </button>
-          <button onClick={onDebtSale} disabled={items.length === 0} style={{ flex: 1, height: 48, borderRadius: 'var(--radius-md)', border: '1px solid var(--color-warning)', background: 'var(--color-surface)', color: 'var(--color-warning)', fontWeight: 700, cursor: items.length === 0 ? 'not-allowed' : 'pointer', opacity: items.length === 0 ? 0.5 : 1 }}>
+          </Button>
+          <Button
+            onClick={onDebtSale}
+            disabled={items.length === 0}
+            variant="outline"
+            className="h-12 flex-1 border-warning bg-card font-bold text-warning"
+          >
             Debt
-          </button>
-          <button onClick={onCompleteSale} disabled={items.length === 0} style={{ flex: 2, height: 48, borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--color-primary)', color: 'white', fontWeight: 700, cursor: items.length === 0 ? 'not-allowed' : 'pointer', opacity: items.length === 0 ? 0.5 : 1 }}>
+          </Button>
+          <Button
+            onClick={onCompleteSale}
+            disabled={items.length === 0}
+            className="h-12 flex-[2] bg-primary font-bold text-white"
+          >
             Complete Sale
-          </button>
+          </Button>
         </div>
       </div>
     </div>

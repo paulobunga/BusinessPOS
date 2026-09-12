@@ -2,13 +2,25 @@ import { useState } from 'react'
 import { useExpenses } from '../../hooks/useExpenses'
 import { ExpenseForm } from './ExpenseForm'
 import { ExpenseList } from './ExpenseList'
-import type { Expense, CreateExpensePayload } from '../../../shared/types'
+import { Button } from '../../components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../components/ui/select'
+import { DatePicker } from '../../components/ui/date-picker'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
+import type { Expense } from '../../../shared/types'
 
 export function ExpensesPage() {
   const [filters, setFilters] = useState<{ date_from?: string; date_to?: string; category?: string; payment_source?: string }>({})
   const { expenses, loading, create, update, remove } = useExpenses(filters)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Expense | null>(null)
+  const [deleteId, setDeleteId] = useState<number | null>(null)
 
   const handleCreate = async (data: Parameters<typeof create>[0]) => {
     await create(data)
@@ -22,71 +34,74 @@ export function ExpensesPage() {
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Delete this expense?')) return
     await remove(id)
   }
 
   const totalCents = expenses.reduce((sum, e) => sum + e.amount_cents, 0)
 
-  const inputStyle: React.CSSProperties = {
-    padding: '6px 10px',
-    borderRadius: 'var(--radius-md)',
-    border: '1px solid var(--color-border)',
-    background: 'var(--color-bg)',
-    color: 'var(--color-text)',
-    fontSize: '0.875rem',
-  }
+  const selectClass = 'h-10 w-full rounded-[var(--radius-md)]'
 
   return (
-    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Expenses</h1>
-        <button
-          onClick={() => { setEditing(null); setShowForm(true) }}
-          style={{ padding: '8px 16px', borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--color-primary)', color: '#fff', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer' }}
-        >
+    <div className="flex flex-col gap-4 p-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Expenses</h1>
+        <Button onClick={() => { setEditing(null); setShowForm(true) }} className="bg-primary font-semibold">
           + New Expense
-        </button>
+        </Button>
       </div>
 
       {/* Filters */}
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <label style={{ fontSize: '0.875rem', fontWeight: 600 }}>From</label>
-        <input type="date" value={filters.date_from ?? ''} onChange={e => setFilters(f => ({ ...f, date_from: e.target.value || undefined }))} style={inputStyle} />
-        <label style={{ fontSize: '0.875rem', fontWeight: 600 }}>To</label>
-        <input type="date" value={filters.date_to ?? ''} onChange={e => setFilters(f => ({ ...f, date_to: e.target.value || undefined }))} style={inputStyle} />
-        <label style={{ fontSize: '0.875rem', fontWeight: 600 }}>Source</label>
-        <select value={filters.payment_source ?? ''} onChange={e => setFilters(f => ({ ...f, payment_source: e.target.value || undefined }))} style={inputStyle}>
-          <option value="">All</option>
-          <option value="till">Till</option>
-          <option value="personal">Personal</option>
-          <option value="mpesa">Mpesa</option>
-        </select>
-        <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.9375rem' }}>
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="text-sm font-semibold">From</label>
+        <DatePicker value={filters.date_from ?? ''} onValueChange={v => setFilters(f => ({ ...f, date_from: v || undefined }))} />
+        <label className="text-sm font-semibold">To</label>
+        <DatePicker value={filters.date_to ?? ''} onValueChange={v => setFilters(f => ({ ...f, date_to: v || undefined }))} />
+        <label className="text-sm font-semibold">Source</label>
+        <Select value={filters.payment_source ?? 'all'} onValueChange={v => setFilters(f => ({ ...f, payment_source: v === 'all' ? undefined : v }))}>
+          <SelectTrigger className={selectClass}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="till">Till</SelectItem>
+            <SelectItem value="personal">Personal</SelectItem>
+            <SelectItem value="mpesa">Mpesa</SelectItem>
+          </SelectContent>
+        </Select>
+        <span className="ml-auto text-[0.9375rem] font-bold">
           Total: UGX {(totalCents / 100).toLocaleString()}
         </span>
       </div>
 
       {/* Form modal */}
-      {(showForm || editing) && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
-          <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', padding: 24, width: '100%', maxWidth: 520, border: '1px solid var(--color-border)' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 16 }}>{editing ? 'Edit Expense' : 'New Expense'}</h2>
-            <ExpenseForm
-              initial={editing ? { category: editing.category, description: editing.description ?? '', amount_cents: editing.amount_cents, payment_source: editing.payment_source, reference: editing.reference ?? '', date: editing.date } : undefined}
-              onSubmit={editing ? handleUpdate : handleCreate}
-              onCancel={() => { setShowForm(false); setEditing(null) }}
-            />
-          </div>
-        </div>
-      )}
+      <Dialog open={(showForm || editing != null)} onOpenChange={(o) => { if (!o) { setShowForm(false); setEditing(null) } }}>
+        <DialogContent className="max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">{editing ? 'Edit Expense' : 'New Expense'}</DialogTitle>
+          </DialogHeader>
+          <ExpenseForm
+            initial={editing ? { category: editing.category, description: editing.description ?? '', amount_cents: editing.amount_cents, payment_source: editing.payment_source, reference: editing.reference ?? '', date: editing.date } : undefined}
+            onSubmit={editing ? handleUpdate : handleCreate}
+            onCancel={() => { setShowForm(false); setEditing(null) }}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* List */}
       {loading ? (
-        <p style={{ textAlign: 'center', color: 'var(--color-muted)' }}>Loading...</p>
+        <p className="text-center text-muted-foreground">Loading...</p>
       ) : (
-        <ExpenseList expenses={expenses} onEdit={setEditing} onDelete={handleDelete} />
+        <ExpenseList expenses={expenses} onEdit={setEditing} onDelete={setDeleteId} />
       )}
+
+      <ConfirmDialog
+        open={deleteId != null}
+        onOpenChange={o => { if (!o) setDeleteId(null) }}
+        title="Delete this expense?"
+        destructive
+        confirmText="Delete"
+        onConfirm={() => { if (deleteId != null) handleDelete(deleteId); setDeleteId(null) }}
+      />
     </div>
   )
 }

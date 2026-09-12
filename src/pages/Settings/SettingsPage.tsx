@@ -3,71 +3,40 @@ import { useAuth } from '../../context/AuthContext'
 import { useCategories } from '../../hooks/useCategories'
 import { useAttributes } from '../../hooks/useAttributes'
 import { useItems } from '../../hooks/useItems'
+import { Button } from '../../components/ui/button'
+import { Input } from '../../components/ui/input'
+import { Label } from '../../components/ui/label'
+import { Badge } from '../../components/ui/badge'
+import { Checkbox } from '../../components/ui/checkbox'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../../components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../components/ui/select'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
 import type { Category, MenuItemWithCategory, AttributeDef } from '../../../shared/types'
 
 const fmt = new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 })
-const inputStyle: React.CSSProperties = {
-  padding: '8px 10px',
-  borderRadius: 'var(--radius-md)',
-  border: '1px solid var(--color-border)',
-  background: 'var(--color-bg)',
-  color: 'var(--color-text-primary)',
-  fontSize: '0.875rem',
-  minHeight: 40,
-}
-const labelStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 4,
-  fontSize: '0.875rem',
-  fontWeight: 600,
-  color: 'var(--color-text-primary)',
-}
-const btnPrimary: React.CSSProperties = {
-  padding: '10px 16px',
-  borderRadius: 'var(--radius-md)',
-  border: 'none',
-  background: 'var(--color-primary)',
-  color: '#fff',
-  fontWeight: 600,
-  fontSize: '0.875rem',
-  cursor: 'pointer',
-  minHeight: 40,
-}
-const btnGhost: React.CSSProperties = {
-  padding: '8px 14px',
-  borderRadius: 'var(--radius-md)',
-  border: '1px solid var(--color-border)',
-  background: 'var(--color-surface)',
-  color: 'var(--color-text-primary)',
-  fontWeight: 600,
-  fontSize: '0.875rem',
-  cursor: 'pointer',
-  minHeight: 40,
-}
-const btnDanger: React.CSSProperties = {
-  ...btnGhost,
-  color: 'var(--color-danger)',
-  borderColor: 'var(--color-danger)',
-}
-const btnDangerSolid: React.CSSProperties = {
-  padding: '10px 16px',
-  borderRadius: 'var(--radius-md)',
-  border: 'none',
-  background: 'var(--color-danger)',
-  color: '#fff',
-  fontWeight: 600,
-  fontSize: '0.875rem',
-  cursor: 'pointer',
-  minHeight: 40,
-}
+const inputClass = 'min-h-10 rounded-[var(--radius-md)] border-border bg-background text-[0.875rem]'
+const selectClass = 'h-10 w-full rounded-[var(--radius-md)]'
+const pinClass = `${inputClass} max-w-[120px] text-center text-base font-bold tracking-[8px]`
 
 function Section({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
-    <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', padding: 24, border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div className="flex flex-col gap-4 rounded-[var(--radius-lg)] border border-border bg-card p-6">
       <div>
-        <h2 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>{title}</h2>
-        {subtitle && <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', margin: '4px 0 0' }}>{subtitle}</p>}
+        <h2 className="m-0 text-lg font-bold text-foreground">{title}</h2>
+        {subtitle && <p className="m-0 mt-1 text-[0.875rem] text-muted-foreground">{subtitle}</p>}
       </div>
       {children}
     </div>
@@ -75,17 +44,21 @@ function Section({ title, subtitle, children }: { title: string; subtitle?: stri
 }
 
 function StatusLine({ type, text }: { type: 'success' | 'error' | 'info'; text: string }) {
-  const color = type === 'success' ? 'var(--color-success)' : type === 'error' ? 'var(--color-danger)' : 'var(--color-text-secondary)'
-  return <p style={{ color, fontWeight: 600, fontSize: '0.875rem', margin: 0 }}>{text}</p>
+  const cls = type === 'success' ? 'text-success' : type === 'error' ? 'text-destructive' : 'text-muted-foreground'
+  return <p className={`m-0 text-[0.875rem] font-semibold ${cls}`}>{text}</p>
 }
 
 function KindBadge({ kind }: { kind: 'priced' | 'free' }) {
   return (
-    <span style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: 'var(--radius-sm)', background: kind === 'priced' ? 'var(--color-primary)' : 'var(--color-success)', color: '#fff', fontWeight: 700 }}>
+    <Badge className={kind === 'priced' ? 'bg-primary text-white' : 'bg-success text-white'}>
       {kind === 'priced' ? 'Priced' : 'Free'}
-    </span>
+    </Badge>
   )
 }
+
+type CategoryModal = { mode: 'add' } | { mode: 'edit'; category: Category }
+type AttrModal = { mode: 'add' } | { mode: 'edit'; attr: AttributeDef }
+type ItemModal = { mode: 'add' } | { mode: 'edit'; item: MenuItemWithCategory }
 
 export function SettingsPage() {
   const { userId } = useAuth()
@@ -96,28 +69,26 @@ export function SettingsPage() {
 
   // Categories
   const { categories, loading: categoriesLoading, error: categoriesError, retry: retryCategories } = useCategories(false)
-  const [newCategory, setNewCategory] = useState({ name: '', kind: 'priced', sort_order: '0' })
-  const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null)
+  const [categoryModal, setCategoryModal] = useState<CategoryModal | null>(null)
   const [categoryDraft, setCategoryDraft] = useState({ name: '', kind: 'priced', sort_order: '0' })
   const [categoryStatus, setCategoryStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   // Attributes
   const { attributes, loading: attributesLoading, error: attributesError, retry: retryAttributes } = useAttributes(null)
-  const [newAttr, setNewAttr] = useState({ name: '', type: 'text', scope: '' })
-  const [editingAttrId, setEditingAttrId] = useState<number | null>(null)
-  const [attrDraft, setAttrDraft] = useState({ name: '', type: 'text', scope: '' })
+  const [attrModal, setAttrModal] = useState<AttrModal | null>(null)
+  const [attrDraft, setAttrDraft] = useState({ name: '', type: 'text', scope: 'all' })
   const [attrStatus, setAttrStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   // Menu items
   const { items, loading: itemsLoading, error: itemsError, retry: retryItems } = useItems()
   const [menuCatId, setMenuCatId] = useState<number | null>(null)
   const { attributes: categoryDefs, retry: retryCategoryDefs } = useAttributes(menuCatId)
-  const [editingItemId, setEditingItemId] = useState<number | null>(null)
+  const [itemModal, setItemModal] = useState<ItemModal | null>(null)
   const [itemDraft, setItemDraft] = useState<{ name: string; selling: string; cost: string; values: Record<number, { text?: string; number?: string; boolean?: boolean }> }>({ name: '', selling: '', cost: '', values: {} })
-  const [newItem, setNewItem] = useState({ name: '', selling: '', cost: '' })
   const [itemStatus, setItemStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   // PIN
+  const [pinOpen, setPinOpen] = useState(false)
   const [oldPin, setOldPin] = useState('')
   const [newPin, setNewPin] = useState('')
   const [confirmPin, setConfirmPin] = useState('')
@@ -127,10 +98,13 @@ export function SettingsPage() {
   const [backupStatus, setBackupStatus] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null)
   const [backupBusy, setBackupBusy] = useState(false)
 
+  // Confirmations
+  const [confirmState, setConfirmState] = useState<null | { title: string; description?: string; destructive: boolean; confirmText?: string; action: () => void }>(null)
+
   const parseCents = (s: string) => {
     const n = parseFloat(s)
     if (isNaN(n) || n < 0) return null
-    return Math.round(n * 100)
+    return Math.round(n)
   }
 
   // === Business info ===
@@ -143,18 +117,34 @@ export function SettingsPage() {
   }
 
   // === Categories ===
-  const startEditCategory = (c: Category) => {
-    setEditingCategoryId(c.id)
-    setCategoryDraft({ name: c.name, kind: c.kind, sort_order: String(c.sort_order) })
+  const openAddCategory = () => {
+    setCategoryDraft({ name: '', kind: 'priced', sort_order: '0' })
+    setCategoryStatus(null)
+    setCategoryModal({ mode: 'add' })
   }
 
-  const saveCategory = async (c: Category) => {
+  const openEditCategory = (c: Category) => {
+    setCategoryDraft({ name: c.name, kind: c.kind, sort_order: String(c.sort_order) })
+    setCategoryStatus(null)
+    setCategoryModal({ mode: 'edit', category: c })
+  }
+
+  const submitCategory = async () => {
     if (!categoryDraft.name.trim()) { setCategoryStatus({ type: 'error', text: 'Name is required' }); return }
-    await window.api['categories:upsert']({ id: c.id, name: categoryDraft.name.trim(), kind: categoryDraft.kind as 'priced' | 'free', sort_order: parseInt(categoryDraft.sort_order, 10) || 0, active: c.active })
-    setEditingCategoryId(null)
-    await retryCategories()
-    await retryItems()
-    setCategoryStatus({ type: 'success', text: 'Category saved' })
+    if (categoryModal?.mode === 'edit') {
+      const c = categoryModal.category
+      await window.api['categories:upsert']({ id: c.id, name: categoryDraft.name.trim(), kind: categoryDraft.kind as 'priced' | 'free', sort_order: parseInt(categoryDraft.sort_order, 10) || 0, active: c.active })
+      setCategoryModal(null)
+      await retryCategories()
+      await retryItems()
+      setCategoryStatus({ type: 'success', text: 'Category saved' })
+    } else {
+      await window.api['categories:upsert']({ name: categoryDraft.name.trim(), kind: categoryDraft.kind as 'priced' | 'free', sort_order: parseInt(categoryDraft.sort_order, 10) || 0, active: 1 })
+      setCategoryModal(null)
+      await retryCategories()
+      await retryItems()
+      setCategoryStatus({ type: 'success', text: 'Category added' })
+    }
     setTimeout(() => setCategoryStatus(null), 2500)
   }
 
@@ -164,7 +154,6 @@ export function SettingsPage() {
   }
 
   const deleteCategory = async (c: Category) => {
-    if (!window.confirm(`Delete category "${c.name}"? Only allowed if it has no items.`)) return
     await window.api['categories:delete'](c.id)
     if (menuCatId === c.id) setMenuCatId(null)
     await retryCategories()
@@ -174,38 +163,42 @@ export function SettingsPage() {
     setTimeout(() => setCategoryStatus(null), 2500)
   }
 
-  const addCategory = async () => {
-    if (!newCategory.name.trim()) { setCategoryStatus({ type: 'error', text: 'Name is required' }); return }
-    await window.api['categories:upsert']({ name: newCategory.name.trim(), kind: newCategory.kind as 'priced' | 'free', sort_order: parseInt(newCategory.sort_order, 10) || 0, active: 1 })
-    setNewCategory({ name: '', kind: 'priced', sort_order: '0' })
-    await retryCategories()
-    await retryItems()
-    setCategoryStatus({ type: 'success', text: 'Category added' })
-    setTimeout(() => setCategoryStatus(null), 2500)
-  }
-
   // === Attributes ===
   const scopeName = (a: AttributeDef) => {
     if (a.category_id == null) return 'All categories'
     return categories.find(c => c.id === a.category_id)?.name ?? 'All categories'
   }
 
-  const startEditAttr = (a: AttributeDef) => {
-    setEditingAttrId(a.id)
-    setAttrDraft({ name: a.name, type: a.type, scope: a.category_id == null ? '' : String(a.category_id) })
+  const openAddAttr = () => {
+    setAttrDraft({ name: '', type: 'text', scope: 'all' })
+    setAttrStatus(null)
+    setAttrModal({ mode: 'add' })
   }
 
-  const saveAttr = async (a: AttributeDef) => {
+  const openEditAttr = (a: AttributeDef) => {
+    setAttrDraft({ name: a.name, type: a.type, scope: a.category_id == null ? 'all' : String(a.category_id) })
+    setAttrStatus(null)
+    setAttrModal({ mode: 'edit', attr: a })
+  }
+
+  const submitAttr = async () => {
     if (!attrDraft.name.trim()) { setAttrStatus({ type: 'error', text: 'Name is required' }); return }
-    await window.api['attributes:upsert']({ id: a.id, name: attrDraft.name.trim(), type: attrDraft.type as 'text' | 'number' | 'boolean', category_id: attrDraft.scope === '' ? null : Number(attrDraft.scope), sort_order: a.sort_order })
-    setEditingAttrId(null)
-    await retryAttributes()
-    setAttrStatus({ type: 'success', text: 'Attribute saved' })
+    if (attrModal?.mode === 'edit') {
+      const a = attrModal.attr
+      await window.api['attributes:upsert']({ id: a.id, name: attrDraft.name.trim(), type: attrDraft.type as 'text' | 'number' | 'boolean', category_id: attrDraft.scope === 'all' ? null : Number(attrDraft.scope), sort_order: a.sort_order })
+      setAttrModal(null)
+      await retryAttributes()
+      setAttrStatus({ type: 'success', text: 'Attribute saved' })
+    } else {
+      await window.api['attributes:upsert']({ name: attrDraft.name.trim(), type: attrDraft.type as 'text' | 'number' | 'boolean', category_id: attrDraft.scope === 'all' ? null : Number(attrDraft.scope), sort_order: 0 })
+      setAttrModal(null)
+      await retryAttributes()
+      setAttrStatus({ type: 'success', text: 'Attribute added' })
+    }
     setTimeout(() => setAttrStatus(null), 2500)
   }
 
   const deleteAttr = async (a: AttributeDef) => {
-    if (!window.confirm('Delete attribute? Its saved values will also be removed.')) return
     await window.api['attributes:delete'](a.id)
     await retryAttributes()
     await retryItems()
@@ -213,20 +206,16 @@ export function SettingsPage() {
     setTimeout(() => setAttrStatus(null), 2500)
   }
 
-  const addAttr = async () => {
-    if (!newAttr.name.trim()) { setAttrStatus({ type: 'error', text: 'Name is required' }); return }
-    await window.api['attributes:upsert']({ name: newAttr.name.trim(), type: newAttr.type as 'text' | 'number' | 'boolean', category_id: newAttr.scope === '' ? null : Number(newAttr.scope), sort_order: 0 })
-    setNewAttr({ name: '', type: 'text', scope: '' })
-    await retryAttributes()
-    setAttrStatus({ type: 'success', text: 'Attribute added' })
-    setTimeout(() => setAttrStatus(null), 2500)
-  }
-
   // === Menu items ===
   const menuItems = menuCatId == null ? [] : items.filter(i => i.category_id === menuCatId)
 
-  const startEditItem = (item: MenuItemWithCategory) => {
-    setEditingItemId(item.id)
+  const openAddItem = () => {
+    setItemDraft({ name: '', selling: '', cost: '', values: {} })
+    setItemStatus(null)
+    setItemModal({ mode: 'add' })
+  }
+
+  const openEditItem = (item: MenuItemWithCategory) => {
     const values: Record<number, { text?: string; number?: string; boolean?: boolean }> = {}
     for (const def of categoryDefs) {
       const val = item.attribute_values?.find(v => v.attr_def_id === def.id)
@@ -234,31 +223,43 @@ export function SettingsPage() {
       else if (def.type === 'number') values[def.id] = { number: val?.value_number != null ? String(val.value_number) : '' }
       else values[def.id] = { boolean: val?.value_boolean === 1 }
     }
-    setItemDraft({ name: item.name, selling: String(item.selling_price_cents / 100), cost: String(item.cost_price_cents / 100), values })
+    setItemDraft({ name: item.name, selling: String(item.selling_price_cents), cost: String(item.cost_price_cents), values })
+    setItemStatus(null)
+    setItemModal({ mode: 'edit', item })
   }
 
-  const saveItem = async (item: MenuItemWithCategory) => {
+  const submitItem = async () => {
     if (!itemDraft.name.trim()) { setItemStatus({ type: 'error', text: 'Name is required' }); return }
     const selling = parseCents(itemDraft.selling)
     const cost = parseCents(itemDraft.cost)
     if (selling === null || cost === null) { setItemStatus({ type: 'error', text: 'Enter valid prices' }); return }
-    await window.api['items:upsert']({ id: item.id, name: itemDraft.name.trim(), selling_price_cents: selling, cost_price_cents: cost })
-    if (categoryDefs.length > 0) {
-      const values: Array<{ attr_def_id: number; value_text?: string; value_number?: number; value_boolean?: boolean }> = []
-      for (const def of categoryDefs) {
-        const v = itemDraft.values[def.id]
-        if (def.type === 'text') values.push({ attr_def_id: def.id, value_text: v?.text ?? '' })
-        else if (def.type === 'number') {
-          const n = v?.number !== undefined && v.number !== '' ? Number(v.number) : NaN
-          if (!isNaN(n)) values.push({ attr_def_id: def.id, value_number: n })
-        } else values.push({ attr_def_id: def.id, value_boolean: v?.boolean ?? false })
+
+    if (itemModal?.mode === 'edit') {
+      const item = itemModal.item
+      await window.api['items:upsert']({ id: item.id, name: itemDraft.name.trim(), selling_price_cents: selling, cost_price_cents: cost })
+      if (categoryDefs.length > 0) {
+        const values: Array<{ attr_def_id: number; value_text?: string; value_number?: number; value_boolean?: boolean }> = []
+        for (const def of categoryDefs) {
+          const v = itemDraft.values[def.id]
+          if (def.type === 'text') values.push({ attr_def_id: def.id, value_text: v?.text ?? '' })
+          else if (def.type === 'number') {
+            const n = v?.number !== undefined && v.number !== '' ? Number(v.number) : NaN
+            if (!isNaN(n)) values.push({ attr_def_id: def.id, value_number: n })
+          } else values.push({ attr_def_id: def.id, value_boolean: v?.boolean ?? false })
+        }
+        await window.api['attributes:saveValues']({ itemId: item.id, values })
       }
-      await window.api['attributes:saveValues']({ itemId: item.id, values })
+      setItemModal(null)
+      await retryItems()
+      await retryCategoryDefs()
+      setItemStatus({ type: 'success', text: 'Item saved' })
+    } else {
+      if (menuCatId == null) { setItemStatus({ type: 'error', text: 'Select a category first' }); return }
+      await window.api['items:upsert']({ category_id: menuCatId, name: itemDraft.name.trim(), selling_price_cents: selling, cost_price_cents: cost, active: 1 })
+      setItemModal(null)
+      await retryItems()
+      setItemStatus({ type: 'success', text: 'Item added' })
     }
-    setEditingItemId(null)
-    await retryItems()
-    await retryCategoryDefs()
-    setItemStatus({ type: 'success', text: 'Item saved' })
     setTimeout(() => setItemStatus(null), 2500)
   }
 
@@ -273,24 +274,10 @@ export function SettingsPage() {
   }
 
   const deleteItem = async (item: MenuItemWithCategory) => {
-    if (!window.confirm(`Delete "${item.name}"? Sales history referencing it will be kept (item deactivated).`)) return
     await window.api['items:delete'](item.id)
     await retryItems()
     await retryCategoryDefs()
     setItemStatus({ type: 'success', text: 'Item deleted' })
-    setTimeout(() => setItemStatus(null), 2500)
-  }
-
-  const addItem = async () => {
-    if (menuCatId == null) { setItemStatus({ type: 'error', text: 'Select a category first' }); return }
-    if (!newItem.name.trim()) { setItemStatus({ type: 'error', text: 'Name is required' }); return }
-    const selling = parseCents(newItem.selling)
-    const cost = parseCents(newItem.cost)
-    if (selling === null || cost === null) { setItemStatus({ type: 'error', text: 'Enter valid prices' }); return }
-    await window.api['items:upsert']({ category_id: menuCatId, name: newItem.name.trim(), selling_price_cents: selling, cost_price_cents: cost, active: 1 })
-    setNewItem({ name: '', selling: '', cost: '' })
-    await retryItems()
-    setItemStatus({ type: 'success', text: 'Item added' })
     setTimeout(() => setItemStatus(null), 2500)
   }
 
@@ -304,6 +291,7 @@ export function SettingsPage() {
     const ok = await window.api['users:setPin'](userId, oldPin, newPin)
     if (ok) {
       setOldPin(''); setNewPin(''); setConfirmPin('')
+      setPinOpen(false)
       setPinStatus({ type: 'success', text: 'PIN changed successfully' })
       setTimeout(() => setPinStatus(null), 2500)
     } else {
@@ -325,7 +313,6 @@ export function SettingsPage() {
   }
 
   const importBackup = async () => {
-    if (!window.confirm('Importing a backup will REPLACE all current data in this app. Continue?')) return
     setBackupBusy(true)
     setBackupStatus(null)
     try {
@@ -337,23 +324,25 @@ export function SettingsPage() {
     setBackupBusy(false)
   }
 
-  const pinInput: React.CSSProperties = { ...inputStyle, textAlign: 'center', letterSpacing: 8, fontWeight: 700, maxWidth: 120, fontSize: '1rem' }
+  const askConfirm = (c: { title: string; description?: string; destructive?: boolean; confirmText?: string; action: () => void }) => {
+    setConfirmState({ title: c.title, description: c.description, destructive: c.destructive ?? true, confirmText: c.confirmText, action: c.action })
+  }
 
   return (
-    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 900 }}>
+    <div className="flex max-w-900 flex-col gap-5 p-6">
       <div>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-text-primary)', margin: 0 }}>Settings</h1>
-        <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', margin: '4px 0 0' }}>Manage your business details, menu items, and backups.</p>
+        <h1 className="m-0 text-2xl font-bold text-foreground">Settings</h1>
+        <p className="m-0 mt-1 text-[0.875rem] text-muted-foreground">Manage your business details, menu items, and backups.</p>
       </div>
 
       {/* Business Info */}
       <Section title="Business Info" subtitle="Shown across the app and reports.">
-        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <label style={{ ...labelStyle, flex: 1, minWidth: 240 }}>
+        <div className="flex flex-wrap items-end gap-3">
+          <Label className="flex min-w-[240px] flex-1 flex-col gap-1 text-[0.875rem] font-semibold">
             Business name
-            <input style={inputStyle} value={businessName} onChange={e => setBusinessName(e.target.value)} />
-          </label>
-          <button style={btnPrimary} onClick={saveBusinessName}>Save</button>
+            <Input className={inputClass} value={businessName} onChange={e => setBusinessName(e.target.value)} />
+          </Label>
+          <Button className="h-10 bg-primary font-semibold" onClick={saveBusinessName}>Save</Button>
         </div>
         {bizStatus && <StatusLine type={bizStatus.type} text={bizStatus.text} />}
       </Section>
@@ -361,59 +350,31 @@ export function SettingsPage() {
       {/* Categories */}
       <Section title="Categories" subtitle="Organize menu items into priced (mains) and free (add-on) categories.">
         {categoriesError && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="flex items-center gap-3">
             <StatusLine type="error" text={categoriesError} />
-            <button style={btnGhost} onClick={retryCategories}>Retry</button>
+            <Button variant="outline" className="h-10 border-border bg-card font-semibold" onClick={retryCategories}>Retry</Button>
           </div>
         )}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="flex flex-col gap-2">
           {categories.map(c => (
-            editingCategoryId === c.id ? (
-              <div key={c.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 8, padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>
-                <label style={labelStyle}>Name<input style={inputStyle} value={categoryDraft.name} onChange={e => setCategoryDraft(d => ({ ...d, name: e.target.value }))} /></label>
-                <label style={labelStyle}>Kind
-                  <select style={inputStyle} value={categoryDraft.kind} onChange={e => setCategoryDraft(d => ({ ...d, kind: e.target.value }))}>
-                    <option value="priced">Priced</option>
-                    <option value="free">Free</option>
-                  </select>
-                </label>
-                <label style={labelStyle}>Sort order<input style={inputStyle} type="number" value={categoryDraft.sort_order} onChange={e => setCategoryDraft(d => ({ ...d, sort_order: e.target.value }))} /></label>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-                  <button style={btnPrimary} onClick={() => saveCategory(c)}>Save</button>
-                  <button style={btnGhost} onClick={() => setEditingCategoryId(null)}>Cancel</button>
-                </div>
+            <div key={c.id} className={`flex items-center justify-between gap-3 rounded-[var(--radius-md)] border border-border bg-card px-4 py-3 ${c.active ? '' : 'opacity-55'}`}>
+              <div className="flex min-w-0 flex-wrap items-center gap-3">
+                <p className="m-0 text-[0.9375rem] font-bold text-foreground">{c.name}</p>
+                <KindBadge kind={c.kind} />
+                {!c.active && <span className="text-[0.8125rem] font-semibold text-muted-foreground">inactive</span>}
               </div>
-            ) : (
-              <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-surface)', opacity: c.active ? 1 : 0.55 }}>
-                <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                  <p style={{ fontWeight: 700, fontSize: '0.9375rem', margin: 0, color: 'var(--color-text-primary)' }}>{c.name}</p>
-                  <KindBadge kind={c.kind} />
-                  {!c.active && <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)', fontWeight: 600 }}>inactive</span>}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <button style={btnGhost} onClick={() => toggleCategoryActive(c)}>{c.active ? 'Deactivate' : 'Activate'}</button>
-                  <button style={btnPrimary} onClick={() => startEditCategory(c)}>Edit</button>
-                  <button style={btnDanger} onClick={() => deleteCategory(c)}>Delete</button>
-                </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" className="h-10 border-border bg-card font-semibold" onClick={() => toggleCategoryActive(c)}>{c.active ? 'Deactivate' : 'Activate'}</Button>
+                <Button className="h-10 bg-primary font-semibold" onClick={() => openEditCategory(c)}>Edit</Button>
+                <Button variant="outline" className="h-10 border-destructive text-destructive" onClick={() => askConfirm({ title: `Delete category "${c.name}"?`, description: 'Only allowed if it has no items.', action: () => deleteCategory(c) })}>Delete</Button>
               </div>
-            )
+            </div>
           ))}
-          {!categoriesLoading && categories.length === 0 && <p style={{ color: 'var(--color-text-secondary)', fontWeight: 600, fontSize: '0.9375rem' }}>No categories yet.</p>}
+          {!categoriesLoading && categories.length === 0 && <p className="text-[0.9375rem] font-semibold text-muted-foreground">No categories yet.</p>}
         </div>
 
-        <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <p style={{ fontWeight: 700, fontSize: '0.9375rem', margin: 0, color: 'var(--color-text-primary)' }}>Add category</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 8 }}>
-            <input style={inputStyle} placeholder="Name" value={newCategory.name} onChange={e => setNewCategory(c => ({ ...c, name: e.target.value }))} />
-            <select style={inputStyle} value={newCategory.kind} onChange={e => setNewCategory(c => ({ ...c, kind: e.target.value }))}>
-              <option value="priced">Priced</option>
-              <option value="free">Free</option>
-            </select>
-            <input style={inputStyle} type="number" placeholder="Order" value={newCategory.sort_order} onChange={e => setNewCategory(c => ({ ...c, sort_order: e.target.value }))} />
-          </div>
-          <div>
-            <button style={btnPrimary} onClick={addCategory}>Add Category</button>
-          </div>
+        <div className="flex flex-col gap-3 border-t border-border pt-4">
+          <Button className="h-10 w-fit bg-primary font-semibold" onClick={openAddCategory}>+ Add Category</Button>
         </div>
         {categoryStatus && <StatusLine type={categoryStatus.type} text={categoryStatus.text} />}
       </Section>
@@ -421,73 +382,31 @@ export function SettingsPage() {
       {/* Attributes */}
       <Section title="Attributes" subtitle="Track text, number, or boolean details per menu item.">
         {attributesError && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="flex items-center gap-3">
             <StatusLine type="error" text={attributesError} />
-            <button style={btnGhost} onClick={retryAttributes}>Retry</button>
+            <Button variant="outline" className="h-10 border-border bg-card font-semibold" onClick={retryAttributes}>Retry</Button>
           </div>
         )}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="flex flex-col gap-2">
           {attributes.map(a => (
-            editingAttrId === a.id ? (
-              <div key={a.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 8, padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>
-                <label style={labelStyle}>Name<input style={inputStyle} value={attrDraft.name} onChange={e => setAttrDraft(d => ({ ...d, name: e.target.value }))} /></label>
-                <label style={labelStyle}>Type
-                  <select style={inputStyle} value={attrDraft.type} onChange={e => setAttrDraft(d => ({ ...d, type: e.target.value }))}>
-                    <option value="text">Text</option>
-                    <option value="number">Number</option>
-                    <option value="boolean">Boolean</option>
-                  </select>
-                </label>
-                <label style={labelStyle}>Scope
-                  <select style={inputStyle} value={attrDraft.scope} onChange={e => setAttrDraft(d => ({ ...d, scope: e.target.value }))}>
-                    <option value="">All categories</option>
-                    {categories.filter(c => c.active).map(c => (
-                      <option key={c.id} value={String(c.id)}>{c.name}</option>
-                    ))}
-                  </select>
-                </label>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-                  <button style={btnPrimary} onClick={() => saveAttr(a)}>Save</button>
-                  <button style={btnGhost} onClick={() => setEditingAttrId(null)}>Cancel</button>
-                </div>
+            <div key={a.id} className="flex items-center justify-between gap-3 rounded-[var(--radius-md)] border border-border bg-card px-4 py-3">
+              <div className="min-w-0">
+                <p className="m-0 text-[0.9375rem] font-bold text-foreground">{a.name}</p>
+                <p className="m-0 mt-0.5 text-[0.8125rem] text-muted-foreground">
+                  {a.type} · {scopeName(a)}
+                </p>
               </div>
-            ) : (
-              <div key={a.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-surface)' }}>
-                <div style={{ minWidth: 0 }}>
-                  <p style={{ fontWeight: 700, fontSize: '0.9375rem', margin: 0, color: 'var(--color-text-primary)' }}>{a.name}</p>
-                  <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)', margin: '2px 0 0' }}>
-                    {a.type} · {scopeName(a)}
-                  </p>
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button style={btnPrimary} onClick={() => startEditAttr(a)}>Edit</button>
-                  <button style={btnDanger} onClick={() => deleteAttr(a)}>Delete</button>
-                </div>
+              <div className="flex gap-2">
+                <Button className="h-10 bg-primary font-semibold" onClick={() => openEditAttr(a)}>Edit</Button>
+                <Button variant="outline" className="h-10 border-destructive text-destructive" onClick={() => askConfirm({ title: 'Delete attribute?', description: 'Its saved values will also be removed.', action: () => deleteAttr(a) })}>Delete</Button>
               </div>
-            )
+            </div>
           ))}
-          {!attributesLoading && attributes.length === 0 && <p style={{ color: 'var(--color-text-secondary)', fontWeight: 600, fontSize: '0.9375rem' }}>No attributes yet.</p>}
+          {!attributesLoading && attributes.length === 0 && <p className="text-[0.9375rem] font-semibold text-muted-foreground">No attributes yet.</p>}
         </div>
 
-        <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <p style={{ fontWeight: 700, fontSize: '0.9375rem', margin: 0, color: 'var(--color-text-primary)' }}>Add attribute</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 8 }}>
-            <input style={inputStyle} placeholder="Name" value={newAttr.name} onChange={e => setNewAttr(a => ({ ...a, name: e.target.value }))} />
-            <select style={inputStyle} value={newAttr.type} onChange={e => setNewAttr(a => ({ ...a, type: e.target.value }))}>
-              <option value="text">Text</option>
-              <option value="number">Number</option>
-              <option value="boolean">Boolean</option>
-            </select>
-            <select style={inputStyle} value={newAttr.scope} onChange={e => setNewAttr(a => ({ ...a, scope: e.target.value }))}>
-              <option value="">All categories</option>
-              {categories.filter(c => c.active).map(c => (
-                <option key={c.id} value={String(c.id)}>{c.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <button style={btnPrimary} onClick={addAttr}>Add Attribute</button>
-          </div>
+        <div className="flex flex-col gap-3 border-t border-border pt-4">
+          <Button className="h-10 w-fit bg-primary font-semibold" onClick={openAddAttr}>+ Add Attribute</Button>
         </div>
         {attrStatus && <StatusLine type={attrStatus.type} text={attrStatus.text} />}
       </Section>
@@ -495,99 +414,57 @@ export function SettingsPage() {
       {/* Menu Items */}
       <Section title="Menu Items" subtitle="Manage items per category, including prices, out-of-stock state, and attribute values.">
         {itemsError && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="flex items-center gap-3">
             <StatusLine type="error" text={itemsError} />
-            <button style={btnGhost} onClick={retryItems}>Retry</button>
+            <Button variant="outline" className="h-10 border-border bg-card font-semibold" onClick={retryItems}>Retry</Button>
           </div>
         )}
-        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <label style={{ ...labelStyle, flex: 1, minWidth: 200 }}>
+        <div className="flex flex-wrap items-end gap-3">
+          <Label className="flex min-w-[200px] flex-1 flex-col gap-1 text-[0.875rem] font-semibold">
             Category
-            <select style={inputStyle} value={menuCatId == null ? '' : String(menuCatId)} onChange={e => { setMenuCatId(e.target.value === '' ? null : Number(e.target.value)); setEditingItemId(null) }}>
-              <option value="">Select category...</option>
-              {categories.map(c => (
-                <option key={c.id} value={String(c.id)}>{c.name} ({c.kind})</option>
-              ))}
-            </select>
-          </label>
+            <Select value={menuCatId == null ? 'none' : String(menuCatId)} onValueChange={v => setMenuCatId(v === 'none' ? null : Number(v))}>
+              <SelectTrigger className={selectClass}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Select category...</SelectItem>
+                {categories.map(c => (
+                  <SelectItem key={c.id} value={String(c.id)}>{c.name} ({c.kind})</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Label>
         </div>
 
         {menuCatId != null && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div className="flex flex-col gap-2">
             {menuItems.map(item => (
-              editingItemId === item.id ? (
-                <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 8 }}>
-                    <label style={labelStyle}>Name<input style={inputStyle} value={itemDraft.name} onChange={e => setItemDraft(d => ({ ...d, name: e.target.value }))} /></label>
-                    <label style={labelStyle}>Selling (UGX)<input style={inputStyle} type="number" min="0" value={itemDraft.selling} onChange={e => setItemDraft(d => ({ ...d, selling: e.target.value }))} /></label>
-                    <label style={labelStyle}>Cost (UGX)<input style={inputStyle} type="number" min="0" value={itemDraft.cost} onChange={e => setItemDraft(d => ({ ...d, cost: e.target.value }))} /></label>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-                      <button style={btnPrimary} onClick={() => saveItem(item)}>Save</button>
-                      <button style={btnGhost} onClick={() => setEditingItemId(null)}>Cancel</button>
-                    </div>
-                  </div>
-                  {categoryDefs.length > 0 && (
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      {categoryDefs.map(def => {
-                        const v = itemDraft.values[def.id] ?? {}
-                        if (def.type === 'text') return (
-                          <label key={def.id} style={{ ...labelStyle, flex: 1, minWidth: 160 }}>
-                            {def.name}
-                            <input style={inputStyle} value={v.text ?? ''} onChange={e => setItemDraft(d => ({ ...d, values: { ...d.values, [def.id]: { ...v, text: e.target.value } } }))} />
-                          </label>
-                        )
-                        if (def.type === 'number') return (
-                          <label key={def.id} style={{ ...labelStyle, flex: 1, minWidth: 160 }}>
-                            {def.name}
-                            <input style={inputStyle} type="number" value={v.number ?? ''} onChange={e => setItemDraft(d => ({ ...d, values: { ...d.values, [def.id]: { ...v, number: e.target.value } } }))} />
-                          </label>
-                        )
-                        return (
-                          <label key={def.id} style={{ ...labelStyle, flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 40 }}>
-                            <input type="checkbox" checked={v.boolean ?? false} onChange={e => setItemDraft(d => ({ ...d, values: { ...d.values, [def.id]: { ...v, boolean: e.target.checked } } }))} style={{ width: 20, height: 20 }} />
-                            <span>{def.name}</span>
-                          </label>
-                        )
-                      })}
-                    </div>
-                  )}
+              <div key={item.id} className={`flex items-center justify-between gap-3 rounded-[var(--radius-md)] border border-border bg-card px-4 py-3 ${item.active ? '' : 'opacity-55'}`}>
+                <div className="min-w-0">
+                  <p className="m-0 text-[0.9375rem] font-bold text-foreground">
+                    {item.name}
+                    {item.out_of_stock === 1 && <span className="font-semibold text-muted-foreground"> · out of stock</span>}
+                    {item.active ? '' : ' · inactive'}
+                  </p>
+                  <p className="m-0 mt-0.5 text-[0.8125rem] text-muted-foreground">
+                    Sell {fmt.format(item.selling_price_cents)} · Cost {fmt.format(item.cost_price_cents)}
+                  </p>
                 </div>
-              ) : (
-                <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-surface)', opacity: item.active ? 1 : 0.55 }}>
-                  <div style={{ minWidth: 0 }}>
-                    <p style={{ fontWeight: 700, fontSize: '0.9375rem', margin: 0, color: 'var(--color-text-primary)' }}>
-                      {item.name}
-                      {item.out_of_stock === 1 && <span style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}> · out of stock</span>}
-                      {item.active ? '' : ' · inactive'}
-                    </p>
-                    <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)', margin: '2px 0 0' }}>
-                      Sell {fmt.format(item.selling_price_cents / 100)} · Cost {fmt.format(item.cost_price_cents / 100)}
-                    </p>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <button style={btnGhost} onClick={() => toggleOutOfStock(item)}>{item.out_of_stock === 1 ? 'In Stock' : 'Out of Stock'}</button>
-                    <button style={btnGhost} onClick={() => toggleItemActive(item)}>{item.active ? 'Deactivate' : 'Activate'}</button>
-                    <button style={btnPrimary} onClick={() => startEditItem(item)}>Edit</button>
-                    <button style={btnDanger} onClick={() => deleteItem(item)}>Delete</button>
-                  </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button variant="outline" className="h-10 border-border bg-card font-semibold" onClick={() => toggleOutOfStock(item)}>{item.out_of_stock === 1 ? 'In Stock' : 'Out of Stock'}</Button>
+                  <Button variant="outline" className="h-10 border-border bg-card font-semibold" onClick={() => toggleItemActive(item)}>{item.active ? 'Deactivate' : 'Activate'}</Button>
+                  <Button className="h-10 bg-primary font-semibold" onClick={() => openEditItem(item)}>Edit</Button>
+                  <Button variant="outline" className="h-10 border-destructive text-destructive" onClick={() => askConfirm({ title: `Delete "${item.name}"?`, description: 'Sales history referencing it will be kept (item deactivated).', action: () => deleteItem(item) })}>Delete</Button>
                 </div>
-              )
+              </div>
             ))}
-            {!itemsLoading && menuItems.length === 0 && <p style={{ color: 'var(--color-text-secondary)', fontWeight: 600, fontSize: '0.9375rem' }}>No items in this category yet.</p>}
+            {!itemsLoading && menuItems.length === 0 && <p className="text-[0.9375rem] font-semibold text-muted-foreground">No items in this category yet.</p>}
           </div>
         )}
 
         {menuCatId != null && (
-          <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <p style={{ fontWeight: 700, fontSize: '0.9375rem', margin: 0, color: 'var(--color-text-primary)' }}>Add item</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 8 }}>
-              <input style={inputStyle} placeholder="Name" value={newItem.name} onChange={e => setNewItem(i => ({ ...i, name: e.target.value }))} />
-              <input style={inputStyle} type="number" min="0" placeholder="Selling (UGX)" value={newItem.selling} onChange={e => setNewItem(i => ({ ...i, selling: e.target.value }))} />
-              <input style={inputStyle} type="number" min="0" placeholder="Cost (UGX)" value={newItem.cost} onChange={e => setNewItem(i => ({ ...i, cost: e.target.value }))} />
-            </div>
-            <div>
-              <button style={btnPrimary} onClick={addItem}>Add Item</button>
-            </div>
+          <div className="flex flex-col gap-3 border-t border-border pt-4">
+            <Button className="h-10 w-fit bg-primary font-semibold" onClick={openAddItem}>+ Add Item</Button>
           </div>
         )}
         {itemStatus && <StatusLine type={itemStatus.type} text={itemStatus.text} />}
@@ -595,24 +472,189 @@ export function SettingsPage() {
 
       {/* Change PIN */}
       <Section title="Change PIN" subtitle="Your 4-digit security PIN for logging in.">
-        <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <label style={labelStyle}>Current PIN<input style={pinInput} type="password" inputMode="numeric" maxLength={4} value={oldPin} onChange={e => setOldPin(e.target.value.replace(/\D/g, ''))} /></label>
-          <label style={labelStyle}>New PIN<input style={pinInput} type="password" inputMode="numeric" maxLength={4} value={newPin} onChange={e => setNewPin(e.target.value.replace(/\D/g, ''))} /></label>
-          <label style={labelStyle}>Confirm new PIN<input style={pinInput} type="password" inputMode="numeric" maxLength={4} value={confirmPin} onChange={e => setConfirmPin(e.target.value.replace(/\D/g, ''))} /></label>
-          <button style={btnPrimary} onClick={changePin}>Change PIN</button>
+        <div>
+          <Button className="h-10 w-fit bg-primary font-semibold" onClick={() => { setOldPin(''); setNewPin(''); setConfirmPin(''); setPinStatus(null); setPinOpen(true) }}>Change PIN</Button>
         </div>
-        {pinStatus && <StatusLine type={pinStatus.type} text={pinStatus.text} />}
+        {pinStatus && pinStatus.type === 'success' && <StatusLine type="success" text={pinStatus.text} />}
       </Section>
 
       {/* Backup */}
       <Section title="Backup" subtitle="Export a full copy of your database or restore from a previous backup.">
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <button style={{ ...btnPrimary, minWidth: 140 }} onClick={exportBackup} disabled={backupBusy}>Export Backup</button>
-          <button style={btnDangerSolid} onClick={importBackup} disabled={backupBusy}>Import Backup</button>
+        <div className="flex flex-wrap gap-3">
+          <Button className="h-10 min-w-[140px] bg-primary font-semibold" onClick={exportBackup} disabled={backupBusy}>Export Backup</Button>
+          <Button className="h-10 min-w-[140px] bg-destructive font-semibold text-white hover:bg-destructive/80" onClick={() => askConfirm({ title: 'Import backup?', description: 'Importing a backup will REPLACE all current data in this app. Continue?',
+            confirmText: 'Import',
+            action: importBackup })} disabled={backupBusy}>Import Backup</Button>
         </div>
         {backupBusy && <StatusLine type="info" text="Working..." />}
         {backupStatus && <StatusLine type={backupStatus.type} text={backupStatus.text} />}
       </Section>
+
+      {/* Category modal */}
+      <Dialog open={categoryModal != null} onOpenChange={o => { if (!o) setCategoryModal(null) }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{categoryModal?.mode === 'edit' ? 'Edit Category' : 'Add Category'}</DialogTitle>
+            <DialogDescription>
+              {categoryModal?.mode === 'edit' ? 'Update the category details.' : 'Create a new menu category.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            {categoryStatus?.type === 'error' && <StatusLine type="error" text={categoryStatus.text} />}
+            <div className="grid grid-cols-2 gap-4">
+              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">Name<Input className={inputClass} value={categoryDraft.name} onChange={e => setCategoryDraft(d => ({ ...d, name: e.target.value }))} /></Label>
+              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">Sort order<Input className={inputClass} type="number" value={categoryDraft.sort_order} onChange={e => setCategoryDraft(d => ({ ...d, sort_order: e.target.value }))} /></Label>
+            </div>
+            <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">Kind
+              <Select value={categoryDraft.kind} onValueChange={v => setCategoryDraft(d => ({ ...d, kind: v }))}>
+                <SelectTrigger className={selectClass}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="priced">Priced</SelectItem>
+                  <SelectItem value="free">Free</SelectItem>
+                </SelectContent>
+              </Select>
+            </Label>
+            <DialogFooter>
+              <Button type="button" variant="outline" className="border-border bg-card font-semibold" onClick={() => setCategoryModal(null)}>Cancel</Button>
+              <Button type="button" className="bg-primary font-semibold" onClick={submitCategory}>{categoryModal?.mode === 'edit' ? 'Save' : 'Add Category'}</Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Attribute modal */}
+      <Dialog open={attrModal != null} onOpenChange={o => { if (!o) setAttrModal(null) }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{attrModal?.mode === 'edit' ? 'Edit Attribute' : 'Add Attribute'}</DialogTitle>
+            <DialogDescription>
+              {attrModal?.mode === 'edit' ? 'Update the attribute details.' : 'Create a new menu attribute.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            {attrStatus?.type === 'error' && <StatusLine type="error" text={attrStatus.text} />}
+            <div className="grid grid-cols-[2fr_1fr_1fr] gap-4">
+              <Label className="flex min-w-0 flex-col gap-1 text-[0.875rem] font-semibold">Name<Input className={inputClass} value={attrDraft.name} onChange={e => setAttrDraft(d => ({ ...d, name: e.target.value }))} /></Label>
+              <Label className="flex min-w-0 flex-col gap-1 text-[0.875rem] font-semibold">Type
+                <Select value={attrDraft.type} onValueChange={v => setAttrDraft(d => ({ ...d, type: v }))}>
+                  <SelectTrigger className={selectClass}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="text">Text</SelectItem>
+                    <SelectItem value="number">Number</SelectItem>
+                    <SelectItem value="boolean">Boolean</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Label>
+              <Label className="flex min-w-0 flex-col gap-1 text-[0.875rem] font-semibold">Scope
+                <Select value={attrDraft.scope} onValueChange={v => setAttrDraft(d => ({ ...d, scope: v }))}>
+                  <SelectTrigger className={selectClass}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All categories</SelectItem>
+                    {categories.filter(c => c.active).map(c => (
+                      <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Label>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" className="border-border bg-card font-semibold" onClick={() => setAttrModal(null)}>Cancel</Button>
+              <Button type="button" className="bg-primary font-semibold" onClick={submitAttr}>{attrModal?.mode === 'edit' ? 'Save' : 'Add Attribute'}</Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Item modal */}
+      <Dialog open={itemModal != null} onOpenChange={o => { if (!o) setItemModal(null) }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{itemModal?.mode === 'edit' ? 'Edit Item' : 'Add Item'}</DialogTitle>
+            <DialogDescription>
+              {categories.find(c => c.id === menuCatId)?.name ?? 'Menu item'} — {itemModal?.mode === 'edit' ? 'update details' : `sell & cost are whole UGX amounts (e.g. 8000 = UGX 8,000)`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            {itemStatus?.type === 'error' && <StatusLine type="error" text={itemStatus.text} />}
+            <div className="grid grid-cols-[2fr_1fr_1fr] gap-4">
+              <Label className="flex min-w-0 flex-col gap-1 text-[0.875rem] font-semibold">Name<Input className={inputClass} value={itemDraft.name} onChange={e => setItemDraft(d => ({ ...d, name: e.target.value }))} /></Label>
+              <Label className="flex min-w-0 flex-col gap-1 text-[0.875rem] font-semibold">Selling (UGX)<Input className={inputClass} type="number" min="0" value={itemDraft.selling} onChange={e => setItemDraft(d => ({ ...d, selling: e.target.value }))} /></Label>
+              <Label className="flex min-w-0 flex-col gap-1 text-[0.875rem] font-semibold">Cost (UGX)<Input className={inputClass} type="number" min="0" value={itemDraft.cost} onChange={e => setItemDraft(d => ({ ...d, cost: e.target.value }))} /></Label>
+            </div>
+            {itemModal?.mode === 'edit' && categoryDefs.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {categoryDefs.map(def => {
+                  const v = itemDraft.values[def.id] ?? {}
+                  if (def.type === 'text') return (
+                    <Label key={def.id} className="flex min-w-[160px] flex-1 flex-col gap-1 text-[0.875rem] font-semibold">
+                      {def.name}
+                      <Input className={inputClass} value={v.text ?? ''} onChange={e => setItemDraft(d => ({ ...d, values: { ...d.values, [def.id]: { ...v, text: e.target.value } } }))} />
+                    </Label>
+                  )
+                  if (def.type === 'number') return (
+                    <Label key={def.id} className="flex min-w-[160px] flex-1 flex-col gap-1 text-[0.875rem] font-semibold">
+                      {def.name}
+                      <Input className={inputClass} type="number" value={v.number ?? ''} onChange={e => setItemDraft(d => ({ ...d, values: { ...d.values, [def.id]: { ...v, number: e.target.value } } }))} />
+                    </Label>
+                  )
+                  return (
+                    <Label key={def.id} className="flex min-h-10 flex-row items-center gap-2 text-[0.875rem] font-semibold">
+                      <Checkbox checked={v.boolean ?? false} onCheckedChange={(checked) => setItemDraft(d => ({ ...d, values: { ...d.values, [def.id]: { ...v, boolean: checked === true } } }))} />
+                      <span>{def.name}</span>
+                    </Label>
+                  )
+                })}
+              </div>
+            )}
+            <DialogFooter>
+              <Button type="button" variant="outline" className="border-border bg-card font-semibold" onClick={() => setItemModal(null)}>Cancel</Button>
+              <Button type="button" className="bg-primary font-semibold" onClick={submitItem}>{itemModal?.mode === 'edit' ? 'Save' : 'Add Item'}</Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* PIN modal */}
+      <Dialog open={pinOpen} onOpenChange={o => { if (!o) setPinOpen(false) }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Change PIN</DialogTitle>
+            <DialogDescription>Enter your current PIN and choose a new 4-digit PIN.</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            {pinStatus?.type === 'error' && <StatusLine type="error" text={pinStatus.text} />}
+            <div className="flex flex-wrap items-end gap-4">
+              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">Current PIN<Input className={pinClass} type="password" inputMode="numeric" maxLength={4} value={oldPin} onChange={e => setOldPin(e.target.value.replace(/\D/g, ''))} /></Label>
+              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">New PIN<Input className={pinClass} type="password" inputMode="numeric" maxLength={4} value={newPin} onChange={e => setNewPin(e.target.value.replace(/\D/g, ''))} /></Label>
+              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">Confirm new PIN<Input className={pinClass} type="password" inputMode="numeric" maxLength={4} value={confirmPin} onChange={e => setConfirmPin(e.target.value.replace(/\D/g, ''))} /></Label>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" className="border-border bg-card font-semibold" onClick={() => setPinOpen(false)}>Cancel</Button>
+              <Button type="button" className="bg-primary font-semibold" onClick={changePin}>Change PIN</Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmDialog
+        open={confirmState != null}
+        onOpenChange={o => { if (!o) setConfirmState(null) }}
+        title={confirmState?.title ?? ''}
+        description={confirmState?.description}
+        destructive={confirmState?.destructive ?? true}
+        confirmText={confirmState?.confirmText ?? 'Delete'}
+        onConfirm={() => {
+          const action = confirmState?.action
+          setConfirmState(null)
+          action?.()
+        }}
+      />
     </div>
   )
 }

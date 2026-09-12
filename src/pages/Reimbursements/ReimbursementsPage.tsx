@@ -2,6 +2,20 @@ import { useState } from 'react'
 import { useReimbursements } from '../../hooks/useReimbursements'
 import { useAuth } from '../../context/AuthContext'
 import { useTill } from '../../context/TillContext'
+import { Button } from '../../components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog'
+import { Input } from '../../components/ui/input'
+import { Label } from '../../components/ui/label'
+import { Badge } from '../../components/ui/badge'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../components/ui/select'
+import { DatePicker } from '../../components/ui/date-picker'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
 import type { Reimbursement } from '../../../shared/types'
 
 const fmt = new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 })
@@ -21,6 +35,7 @@ export function ReimbursementsPage() {
   const [paidTo, setPaidTo] = useState<'till' | 'mpesa'>('till')
   const [error, setError] = useState('')
   const [processing, setProcessing] = useState(false)
+  const [deleteId, setDeleteId] = useState<number | null>(null)
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -52,169 +67,149 @@ export function ReimbursementsPage() {
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Delete this reimbursement?')) return
     await remove(id)
   }
 
   const totalCents = reimbursements.reduce((sum, r) => sum + r.amount_cents, 0)
 
-  const inputStyle: React.CSSProperties = {
-    padding: '6px 10px',
-    borderRadius: 'var(--radius-md)',
-    border: '1px solid var(--color-border)',
-    background: 'var(--color-bg)',
-    color: 'var(--color-text)',
-    fontSize: '0.875rem',
-  }
-
-  const labelStyle: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 4,
-    fontSize: '0.875rem',
-    fontWeight: 600,
-  }
+  const selectClass = 'h-10 w-full rounded-[var(--radius-md)]'
+  const inputClass = 'h-10 rounded-[var(--radius-md)] bg-background text-[0.875rem]'
 
   return (
-    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <div className="flex flex-col gap-4 p-6">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Owner Reimbursements</h1>
-          <p style={{ fontSize: '0.875rem', color: 'var(--color-muted)', margin: 0 }}>
+          <h1 className="text-2xl font-bold">Owner Reimbursements</h1>
+          <p className="m-0 text-[0.875rem] text-muted-foreground">
             Record when the business pays back the owner for personal money spent on business expenses
           </p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          style={{ padding: '8px 16px', borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--color-primary)', color: '#fff', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer' }}
-        >
+        <Button onClick={() => setShowForm(true)} className="bg-primary font-semibold">
           + New Reimbursement
-        </button>
+        </Button>
       </div>
 
       {/* Date range filter */}
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <label style={{ fontSize: '0.875rem', fontWeight: 600 }}>From</label>
-        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={inputStyle} />
-        <label style={{ fontSize: '0.875rem', fontWeight: 600 }}>To</label>
-        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} style={inputStyle} />
-        <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.9375rem' }}>
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="text-sm font-semibold">From</label>
+        <DatePicker value={startDate} onValueChange={setStartDate} />
+        <label className="text-sm font-semibold">To</label>
+        <DatePicker value={endDate} onValueChange={setEndDate} />
+        <span className="ml-auto text-[0.9375rem] font-bold">
           Total: {fmt.format(totalCents / 100)}
         </span>
       </div>
 
       {/* Create form modal */}
-      {showForm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
-          <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', padding: 24, width: '100%', maxWidth: 520, border: '1px solid var(--color-border)' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 16 }}>New Reimbursement</h2>
-            <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {error && <p style={{ color: 'var(--color-danger)', fontWeight: 600 }}>{error}</p>}
+      <Dialog open={showForm} onOpenChange={(o) => { if (!o) { setShowForm(false); setError('') } }}>
+        <DialogContent className="max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">New Reimbursement</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreate} className="flex flex-col gap-4">
+            {error && <p className="font-semibold text-destructive">{error}</p>}
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <label style={labelStyle}>
-                  Date
-                  <input type="date" value={date} onChange={e => setDate(e.target.value)} style={inputStyle} />
-                </label>
+            <div className="grid grid-cols-2 gap-4">
+              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+                Date
+                <DatePicker value={date} onValueChange={setDate} />
+              </Label>
 
-                <label style={labelStyle}>
-                  Amount (UGX)
-                  <input type="number" placeholder="0" value={amount} onChange={e => setAmount(e.target.value)} style={inputStyle} min="0" step="0.01" />
-                </label>
-              </div>
+              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+                Amount (UGX)
+                <Input type="number" placeholder="0" value={amount} onChange={e => setAmount(e.target.value)} className={inputClass} min="0" step="0.01" />
+              </Label>
+            </div>
 
-              <label style={labelStyle}>
-                Description
-                <input
-                  type="text"
-                  placeholder="e.g. Reimburse groceries bought with personal money"
-                  value={description}
-                  onChange={e => setDescription(e.target.value)}
-                  style={inputStyle}
-                />
-              </label>
+            <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+              Description
+              <Input
+                type="text"
+                placeholder="e.g. Reimburse groceries bought with personal money"
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                className={inputClass}
+              />
+            </Label>
 
-              <label style={labelStyle}>
-                Paid From (cash source)
-                <select value={paidTo} onChange={e => setPaidTo(e.target.value as 'till' | 'mpesa')} style={inputStyle}>
-                  <option value="till">Till (Cash)</option>
-                  <option value="mpesa">M-Pesa</option>
-                </select>
-              </label>
+            <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+              Paid From (cash source)
+              <Select value={paidTo} onValueChange={v => setPaidTo(v as 'till' | 'mpesa')}>
+                <SelectTrigger className={selectClass}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="till">Till (Cash)</SelectItem>
+                  <SelectItem value="mpesa">M-Pesa</SelectItem>
+                </SelectContent>
+              </Select>
+            </Label>
 
-              {paidTo === 'till' && currentTill && (
-                <p style={{ fontSize: '0.8125rem', color: 'var(--color-muted)', margin: 0 }}>
-                  Linked to Till Session #{currentTill.id}
-                </p>
-              )}
+            {paidTo === 'till' && currentTill && (
+              <p className="m-0 text-[0.8125rem] text-muted-foreground">
+                Linked to Till Session #{currentTill.id}
+              </p>
+            )}
 
-              {paidTo === 'till' && !currentTill && (
-                <p style={{ fontSize: '0.8125rem', color: 'var(--color-warning)', margin: 0, fontWeight: 600 }}>
-                  No till session open. Consider using M-Pesa instead, or open the till first.
-                </p>
-              )}
+            {paidTo === 'till' && !currentTill && (
+              <p className="m-0 text-[0.8125rem] font-semibold text-warning">
+                No till session open. Consider using M-Pesa instead, or open the till first.
+              </p>
+            )}
 
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                <button type="button" onClick={() => { setShowForm(false); setError('') }} style={{ padding: '8px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'transparent', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem' }}>
-                  Cancel
-                </button>
-                <button type="submit" disabled={processing} style={{ padding: '8px 16px', borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--color-primary)', color: '#fff', fontWeight: 600, fontSize: '0.875rem', cursor: processing ? 'not-allowed' : 'pointer', opacity: processing ? 0.5 : 1 }}>
-                  {processing ? 'Saving...' : 'Save'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            <div className="flex justify-end gap-2">
+              <Button type="button" onClick={() => { setShowForm(false); setError('') }} variant="outline" className="bg-transparent font-semibold">
+                Cancel
+              </Button>
+              <Button type="submit" disabled={processing} className="bg-primary font-semibold">
+                {processing ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* List */}
       {loading ? (
-        <p style={{ textAlign: 'center', color: 'var(--color-muted)' }}>Loading...</p>
+        <p className="text-center text-muted-foreground">Loading...</p>
       ) : reimbursements.length === 0 ? (
-        <p style={{ textAlign: 'center', color: 'var(--color-muted)', padding: 48, fontSize: '1.125rem' }}>No reimbursements recorded.</p>
+        <p className="p-12 text-center text-lg text-muted-foreground">No reimbursements recorded.</p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="flex flex-col gap-2">
           {reimbursements.map((r: Reimbursement) => (
-            <div key={r.id} style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '12px 16px',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--color-border)',
-              background: 'var(--color-surface)',
-            }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{
-                    fontSize: '0.75rem',
-                    padding: '2px 8px',
-                    borderRadius: 'var(--radius-sm)',
-                    background: r.paid_to === 'till' ? 'var(--color-primary)' : '#4CAF50',
-                    color: '#fff',
-                    fontWeight: 600,
-                    textTransform: 'capitalize',
-                  }}>
+            <div key={r.id} className="flex items-center justify-between rounded-[var(--radius-md)] border border-border bg-card px-4 py-3">
+              <div className="flex flex-1 flex-col gap-0.5">
+                <div className="flex items-center gap-2">
+                  <Badge className={r.paid_to === 'till' ? 'bg-primary text-white' : 'bg-[#4CAF50] text-white'}>
                     {r.paid_to}
-                  </span>
+                  </Badge>
                   {r.till_session_id && (
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>Till #{r.till_session_id}</span>
+                    <span className="text-xs text-muted-foreground">Till #{r.till_session_id}</span>
                   )}
                 </div>
-                <p style={{ fontSize: '0.875rem', color: 'var(--color-muted)', margin: 0 }}>{r.description}</p>
+                <p className="m-0 text-[0.875rem] text-muted-foreground">{r.description}</p>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontWeight: 700, fontSize: '0.9375rem' }}>{fmt.format(r.amount_cents / 100)}</span>
-                <span style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>{r.date}</span>
-                <button onClick={() => handleDelete(r.id)} style={{ padding: '4px 8px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-danger)', background: 'transparent', color: 'var(--color-danger)', cursor: 'pointer', fontSize: '0.75rem' }}>
+              <div className="flex items-center gap-3">
+                <span className="text-[0.9375rem] font-bold">{fmt.format(r.amount_cents / 100)}</span>
+                <span className="text-xs text-muted-foreground">{r.date}</span>
+                <Button onClick={() => setDeleteId(r.id)} variant="outline" size="xs" className="border-destructive text-destructive">
                   Delete
-                </button>
+                </Button>
               </div>
             </div>
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={deleteId != null}
+        onOpenChange={o => { if (!o) setDeleteId(null) }}
+        title="Delete this reimbursement?"
+        destructive
+        confirmText="Delete"
+        onConfirm={() => { if (deleteId != null) handleDelete(deleteId); setDeleteId(null) }}
+      />
     </div>
   )
 }

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
+import { Button } from './ui/button'
 import { useTill } from '../context/TillContext'
 import { OpenTillModal } from '../pages/Till/OpenTillModal'
 import { CloseTillModal } from '../pages/Till/CloseTillModal'
@@ -12,11 +13,11 @@ export function AppLayout() {
   const [showCloseTill, setShowCloseTill] = useState(false)
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+    <div className="flex h-screen overflow-hidden">
       <Sidebar />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div className="flex flex-1 flex-col overflow-hidden">
         <Header onOpenTill={() => setShowOpenTill(true)} />
-        <main style={{ flex: 1, overflow: 'auto', background: 'var(--color-bg)' }}>
+        <main className="flex-1 overflow-auto bg-background">
           <Outlet />
         </main>
       </div>
@@ -36,27 +37,13 @@ export function AppLayout() {
       )}
 
       {currentTill && (
-        <button
+        <Button
           onClick={() => setShowCloseTill(true)}
-          style={{
-            position: 'fixed',
-            bottom: 24,
-            right: 24,
-            padding: '12px 20px',
-            borderRadius: 'var(--radius-md)',
-            border: '1px solid var(--color-danger)',
-            background: 'var(--color-surface)',
-            color: 'var(--color-danger)',
-            fontWeight: 600,
-            fontSize: '0.9375rem',
-            cursor: 'pointer',
-            minHeight: 48,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-            zIndex: 100,
-          }}
+          variant="outline"
+          className="fixed right-6 bottom-6 z-100 min-h-12 rounded-[var(--radius-md)] border-destructive bg-card px-5 text-[0.9375rem] font-semibold text-destructive shadow-md"
         >
           Close Till
-        </button>
+        </Button>
       )}
     </div>
   )
