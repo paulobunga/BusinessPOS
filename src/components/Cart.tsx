@@ -1,3 +1,4 @@
+import { Settings2 } from 'lucide-react'
 import { CartItem } from './CartItem'
 import { Button } from './ui/button'
 import type { CartLine } from '../hooks/cartItems'
@@ -12,12 +13,11 @@ interface CartProps {
   onIncrement: (index: number) => void
   onDecrement: (index: number) => void
   onClear: () => void
-  onSetDiscount: () => void
-  onDebtSale: () => void
+  onOpenOptions: () => void
   onCompleteSale: () => void
 }
 
-export function Cart({ items, subtotal, discountCents, discountReason, total, onRemoveItem, onIncrement, onDecrement, onClear, onSetDiscount, onDebtSale, onCompleteSale }: CartProps) {
+export function Cart({ items, subtotal, discountCents, discountReason, total, onRemoveItem, onIncrement, onDecrement, onClear, onOpenOptions, onCompleteSale }: CartProps) {
   const fmt = (n: number) =>
     new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 }).format(n)
 
@@ -25,14 +25,25 @@ export function Cart({ items, subtotal, discountCents, discountReason, total, on
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-border px-1 pb-3">
         <h2 className="text-xl font-bold">Current Order</h2>
-        <Button
-          onClick={onClear}
-          disabled={items.length === 0}
-          variant="ghost"
-          className="h-11 px-3 font-bold text-destructive hover:bg-destructive/10 hover:text-destructive"
-        >
-          Clear All
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={onClear}
+            disabled={items.length === 0}
+            variant="ghost"
+            className="h-11 px-3 font-bold text-destructive hover:bg-destructive/10 hover:text-destructive"
+          >
+            Clear All
+          </Button>
+          <Button
+            onClick={onOpenOptions}
+            variant="outline"
+            size="icon"
+            aria-label="Order options"
+            className="h-11 w-11 rounded-full bg-card"
+          >
+            <Settings2 className="h-5 w-5" />
+          </Button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-auto px-1 py-2">
@@ -68,20 +79,6 @@ export function Cart({ items, subtotal, discountCents, discountReason, total, on
             <span className="text-2xl font-extrabold">Total</span>
             <span className="text-2xl font-extrabold text-primary">{fmt(total)}</span>
           </div>
-        </div>
-
-        <div className="flex gap-2">
-          <Button onClick={onSetDiscount} variant="outline" className="h-11 flex-1 bg-card font-semibold">
-            Discount
-          </Button>
-          <Button
-            onClick={onDebtSale}
-            disabled={items.length === 0}
-            variant="outline"
-            className="h-11 flex-1 border-warning bg-card font-bold text-warning"
-          >
-            Debt
-          </Button>
         </div>
 
         <Button

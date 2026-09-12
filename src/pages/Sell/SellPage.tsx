@@ -6,6 +6,7 @@ import { useCart } from '../../hooks/useCart'
 import { ItemCard } from '../../components/ItemCard'
 import { AddOnSelector } from '../../components/AddOnSelector'
 import { Cart } from '../../components/Cart'
+import { CartOptionsModal } from '../../components/CartOptionsModal'
 import { DiscountModal } from '../../components/DiscountModal'
 import { DebtModal } from '../../components/DebtModal'
 import { Button } from '../../components/ui/button'
@@ -25,6 +26,7 @@ export function SellPage() {
   const [selectedItem, setSelectedItem] = useState<MenuItemWithCategory | null>(null)
   const [showDiscount, setShowDiscount] = useState(false)
   const [showDebt, setShowDebt] = useState(false)
+  const [showOptions, setShowOptions] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -124,10 +126,10 @@ export function SellPage() {
   )
 
   return (
-    <div className="flex flex-col gap-4 p-6">
+    <div className="flex h-full min-h-0 flex-col gap-4 p-6">
       <h1 className="text-2xl font-bold">Point of Sale</h1>
 
-      <div className="flex flex-col gap-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-4">
         {/* Category chips */}
         <div className="flex flex-wrap gap-2">
           {activeCategories.map(c => {
@@ -149,29 +151,31 @@ export function SellPage() {
           })}
         </div>
 
-        <div className="flex gap-6">
+        <div className="flex min-h-0 flex-1 gap-6">
           {/* Item Grid */}
-          <div className="flex-[2]">
+          <div className="flex min-w-0 flex-[2] flex-col">
             <h2 className="mb-4 text-xl font-bold">Select {selectedCategory?.name ?? 'Item'}</h2>
-            <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(180px,1fr))]">
-              {categoryItems.map(item => (
-                <ItemCard
-                  key={item.id}
-                  item={item}
-                  selected={selectedItem?.id === item.id}
-                  onSelect={handleItemSelect}
-                />
-              ))}
-            </div>
-
-            {selectedItem && freeCategories.length > 0 && (
-              <div className="mt-4 rounded-[var(--radius-lg)] border border-border bg-card p-4">
-                <p className="font-semibold">
-                  {selectedItem.name} — pick a free add-on
-                </p>
-                <AddOnSelector addOns={freeItems} onSelect={handleAddOnSelect} />
+            <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+              <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(180px,1fr))]">
+                {categoryItems.map(item => (
+                  <ItemCard
+                    key={item.id}
+                    item={item}
+                    selected={selectedItem?.id === item.id}
+                    onSelect={handleItemSelect}
+                  />
+                ))}
               </div>
-            )}
+
+              {selectedItem && freeCategories.length > 0 && (
+                <div className="mt-4 rounded-[var(--radius-lg)] border border-border bg-card p-4">
+                  <p className="font-semibold">
+                    {selectedItem.name} — pick a free add-on
+                  </p>
+                  <AddOnSelector addOns={freeItems} onSelect={handleAddOnSelect} />
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Cart */}
@@ -195,13 +199,28 @@ export function SellPage() {
               onIncrement={cart.increment}
               onDecrement={cart.decrement}
               onClear={cart.clearCart}
-              onSetDiscount={() => setShowDiscount(true)}
-              onDebtSale={() => setShowDebt(true)}
+              onOpenOptions={() => setShowOptions(true)}
               onCompleteSale={() => requestSale('cash')}
             />
           </div>
         </div>
       </div>
+
+      {showOptions && (
+        <CartOptionsModal
+          open
+          hasItems={cart.items.length > 0}
+          onDiscount={() => {
+            setShowOptions(false)
+            setShowDiscount(true)
+          }}
+          onDebt={() => {
+            setShowOptions(false)
+            setShowDebt(true)
+          }}
+          onClose={() => setShowOptions(false)}
+        />
+      )}
 
       {showDiscount && (
         <DiscountModal
