@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from '../../components/ui/select'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/tabs'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
 import { DatePicker } from '../../components/ui/date-picker'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover'
 import { Check, ChevronsUpDown, Package, Plus, Search, X } from 'lucide-react'
@@ -306,14 +307,22 @@ export function InventoryPage() {
         </p>
       </div>
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
-        <TabsList className="w-fit">
-          <TabsTrigger value="raw" className="h-8 px-4">Raw Inputs</TabsTrigger>
-          <TabsTrigger value="meals" className="h-8 px-4">Meals</TabsTrigger>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="w-full">
+        <TabsList>
+          <TabsTrigger value="raw">Raw Inputs</TabsTrigger>
+          <TabsTrigger value="meals">Meals</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="raw" className="flex flex-col gap-4">
-          {/* Date filter for the list */}
+        <TabsContent value="raw">
+          <Card>
+            <CardHeader>
+              <CardTitle>Raw Inputs</CardTitle>
+              <CardDescription>
+                What you buy (e.g. a whole chicken). Record purchases against these, then yield portions into meals.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              {/* Date filter for the list */}
           <div className="flex flex-wrap items-end gap-4">
             <Label className="flex w-44 flex-col gap-1.5 text-[0.875rem] font-semibold">
               Viewing date
@@ -366,10 +375,20 @@ export function InventoryPage() {
               ))}
             </div>
           )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
-        <TabsContent value="meals" className="flex flex-col gap-4">
-          <div className="ml-auto">
+        <TabsContent value="meals">
+          <Card>
+            <CardHeader>
+              <CardTitle>Meals</CardTitle>
+              <CardDescription>
+                What you sell on the POS. Each meal shows its selling price and current cost per serving.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              <div className="ml-auto">
             <Button onClick={() => { setMealError(''); setMealCatId(mealCats[0] ? String(mealCats[0].id) : ''); setMealOpen(true) }} className="bg-primary font-semibold">
               + Add Meal
             </Button>
@@ -412,6 +431,8 @@ export function InventoryPage() {
               ))}
             </div>
           )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 

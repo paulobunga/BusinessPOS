@@ -2,8 +2,9 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useReports, type ViewMode } from '../../hooks/useReports'
 import { Button } from '../../components/ui/button'
-import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
 import { DatePicker } from '../../components/ui/date-picker'
 import type { DailyReport, MonthlyReport, ItemPerformance, DebtSummaryItem } from '../../../shared/types'
 
@@ -256,94 +257,147 @@ export function ReportsPage() {
 
   return (
     <div className="flex max-w-960 flex-col gap-5 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Reports &amp; P&amp;L</h1>
-        <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
-          <TabsList>
-            <TabsTrigger value="daily">Daily</TabsTrigger>
-            <TabsTrigger value="monthly">Monthly</TabsTrigger>
-            <TabsTrigger value="custom">Custom</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
+      <h1 className="text-2xl font-bold">Reports &amp; P&amp;L</h1>
 
-      {/* Date controls */}
-      {viewMode === 'daily' && (
-        <div className="flex flex-wrap items-center gap-3">
-          <Button onClick={() => navigateDay(-1)} variant="outline" size="sm" className="bg-card text-[0.875rem]">
-            ◀ Prev
-          </Button>
-          <DatePicker className="w-44" value={selectedDate} onValueChange={setSelectedDate} />
-          <Button onClick={() => setSelectedDate(new Date().toISOString().slice(0, 10))} variant="outline" size="sm" className="bg-card text-[0.875rem] font-semibold">
-            Today
-          </Button>
-          <Button onClick={() => navigateDay(1)} variant="outline" size="sm" className="bg-card text-[0.875rem]">
-            Next ▶
-          </Button>
-        </div>
-      )}
+      {/* Period picker */}
+      <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)} className="w-full">
+        <TabsList>
+          <TabsTrigger value="daily">Daily</TabsTrigger>
+          <TabsTrigger value="monthly">Monthly</TabsTrigger>
+          <TabsTrigger value="custom">Custom</TabsTrigger>
+        </TabsList>
 
-      {viewMode === 'custom' && (
-        <div className="flex flex-wrap items-end gap-4">
-          <label className="flex w-44 flex-col gap-1.5 text-[0.875rem] font-semibold">
-            From
-            <DatePicker value={startDate} onValueChange={setStartDate} />
-          </label>
-          <label className="flex w-44 flex-col gap-1.5 text-[0.875rem] font-semibold">
-            To
-            <DatePicker value={endDate} onValueChange={setEndDate} />
-          </label>
-        </div>
-      )}
+        <TabsContent value="daily">
+          <Card>
+            <CardHeader>
+              <CardTitle>Daily report</CardTitle>
+              <CardDescription>Revenue, food cost, waste, expenses and profit for a single day.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-wrap items-center gap-3">
+              <Button onClick={() => navigateDay(-1)} variant="outline" size="sm" className="bg-card text-[0.875rem]">
+                ◀ Prev
+              </Button>
+              <DatePicker className="w-44" value={selectedDate} onValueChange={setSelectedDate} />
+              <Button onClick={() => setSelectedDate(new Date().toISOString().slice(0, 10))} variant="outline" size="sm" className="bg-card text-[0.875rem] font-semibold">
+                Today
+              </Button>
+              <Button onClick={() => navigateDay(1)} variant="outline" size="sm" className="bg-card text-[0.875rem]">
+                Next ▶
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      {viewMode === 'monthly' && (
-        <div className="text-[0.875rem] text-muted-foreground">
-          Showing data for <strong>{new Date().getFullYear()}</strong>
-        </div>
-      )}
+        <TabsContent value="custom">
+          <Card>
+            <CardHeader>
+              <CardTitle>Custom range</CardTitle>
+              <CardDescription>Compare P&amp;L and item performance between two dates.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-wrap items-end gap-4">
+              <label className="flex w-44 flex-col gap-1.5 text-[0.875rem] font-semibold">
+                From
+                <DatePicker value={startDate} onValueChange={setStartDate} />
+              </label>
+              <label className="flex w-44 flex-col gap-1.5 text-[0.875rem] font-semibold">
+                To
+                <DatePicker value={endDate} onValueChange={setEndDate} />
+              </label>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="monthly">
+          <Card>
+            <CardHeader>
+              <CardTitle>Monthly report</CardTitle>
+              <CardDescription>Totals grouped by month.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="m-0 text-[0.875rem] text-muted-foreground">
+                Showing data for <strong>{new Date().getFullYear()}</strong>
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Report section */}
-      <div>
-        <Tabs value={section} onValueChange={(v) => setSection(v as Section)}>
-          <TabsList>
-            <TabsTrigger value="pnl">P&amp;L</TabsTrigger>
-            <TabsTrigger value="items">Item Performance</TabsTrigger>
-            <TabsTrigger value="receivables">Receivables</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
+      <Tabs value={section} onValueChange={(v) => setSection(v as Section)} className="w-full">
+        <TabsList>
+          <TabsTrigger value="pnl">P&amp;L</TabsTrigger>
+          <TabsTrigger value="items">Item Performance</TabsTrigger>
+          <TabsTrigger value="receivables">Receivables</TabsTrigger>
+        </TabsList>
 
-      {loading ? (
-        <p className="p-12 text-center text-muted-foreground">Loading...</p>
-      ) : section === 'pnl' ? (
-        viewMode === 'daily' ? (
-          <DayView data={dailyData} categories={categories} />
-        ) : (
-          <div className="flex flex-col gap-5">
-            <TableView
-              data={viewMode === 'monthly' ? monthlyData : dailyData}
-              label={viewMode === 'monthly' ? 'Month' : 'Date'}
-            />
-            {categories.length > 0 && (
-              <div className="rounded-[var(--radius-lg)] border border-border bg-card p-4">
-                <h3 className="mb-3 text-[0.875rem] font-bold text-muted-foreground">Expense Breakdown by Category</h3>
-                <div className="flex flex-col gap-2">
-                  {categories.map(c => (
-                    <div key={c.category} className="flex items-center justify-between">
-                      <span className="text-[0.875rem]">{c.category}</span>
-                      <span className="text-[0.875rem] font-semibold">{formatUGX(c.amount_cents)}</span>
+        <TabsContent value="pnl">
+          <Card>
+            <CardHeader>
+              <CardTitle>Profit &amp; Loss</CardTitle>
+              <CardDescription>Revenue vs food cost and other expenses.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col">
+              {loading ? (
+                <p className="p-12 text-center text-muted-foreground">Loading...</p>
+              ) : viewMode === 'daily' ? (
+                <DayView data={dailyData} categories={categories} />
+              ) : (
+                <div className="flex flex-col gap-5">
+                  <TableView
+                    data={viewMode === 'monthly' ? monthlyData : dailyData}
+                    label={viewMode === 'monthly' ? 'Month' : 'Date'}
+                  />
+                  {categories.length > 0 && (
+                    <div className="rounded-[var(--radius-lg)] border border-border bg-card p-4">
+                      <h3 className="mb-3 text-[0.875rem] font-bold text-muted-foreground">Expense Breakdown by Category</h3>
+                      <div className="flex flex-col gap-2">
+                        {categories.map(c => (
+                          <div key={c.category} className="flex items-center justify-between">
+                            <span className="text-[0.875rem]">{c.category}</span>
+                            <span className="text-[0.875rem] font-semibold">{formatUGX(c.amount_cents)}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  ))}
+                  )}
                 </div>
-              </div>
-            )}
-          </div>
-        )
-      ) : section === 'items' ? (
-        <ItemPerformanceView rows={itemPerf} />
-      ) : (
-        <ReceivablesView rows={debtSummary} />
-      )}
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="items">
+          <Card>
+            <CardHeader>
+              <CardTitle>Item Performance</CardTitle>
+              <CardDescription>Quantity sold, revenue and profit realised by each item.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col">
+              {loading ? (
+                <p className="p-12 text-center text-muted-foreground">Loading...</p>
+              ) : (
+                <ItemPerformanceView rows={itemPerf} />
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="receivables">
+          <Card>
+            <CardHeader>
+              <CardTitle>Receivables</CardTitle>
+              <CardDescription>Customers with unpaid debt.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col">
+              {loading ? (
+                <p className="p-12 text-center text-muted-foreground">Loading...</p>
+              ) : (
+                <ReceivablesView rows={debtSummary} />
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
