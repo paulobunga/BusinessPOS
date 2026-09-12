@@ -10,6 +10,7 @@ import { runCategoriesMigration } from '../db/migrations/007_categories'
 import { runMoneyWholeUgxMigration } from '../db/migrations/008_money_whole_ugx'
 import { runMenuSeedMigration } from '../db/migrations/009_menu_seed'
 import { runPurchaseYieldMigration } from '../db/migrations/010_purchase_yield'
+import { runPurchaseYieldsMigration } from '../db/migrations/011_purchase_yields'
 
 let db: Database.Database
 
@@ -34,6 +35,8 @@ describe('Full day at the restaurant (integration)', () => {
   let goat: any
   let chicken: any
   let bananaId: number
+  let wholeChicken: any
+  let boiled: any
 
   beforeAll(() => {
     db = new Database(':memory:')
@@ -49,6 +52,7 @@ describe('Full day at the restaurant (integration)', () => {
     runMoneyWholeUgxMigration(db)
     runMenuSeedMigration(db)
     runPurchaseYieldMigration(db)
+    runPurchaseYieldsMigration(db)
 
     const user = usersRepo.create('Test Manager', 'manager', '1234')
     userId = user.id as number
@@ -216,8 +220,8 @@ describe('Full day at the restaurant (integration)', () => {
     const stockRow = categoriesRepo.list().find(c => c.id === stockCat.id)!
     expect(stockRow.purchase_only).toBe(1)
 
-    const wholeChicken = itemsRepo.upsert({ category_id: stockCat.id, name: 'Whole Chicken', purchase_unit: 'whole' })
-    const boiled = itemsRepo.upsert({ category_id: chicken.category_id, name: 'Chicken (Boiled)', selling_price_cents: 10000, cost_price_cents: 5000 })
+    wholeChicken = itemsRepo.upsert({ category_id: stockCat.id, name: 'Whole Chicken', purchase_unit: 'whole' })
+    boiled = itemsRepo.upsert({ category_id: chicken.category_id, name: 'Chicken (Boiled)', selling_price_cents: 10000, cost_price_cents: 5000 })
 
     const purchase = purchasesRepo.recordPurchase(wholeChicken.id, 1, 17000, reportDate, userId, {
       unit: 'whole',
@@ -243,5 +247,31 @@ describe('Full day at the restaurant (integration)', () => {
     expect(whole).toBeDefined()
     expect(whole!.unit).toBe('whole')
     expect(whole!.yield_item_name).toBe('Chicken (Boiled)')
+  })
+
+  test('12. One purchase splits cost across multiple yielded meals by portions', () => {
+    const fried = itemsRepo.upsert({ category_id: chicken.category_id, name: 'Chicken (Fried)', selling_price_cents: 11000, cost_price_cents: 0 })
+
+    const purchase = purchasesRepo.recordPurchase(wholeChicken.id, 1, 17000, reportDate, userId, {
+      unit: 'whole',
+      yields: [
+        { itemId: boiled.id, portions: 3 },
+        { itemId: fried.id, portions: 2 },
+      ],
+    }) as any
+    expect(purchase.cost_cents).toBe(17000)
+
+    const byMeal = new Map(purchase.yields.map((y: any) => [y.name, y]))
+    const boiledYield = byMeal.get('Chicken (Boiled)')
+    const friedYield = byMeal.get('Chicken (Fried)')
+    expect(boiledYield).toBeDefined()
+    expect(friedYield).toBeDefined()
+    expect(boiledYield.portions).toBe(3)
+    expect(boiledYield.cost_cents).toBe(10200)
+    expect(friedYield.portions).toBe(2)
+    expect(friedYield.cost_cents).toBe(6800)
+
+    expect(itemsRepo.getById(boiled.id)!.cost_price_cents).toBe(3400)
+    expect(itemsRepo.getById(fried.id)!.cost_price_cents).toBe(3400)
   })
 })

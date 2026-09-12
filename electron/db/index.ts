@@ -11,6 +11,7 @@ import { runCategoriesMigration } from './migrations/007_categories.js'
 import { runMoneyWholeUgxMigration } from './migrations/008_money_whole_ugx.js'
 import { runMenuSeedMigration } from './migrations/009_menu_seed.js'
 import { runPurchaseYieldMigration } from './migrations/010_purchase_yield.js'
+import { runPurchaseYieldsMigration } from './migrations/011_purchase_yields.js'
 import { usersRepo } from './repositories/usersRepo.js'
 import { settingsRepo } from './repositories/settingsRepo.js'
 import { itemsRepo } from './repositories/itemsRepo.js'
@@ -38,6 +39,7 @@ export function getDb(): Database.Database {
     runMoneyWholeUgxMigration(db)
     runMenuSeedMigration(db)
     runPurchaseYieldMigration(db)
+    runPurchaseYieldsMigration(db)
     usersRepo.seed()
     settingsRepo.seed()
     itemsRepo.seed()

@@ -28,7 +28,7 @@ export function useInventory(date: string) {
     refresh()
   }, [refresh])
 
-  const record = useCallback(async (payload: { item_id: number; quantity: number; cost_cents: number; date: string; created_by: number | null; unit?: string; yield_item_id?: number | null; expected_yield?: number }) => {
+  const record = useCallback(async (payload: { item_id: number; quantity: number; cost_cents: number; date: string; created_by: number | null; unit?: string; yield_item_id?: number | null; expected_yield?: number; yields?: { itemId: number; portions: number }[] }) => {
     const result = await window.api['inventory:recordPurchase'](payload)
     await refresh()
     return result
