@@ -1,9 +1,11 @@
+import { useState } from 'react'
+import type { ReactNode } from 'react'
 import { useReports, type ViewMode } from '../../hooks/useReports'
 import { Button } from '../../components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
 import { DatePicker } from '../../components/ui/date-picker'
-import type { DailyReport, MonthlyReport } from '../../../shared/types'
+import type { DailyReport, MonthlyReport, ItemPerformance, DebtSummaryItem } from '../../../shared/types'
 
 function formatUGX(cents: number): string {
   return `UGX ${cents.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
@@ -23,6 +25,94 @@ function StatCard({ label, value, muted }: { label: string; value: string; muted
     <div className="flex min-w-[140px] flex-col gap-1 rounded-[var(--radius-md)] border border-border bg-card p-3 px-4">
       <span className="text-xs font-semibold tracking-[0.05em] text-muted-foreground uppercase">{label}</span>
       <span className={`text-base font-bold ${muted ? 'text-muted-foreground' : 'text-foreground'}`}>{value}</span>
+    </div>
+  )
+}
+
+function PagedList<T>({ rows, renderRow, pageSize = 50 }: { rows: T[]; renderRow: (row: T) => ReactNode; pageSize?: number }) {
+  const [page, setPage] = useState(0)
+  const total = rows.length
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const current = Math.min(page, totalPages - 1)
+  const start = current * pageSize
+  const slice = rows.slice(start, start + pageSize)
+
+  return (
+    <div>
+      <div className="flex flex-col">
+        {slice.map(row => renderRow(row))}
+      </div>
+      {total > pageSize && (
+        <div className="mt-3 flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">
+            Showing {start + 1}–{Math.min(start + pageSize, total)} of {total}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button onClick={() => setPage(current - 1)} disabled={current === 0} variant="outline" className="h-11 bg-card text-[0.875rem]">
+              ◀ Prev
+            </Button>
+            <Button onClick={() => setPage(current + 1)} disabled={current >= totalPages - 1} variant="outline" className="h-11 bg-card text-[0.875rem]">
+              Next ▶
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ItemPerformanceView({ rows }: { rows: ItemPerformance[] }) {
+  if (rows.length === 0) {
+    return <p className="p-12 text-center text-muted-foreground">No item performance data for this period.</p>
+  }
+
+  return (
+    <div className="rounded-[var(--radius-lg)] border border-border bg-card p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-[0.875rem] font-bold tracking-[0.05em] text-muted-foreground uppercase">Item Performance</h3>
+        <span className="text-xs text-muted-foreground">{rows.length} items</span>
+      </div>
+      <PagedList
+        rows={rows}
+        renderRow={(row) => (
+          <div key={row.item_name} className="flex items-center justify-between border-b border-border py-1.5">
+            <span className="text-[0.875rem]">{row.category_name} · {row.item_name}</span>
+            <div className="flex items-center gap-4">
+              <span className="text-[0.875rem] text-muted-foreground">{row.portions_sold} sold</span>
+              <span className="text-[0.875rem] font-semibold">{formatUGX(row.revenue_cents)}</span>
+            </div>
+          </div>
+        )}
+      />
+    </div>
+  )
+}
+
+function ReceivablesView({ rows }: { rows: DebtSummaryItem[] }) {
+  const totalDebt = rows.reduce((sum, d) => sum + d.total_debt_cents, 0)
+
+  if (rows.length === 0) {
+    return <p className="p-12 text-center text-muted-foreground">No accounts receivable — everyone has paid.</p>
+  }
+
+  return (
+    <div className="rounded-[var(--radius-lg)] border border-border bg-card p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-[0.875rem] font-bold tracking-[0.05em] text-muted-foreground uppercase">Accounts Receivable</h3>
+        <span className="text-base font-bold text-warning">{formatUGX(totalDebt)}</span>
+      </div>
+      <PagedList
+        rows={rows}
+        renderRow={(d) => (
+          <div key={d.sale_id} className="flex items-center justify-between border-b border-border py-1.5">
+            <span className="text-[0.875rem]">{d.customer_name ?? `Sale #${d.sale_id}`}</span>
+            <div className="flex items-center gap-4">
+              <span className="text-xs text-muted-foreground">{new Date(d.created_at).toLocaleDateString()}</span>
+              <span className="text-[0.875rem] font-semibold">{formatUGX(d.total_debt_cents)}</span>
+            </div>
+          </div>
+        )}
+      />
     </div>
   )
 }
@@ -113,6 +203,8 @@ function TableView({ data, label }: { data: (DailyReport | MonthlyReport)[]; lab
   )
 }
 
+type Section = 'pnl' | 'items' | 'receivables'
+
 export function ReportsPage() {
   const {
     viewMode, setViewMode,
@@ -125,7 +217,7 @@ export function ReportsPage() {
     navigateDay,
   } = useReports()
 
-  const totalDebt = debtSummary.reduce((sum, d) => sum + d.total_debt_cents, 0)
+  const [section, setSection] = useState<Section>('pnl')
 
   return (
     <div className="flex max-w-960 flex-col gap-5 p-6">
@@ -175,71 +267,47 @@ export function ReportsPage() {
         </div>
       )}
 
+      {/* Report section */}
+      <div>
+        <Tabs value={section} onValueChange={(v) => setSection(v as Section)}>
+          <TabsList>
+            <TabsTrigger value="pnl">P&amp;L</TabsTrigger>
+            <TabsTrigger value="items">Item Performance</TabsTrigger>
+            <TabsTrigger value="receivables">Receivables</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
       {loading ? (
         <p className="p-12 text-center text-muted-foreground">Loading...</p>
-      ) : viewMode === 'daily' ? (
-        <DayView data={dailyData} categories={categories} />
+      ) : section === 'pnl' ? (
+        viewMode === 'daily' ? (
+          <DayView data={dailyData} categories={categories} />
+        ) : (
+          <div className="flex flex-col gap-5">
+            <TableView
+              data={viewMode === 'monthly' ? monthlyData : dailyData}
+              label={viewMode === 'monthly' ? 'Month' : 'Date'}
+            />
+            {categories.length > 0 && (
+              <div className="rounded-[var(--radius-lg)] border border-border bg-card p-4">
+                <h3 className="mb-3 text-[0.875rem] font-bold text-muted-foreground">Expense Breakdown by Category</h3>
+                <div className="flex flex-col gap-2">
+                  {categories.map(c => (
+                    <div key={c.category} className="flex items-center justify-between">
+                      <span className="text-[0.875rem]">{c.category}</span>
+                      <span className="text-[0.875rem] font-semibold">{formatUGX(c.amount_cents)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      ) : section === 'items' ? (
+        <ItemPerformanceView rows={itemPerf} />
       ) : (
-        <TableView
-          data={viewMode === 'monthly' ? monthlyData : dailyData}
-          label={viewMode === 'monthly' ? 'Month' : 'Date'}
-        />
-      )}
-
-      {/* Item performance */}
-      {itemPerf.length > 0 && (
-        <div className="rounded-[var(--radius-lg)] border border-border bg-card p-4">
-          <h3 className="mb-3 text-[0.875rem] font-bold tracking-[0.05em] text-muted-foreground uppercase">
-            Item Performance
-          </h3>
-          <div className="flex flex-col gap-2">
-            {itemPerf.map(row => (
-              <div key={row.item_name} className="flex items-center justify-between border-b border-border py-1.5">
-                <span className="text-[0.875rem]">{row.category_name} · {row.item_name}</span>
-                <div className="flex items-center gap-4">
-                  <span className="text-[0.875rem] text-muted-foreground">{row.portions_sold} sold</span>
-                  <span className="text-[0.875rem] font-semibold">{formatUGX(row.revenue_cents)}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Accounts Receivable */}
-      {debtSummary.length > 0 && (
-        <div className="rounded-[var(--radius-lg)] border border-border bg-card p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-[0.875rem] font-bold tracking-[0.05em] text-muted-foreground uppercase">Accounts Receivable</h3>
-            <span className="text-base font-bold text-warning">{formatUGX(totalDebt)}</span>
-          </div>
-          <div className="flex flex-col gap-2">
-            {debtSummary.map(d => (
-              <div key={d.sale_id} className="flex items-center justify-between border-b border-border py-1.5">
-                <span className="text-[0.875rem]">{d.customer_name ?? `Sale #${d.sale_id}`}</span>
-                <div className="flex items-center gap-4">
-                  <span className="text-xs text-muted-foreground">{new Date(d.created_at).toLocaleDateString()}</span>
-                  <span className="text-[0.875rem] font-semibold">{formatUGX(d.total_debt_cents)}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Expense breakdown for multi-day views */}
-      {viewMode !== 'daily' && categories.length > 0 && (
-        <div className="rounded-[var(--radius-lg)] border border-border bg-card p-4">
-          <h3 className="mb-3 text-[0.875rem] font-bold text-muted-foreground">Expense Breakdown by Category</h3>
-          <div className="flex flex-col gap-2">
-            {categories.map(c => (
-              <div key={c.category} className="flex items-center justify-between">
-                <span className="text-[0.875rem]">{c.category}</span>
-                <span className="text-[0.875rem] font-semibold">{formatUGX(c.amount_cents)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <ReceivablesView rows={debtSummary} />
       )}
     </div>
   )
