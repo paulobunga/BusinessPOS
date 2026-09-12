@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, session } from 'electron'
 import path from 'path'
 import { registerAuthHandlers } from './ipc/authHandlers.js'
 import { registerItemsHandlers } from './ipc/itemsHandlers.js'
@@ -36,7 +36,26 @@ function createWindow() {
   }
 }
 
-app.whenReady().then(createWindow)
+async function loadDevtoolsExtension() {
+  const devPath =
+    process.env.REACT_DEVTOOLS_PATH ||
+    'C:\\Users\\PAULOBUNGA\\AppData\\Local\\Google\\Chrome\\User Data\\Profile 8\\Extensions\\fmkadmapgofadopljbjfkapdkoienihi\\8.0.0_0'
+  if (!process.env.VITE_DEV_SERVER_URL) return
+  try {
+    const ext = await session.defaultSession.loadExtension(devPath)
+    console.log(`[devtools] React DevTools loaded: ${ext.id}`)
+  } catch (err) {
+    console.warn(
+      '[devtools] could not load React DevTools panel — Components will be unavailable',
+      err instanceof Error ? err.message : String(err),
+    )
+  }
+}
+
+app.whenReady().then(async () => {
+  await loadDevtoolsExtension()
+  createWindow()
+})
 app.on('window-all-closed', () => app.quit())
 
 registerAuthHandlers()
