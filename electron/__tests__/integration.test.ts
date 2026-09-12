@@ -150,9 +150,46 @@ describe('Full day at the restaurant (integration)', () => {
     expect(perf.length).toBeGreaterThan(0)
     const goatRow = perf.find((p: any) => p.item_name === 'Goat Meat')
     expect(goatRow).toBeDefined()
-    expect(goatRow!.portions_sold).toBe(2)
-    expect(goatRow!.revenue_cents).toBe(20000)
+    expect(goatRow!.quantity_sold).toBe(2)
+    expect(goatRow!.price_per_item_cents).toBe(10000)
+    expect(goatRow!.amount_sold_cents).toBe(20000)
+    expect(goatRow!.cost_cents).toBe(12000)
+    expect(goatRow!.profit_cents).toBe(8000)
     expect(goatRow!.category_name).toBe('Test Meats')
+  })
+
+  test('8b. Item performance allocates sale discounts and includes debt sales', () => {
+    const saleId = salesRepo.create({
+      subtotal_cents: 24000,
+      discount_cents: 4000,
+      total_cents: 20000,
+      debt_cents: 20000,
+      payment_method: 'debt',
+      created_by: userId,
+      items: [
+        { item_id: goat.id, price_cents: 10000 },
+        { item_id: goat.id, price_cents: 10000 },
+        { item_id: chicken.id, price_cents: 8000 },
+      ],
+    })
+    expect(saleId).toBeGreaterThan(0)
+    db.prepare("UPDATE sales SET created_at = ? WHERE id = ?").run(reportDate + ' 15:00:00', saleId)
+
+    const perf = reportsRepo.getItemPerformance(reportDate, reportDate)
+    const goatRow = perf.find((p: any) => p.item_name === 'Goat Meat')!
+    const chickenRow = perf.find((p: any) => p.item_name === 'Chicken')!
+
+    expect(goatRow.quantity_sold).toBe(4)
+    expect(goatRow.price_per_item_cents).toBe(10000)
+    expect(goatRow.amount_sold_cents).toBe(36667)
+    expect(goatRow.cost_cents).toBe(24000)
+    expect(goatRow.profit_cents).toBe(12667)
+
+    expect(chickenRow.quantity_sold).toBe(2)
+    expect(chickenRow.price_per_item_cents).toBe(8000)
+    expect(chickenRow.amount_sold_cents).toBe(14667)
+    expect(chickenRow.cost_cents).toBe(10000)
+    expect(chickenRow.profit_cents).toBe(4667)
   })
 
   test('9. Sale with quantity>1 writes a single line with correct totals', () => {

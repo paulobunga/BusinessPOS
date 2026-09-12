@@ -66,24 +66,59 @@ function ItemPerformanceView({ rows }: { rows: ItemPerformance[] }) {
     return <p className="p-12 text-center text-muted-foreground">No item performance data for this period.</p>
   }
 
+  const totals = rows.reduce(
+    (acc, r) => ({
+      qty: acc.qty + r.quantity_sold,
+      amount: acc.amount + r.amount_sold_cents,
+      cost: acc.cost + r.cost_cents,
+      profit: acc.profit + r.profit_cents,
+    }),
+    { qty: 0, amount: 0, cost: 0, profit: 0 }
+  )
+
   return (
-    <div className="rounded-[var(--radius-lg)] border border-border bg-card p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-[0.875rem] font-bold tracking-[0.05em] text-muted-foreground uppercase">Item Performance</h3>
-        <span className="text-xs text-muted-foreground">{rows.length} items</span>
+    <div className="flex flex-col gap-4">
+      <div className="rounded-[var(--radius-md)] border border-border bg-muted px-4 py-2.5 text-[0.8125rem] text-muted-foreground">
+        Profit uses each item's purchase cost (updated by recorded purchases); sale discounts are allocated across items; debt sales are included.
       </div>
-      <PagedList
-        rows={rows}
-        renderRow={(row) => (
-          <div key={row.item_name} className="flex items-center justify-between border-b border-border py-1.5">
-            <span className="text-[0.875rem]">{row.category_name} · {row.item_name}</span>
-            <div className="flex items-center gap-4">
-              <span className="text-[0.875rem] text-muted-foreground">{row.portions_sold} sold</span>
-              <span className="text-[0.875rem] font-semibold">{formatUGX(row.revenue_cents)}</span>
-            </div>
-          </div>
-        )}
-      />
+
+      <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(140px,1fr))]">
+        <StatCard label="Sold Qty" value={String(totals.qty)} />
+        <StatCard label="Amount Sold" value={formatUGX(totals.amount)} />
+        <StatCard label="Cost" value={formatUGX(totals.cost)} muted />
+        <StatCard label="Profit Realised" value={(totals.profit >= 0 ? '+' : '') + formatUGX(totals.profit)} />
+      </div>
+
+      <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-card">
+        <div className="overflow-x-auto">
+          <Table className="table-zebra">
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Category</TableHead>
+                <TableHead>Item</TableHead>
+                <TableHead className="text-right">Sold Qty</TableHead>
+                <TableHead className="text-right">Price / Item</TableHead>
+                <TableHead className="text-right">Amount Sold</TableHead>
+                <TableHead className="text-right">Profit Realised</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map(r => (
+                <TableRow key={r.item_name}>
+                  <TableCell className="text-muted-foreground">{r.category_name}</TableCell>
+                  <TableCell className="font-medium">{r.item_name}</TableCell>
+                  <TableCell className="text-right">{r.quantity_sold}</TableCell>
+                  <TableCell className="text-right">{formatUGX(r.price_per_item_cents)}</TableCell>
+                  <TableCell className="text-right">{formatUGX(r.amount_sold_cents)}</TableCell>
+                  <TableCell className={`text-right font-semibold ${r.profit_cents >= 0 ? 'text-success' : 'text-destructive'}`}>
+                    {r.profit_cents >= 0 ? '+' : ''}{formatUGX(r.profit_cents)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
     </div>
   )
 }

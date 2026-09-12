@@ -199,10 +199,11 @@ export interface WasteByItem {
 export interface ItemPerformance {
   category_name: string
   item_name: string
-  portions_sold: number
-  revenue_cents: number
+  quantity_sold: number
+  price_per_item_cents: number
+  amount_sold_cents: number
   cost_cents: number
-  margin_cents: number
+  profit_cents: number
 }
 
 export interface FoodCostSummary {

@@ -232,20 +232,24 @@ export const reportsRepo = {
   getItemPerformance(start: string, end: string): ItemPerformance[] {
     return getDb().prepare(`
       SELECT
-        c.name AS category_name,
-        mi.name AS item_name,
-        SUM(si.quantity) AS portions_sold,
-        SUM(si.line_total_cents) AS revenue_cents,
-        0 AS cost_cents,
-        SUM(si.line_total_cents) AS margin_cents
+        COALESCE(c.name, '') AS category_name,
+        COALESCE(mi.name, si.name_snapshot) AS item_name,
+        SUM(si.quantity) AS quantity_sold,
+        CAST(ROUND(SUM(si.line_total_cents * 1.0) / SUM(si.quantity)) AS INTEGER) AS price_per_item_cents,
+        CAST(ROUND(SUM(si.line_total_cents * CASE WHEN s.subtotal_cents > 0 THEN s.total_cents * 1.0 / s.subtotal_cents ELSE 1 END)) AS INTEGER) AS amount_sold_cents,
+        SUM(COALESCE(mi.cost_price_cents, 0) * si.quantity) AS cost_cents,
+        CAST(ROUND(SUM(
+          si.line_total_cents * CASE WHEN s.subtotal_cents > 0 THEN s.total_cents * 1.0 / s.subtotal_cents ELSE 1 END
+          - COALESCE(mi.cost_price_cents, 0) * si.quantity
+        )) AS INTEGER) AS profit_cents
       FROM sale_items si
+      JOIN sales s ON s.id = si.sale_id
       LEFT JOIN menu_items mi ON mi.id = si.item_id
       LEFT JOIN categories c ON c.id = mi.category_id
-      JOIN sales s ON s.id = si.sale_id
       WHERE s.status IN ('completed','unpaid')
         AND DATE(s.created_at) >= ? AND DATE(s.created_at) <= ?
       GROUP BY c.name, mi.name
-      ORDER BY revenue_cents DESC
+      ORDER BY amount_sold_cents DESC
     `).all(start, end) as ItemPerformance[]
   },
 
