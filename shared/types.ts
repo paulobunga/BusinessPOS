@@ -1,9 +1,12 @@
 // === Entities ===
+export type Role = 'admin' | 'cashier'
+
 export interface User {
   id: number
   name: string
-  role: 'cashier' | 'manager'
+  role: Role
   active: number
+  created_at?: string
 }
 
 export interface Customer {
@@ -311,7 +314,7 @@ export interface CreatePaymentPayload {
 // === API Shape ===
 export interface Api {
   ping: () => Promise<string>
-  'auth:login': (pin: string) => Promise<{ userId: number; role: string } | null>
+  'auth:login': (pin: string) => Promise<{ userId: number; role: Role; name: string } | null>
   'sales:create': (payload: CreateSalePayload) => Promise<Sale>
   'sales:void': (id: number, reason: string) => Promise<void>
   'sales:list': (filters?: { status?: string; date_from?: string; date_to?: string }) => Promise<SaleWithItems[]>
@@ -365,6 +368,10 @@ export interface Api {
   'settings:get': () => Promise<Record<string, string>>
   'settings:update': (partial: Record<string, string>) => Promise<void>
   'users:setPin': (userId: number, oldPin: string, newPin: string) => Promise<boolean>
+  'users:list': () => Promise<User[]>
+  'users:create': (payload: { name: string; role: Role; pin: string }) => Promise<User>
+  'users:update': (payload: { id: number; name?: string; role?: Role; active?: number }) => Promise<User | null>
+  'users:resetPin': (payload: { id: number; newPin: string }) => Promise<boolean>
   'backup:export': () => Promise<string | null>
   'backup:import': () => Promise<{ ok: boolean; message: string }>
   'debts:listOpen': () => Promise<any[]>
