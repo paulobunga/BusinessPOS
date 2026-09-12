@@ -157,11 +157,15 @@ export function ReportsPage() {
       )}
 
       {viewMode === 'custom' && (
-        <div className="flex items-center gap-3">
-          <label className="text-sm font-semibold">From</label>
-          <DatePicker value={startDate} onValueChange={setStartDate} />
-          <label className="text-sm font-semibold">To</label>
-          <DatePicker value={endDate} onValueChange={setEndDate} />
+        <div className="flex flex-wrap items-end gap-4">
+          <label className="flex w-44 flex-col gap-1.5 text-[0.875rem] font-semibold">
+            From
+            <DatePicker value={startDate} onValueChange={setStartDate} />
+          </label>
+          <label className="flex w-44 flex-col gap-1.5 text-[0.875rem] font-semibold">
+            To
+            <DatePicker value={endDate} onValueChange={setEndDate} />
+          </label>
         </div>
       )}
 

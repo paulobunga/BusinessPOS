@@ -51,24 +51,30 @@ export function ExpensesPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <label className="text-sm font-semibold">From</label>
-        <DatePicker value={filters.date_from ?? ''} onValueChange={v => setFilters(f => ({ ...f, date_from: v || undefined }))} />
-        <label className="text-sm font-semibold">To</label>
-        <DatePicker value={filters.date_to ?? ''} onValueChange={v => setFilters(f => ({ ...f, date_to: v || undefined }))} />
-        <label className="text-sm font-semibold">Source</label>
-        <Select value={filters.payment_source ?? 'all'} onValueChange={v => setFilters(f => ({ ...f, payment_source: v === 'all' ? undefined : v }))}>
-          <SelectTrigger className={selectClass}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="till">Till</SelectItem>
-            <SelectItem value="personal">Personal</SelectItem>
-            <SelectItem value="mpesa">Mpesa</SelectItem>
-          </SelectContent>
-        </Select>
-        <span className="ml-auto text-[0.9375rem] font-bold">
+      <div className="flex flex-wrap items-end gap-4">
+        <label className="flex w-44 flex-col gap-1.5 text-[0.875rem] font-semibold">
+          From
+          <DatePicker value={filters.date_from ?? ''} onValueChange={v => setFilters(f => ({ ...f, date_from: v || undefined }))} />
+        </label>
+        <label className="flex w-44 flex-col gap-1.5 text-[0.875rem] font-semibold">
+          To
+          <DatePicker value={filters.date_to ?? ''} onValueChange={v => setFilters(f => ({ ...f, date_to: v || undefined }))} />
+        </label>
+        <label className="flex w-44 flex-col gap-1.5 text-[0.875rem] font-semibold">
+          Source
+          <Select value={filters.payment_source ?? 'all'} onValueChange={v => setFilters(f => ({ ...f, payment_source: v === 'all' ? undefined : v }))}>
+            <SelectTrigger className={selectClass}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="till">Till</SelectItem>
+              <SelectItem value="personal">Personal</SelectItem>
+              <SelectItem value="mpesa">Mpesa</SelectItem>
+            </SelectContent>
+          </Select>
+        </label>
+        <span className="ml-auto pb-1 text-[0.9375rem] font-bold">
           Total: UGX {(totalCents / 100).toLocaleString()}
         </span>
       </div>
