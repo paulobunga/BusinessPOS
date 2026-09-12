@@ -49,8 +49,9 @@ export function InventoryPage() {
 
   const [addOpen, setAddOpen] = useState(false)
   const [addName, setAddName] = useState('')
+  const [addQty, setAddQty] = useState('')
   const [addUnit, setAddUnit] = useState('kg')
-  const [addCost, setAddCost] = useState('')
+  const [addUnitCost, setAddUnitCost] = useState('')
   const [addError, setAddError] = useState('')
   const [addProcessing, setAddProcessing] = useState(false)
 
@@ -67,6 +68,13 @@ export function InventoryPage() {
     : 0
   const perPlateCost = yieldDishCount > 0 && computedTotal > 0 ? Math.round(computedTotal / yieldDishCount) : 0
   const yieldItems = items.filter(p => !purchaseOnlyCatIds.has(p.category_id))
+
+  const addQtyNum = parseFloat(addQty)
+  const addUnitCostNum = parseFloat(addUnitCost)
+  const addTotal =
+    isNaN(addQtyNum) || isNaN(addUnitCostNum) || addQtyNum <= 0 || addUnitCostNum < 0
+      ? 0
+      : Math.round(addQtyNum * addUnitCostNum)
 
   useEffect(() => {
     setCostPerUnit(selectedItem ? String(selectedItem.cost_price_cents) : '')
@@ -114,13 +122,16 @@ export function InventoryPage() {
     e.preventDefault()
     setAddError('')
     const name = addName.trim()
-    const cost = parseFloat(addCost)
     if (!name) {
       setAddError('Item name is required')
       return
     }
-    if (!isNaN(cost) && cost < 0) {
-      setAddError('Cost must be 0 or more')
+    if (isNaN(addQtyNum) || addQtyNum <= 0) {
+      setAddError('Enter a valid quantity purchased')
+      return
+    }
+    if (isNaN(addUnitCostNum) || addUnitCostNum < 0) {
+      setAddError('Enter a valid unit cost')
       return
     }
     setAddProcessing(true)
@@ -130,19 +141,29 @@ export function InventoryPage() {
         stockCat = await window.api['categories:upsert']({ name: 'Stock', kind: 'priced', purchase_only: 1 })
         retryCategories()
       }
-      await window.api['items:upsert']({
+      const unitName = addUnit.trim() || 'kg'
+      const createdItem = await window.api['items:upsert']({
         category_id: stockCat.id,
         name,
         selling_price_cents: 0,
-        cost_price_cents: isNaN(cost) ? 0 : Math.round(cost),
-        purchase_unit: addUnit.trim() || 'kg',
+        cost_price_cents: Math.round(addUnitCostNum),
+        purchase_unit: unitName,
         active: 1,
+      })
+      await record({
+        item_id: createdItem.id,
+        quantity: addQtyNum,
+        cost_cents: addTotal,
+        date,
+        created_by: userId ?? null,
+        unit: unitName,
       })
       retryItems()
       setAddOpen(false)
       setAddName('')
+      setAddQty('')
       setAddUnit('kg')
-      setAddCost('')
+      setAddUnitCost('')
     } catch (err) {
       setAddError((err as Error).message || 'Failed to add item')
     } finally {
@@ -187,9 +208,9 @@ export function InventoryPage() {
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Add Purchase Item</DialogTitle>
+            <DialogTitle>Add Item &amp; Record Purchase</DialogTitle>
             <DialogDescription>
-              Add a stock/buyable item (e.g. sugar, milk, whole chicken). Stored in a purchase-only "Stock" category — hidden from the POS screen.
+              Create a stock item and log today's purchase in one step. Prices vary per season — enter the unit cost you actually paid (e.g. a bunch of matooke at 15,000 or 20,000 UGX).
             </DialogDescription>
           </DialogHeader>
 
@@ -198,24 +219,40 @@ export function InventoryPage() {
 
             <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
               Item name
-              <Input value={addName} onChange={e => setAddName(e.target.value)} className={inputClass} placeholder="e.g. Sugar 10kg bag" autoFocus />
+              <Input value={addName} onChange={e => setAddName(e.target.value)} className={inputClass} placeholder="e.g. Sugar, Tomatoes, Bunch of Matooke" autoFocus />
             </Label>
 
             <div className="grid grid-cols-2 gap-4">
               <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+                Qty purchased ({addUnit || 'unit'})
+                <Input type="number" min="0" step="0.1" value={addQty} onChange={e => setAddQty(e.target.value)} className={inputClass} placeholder="0" />
+              </Label>
+              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
                 Purchase unit
                 <Input value={addUnit} onChange={e => setAddUnit(e.target.value)} className={inputClass} placeholder="kg" />
               </Label>
-              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
-                Default cost/unit (UGX)
-                <Input type="number" min="0" step="0.5" value={addCost} onChange={e => setAddCost(e.target.value)} className={inputClass} placeholder="0" />
-              </Label>
+            </div>
+
+            <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+              Unit cost (UGX)
+              <Input type="number" min="0" step="0.5" value={addUnitCost} onChange={e => setAddUnitCost(e.target.value)} className={inputClass} placeholder="e.g. 20000 per bunch" />
+            </Label>
+
+            <div className="flex items-center gap-3 rounded-[var(--radius-md)] border border-border bg-background px-4 py-3">
+              <span className="text-[0.875rem] text-muted-foreground">
+                {addName.trim()
+                  ? `${addName.trim()} × ${addQty || '0'} ${addUnit || 'unit'} @ ${fmt.format(isNaN(addUnitCostNum) ? 0 : addUnitCostNum)}/${addUnit || 'unit'}`
+                  : 'Enter an item, quantity and unit cost to preview'}
+              </span>
+              <span className="ml-auto text-lg font-extrabold">
+                {fmt.format(addTotal)}
+              </span>
             </div>
 
             <DialogFooter>
               <Button type="button" variant="outline" className="border-border bg-card font-semibold" onClick={() => setAddOpen(false)}>Cancel</Button>
               <Button type="submit" className="bg-primary font-semibold" disabled={addProcessing}>
-                {addProcessing ? 'Adding...' : 'Add Item'}
+                {addProcessing ? 'Saving...' : 'Add & Record Purchase'}
               </Button>
             </DialogFooter>
           </form>
