@@ -78,10 +78,12 @@ export function InventoryPage() {
       </div>
 
       {/* Date picker */}
-      <div className="flex items-center gap-3">
-        <Label className="text-sm font-semibold">Date</Label>
-        <DatePicker value={date} onValueChange={setDate} />
-        <span className="ml-auto text-base font-bold">
+      <div className="flex flex-wrap items-end gap-4">
+        <Label className="flex w-44 flex-col gap-1.5 text-[0.875rem] font-semibold">
+          Date
+          <DatePicker value={date} onValueChange={setDate} />
+        </Label>
+        <span className="ml-auto pb-1 text-base font-bold">
           Daily Food Cost: {fmt.format(dailyTotal / 100)}
         </span>
       </div>

@@ -142,11 +142,11 @@ export function ReportsPage() {
 
       {/* Date controls */}
       {viewMode === 'daily' && (
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Button onClick={() => navigateDay(-1)} variant="outline" size="sm" className="bg-card text-[0.875rem]">
             ◀ Prev
           </Button>
-          <DatePicker value={selectedDate} onValueChange={setSelectedDate} />
+          <DatePicker className="w-44" value={selectedDate} onValueChange={setSelectedDate} />
           <Button onClick={() => setSelectedDate(new Date().toISOString().slice(0, 10))} variant="outline" size="sm" className="bg-card text-[0.875rem] font-semibold">
             Today
           </Button>
