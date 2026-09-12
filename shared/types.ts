@@ -261,6 +261,7 @@ export interface SaleItemInput {
   item_id: number
   free_item_id?: number | null
   price_cents: number
+  quantity?: number
 }
 
 export interface CreateSalePayload {

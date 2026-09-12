@@ -148,4 +148,23 @@ describe('Full day at the restaurant (integration)', () => {
     expect(goatRow!.revenue_cents).toBe(20000)
     expect(goatRow!.category_name).toBe('Test Meats')
   })
+
+  test('9. Sale with quantity>1 writes a single line with correct totals', () => {
+    const saleId = salesRepo.create({
+      subtotal_cents: 24000,
+      discount_cents: 0,
+      total_cents: 24000,
+      debt_cents: 0,
+      payment_method: 'cash',
+      created_by: userId,
+      items: [{ item_id: chicken.id, price_cents: 8000, quantity: 3 }],
+    })
+    expect(saleId).toBeGreaterThan(0)
+    const rows = db.prepare('SELECT * FROM sale_items WHERE sale_id = ?').all(saleId) as any[]
+    expect(rows).toHaveLength(1)
+    expect(rows[0].quantity).toBe(3)
+    expect(rows[0].unit_price_cents).toBe(8000)
+    expect(rows[0].line_total_cents).toBe(24000)
+    expect(rows[0].name_snapshot).toBe('Chicken')
+  })
 })

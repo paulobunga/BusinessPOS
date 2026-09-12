@@ -11,7 +11,7 @@ export const salesRepo = {
     payment_method: 'cash' | 'debt' | 'mixed'
     till_session_id?: number | null
     created_by: number
-    items: Array<{ item_id: number; free_item_id?: number | null; price_cents: number }>
+    items: Array<{ item_id: number; free_item_id?: number | null; price_cents: number; quantity?: number }>
   }) {
     const db = getDb()
     const status = data.payment_method === 'cash' ? 'completed' : 'unpaid'
@@ -42,7 +42,8 @@ export const salesRepo = {
     const getItem = db.prepare('SELECT name FROM menu_items WHERE id = ?')
     for (const item of data.items) {
       const mi = getItem.get(item.item_id) as { name: string } | undefined
-      insertItem.run(saleId, item.item_id, item.free_item_id ?? null, mi?.name ?? '', item.price_cents, 1, item.price_cents)
+      const qty = item.quantity ?? 1
+      insertItem.run(saleId, item.item_id, item.free_item_id ?? null, mi?.name ?? '', item.price_cents, qty, item.price_cents * qty)
     }
     return saleId
   },
