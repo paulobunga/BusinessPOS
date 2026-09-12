@@ -9,6 +9,7 @@ import { runWasteMigration } from '../migrations/006_waste_table'
 import { runCategoriesMigration } from '../migrations/007_categories'
 import { runMenuSeedMigration } from '../migrations/009_menu_seed'
 import { runPurchaseYieldMigration } from '../migrations/010_purchase_yield'
+import { runUserRolesMigration } from '../migrations/013_user_roles'
 
 let db: Database.Database
 
@@ -42,8 +43,9 @@ describe('Categories / items / attributes repos', () => {
     runCategoriesMigration(db)
     runMenuSeedMigration(db)
     runPurchaseYieldMigration(db)
+    runUserRolesMigration(db)
 
-    const user = usersRepo.create('Test Owner', 'manager', '1234')
+    const user = usersRepo.create('Test Owner', 'admin', '1234')
     userId = user.id as number
 
     ownerCat = categoriesRepo.upsert({ name: 'Test Mains', kind: 'priced', sort_order: 0 })

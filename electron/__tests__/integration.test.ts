@@ -56,7 +56,7 @@ describe('Full day at the restaurant (integration)', () => {
     runPurchaseYieldsMigration(db)
     runUserRolesMigration(db)
 
-    const user = usersRepo.create('Test Manager', 'cashier', '1234')
+    const user = usersRepo.create('Test Manager', 'admin', '1234')
     userId = user.id as number
 
     const meatCat = categoriesRepo.upsert({ name: 'Test Meats', kind: 'priced', sort_order: 0 })
@@ -263,7 +263,7 @@ describe('Full day at the restaurant (integration)', () => {
     }) as any
     expect(purchase.cost_cents).toBe(17000)
 
-    const byMeal = new Map(purchase.yields.map((y: any) => [y.name, y]))
+    const byMeal = new Map<string, any>(purchase.yields.map((y: any): [string, any] => [y.name, y]))
     const boiledYield = byMeal.get('Chicken (Boiled)')
     const friedYield = byMeal.get('Chicken (Fried)')
     expect(boiledYield).toBeDefined()
