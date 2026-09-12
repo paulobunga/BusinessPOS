@@ -15,7 +15,7 @@ export function PinPadPage() {
     else {
       setError('Invalid PIN')
       setTimeout(() => {
-        setError(null)
+        setError(false)
         setAttempt((a) => a + 1)
       }, 600)
     }
