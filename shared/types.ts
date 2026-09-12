@@ -25,6 +25,7 @@ export interface Category {
   kind: 'priced' | 'free'
   sort_order: number
   active: number
+  purchase_only?: number
 }
 
 export interface MenuItem {
@@ -35,6 +36,7 @@ export interface MenuItem {
   cost_price_cents: number
   out_of_stock: number
   active: number
+  purchase_unit?: string
 }
 
 export interface AttributeDef {
@@ -166,6 +168,8 @@ export interface ItemPurchase {
   cost_cents: number
   expected_yield: number
   created_by: number | null
+  unit?: string
+  yield_item_id?: number | null
 }
 
 export interface WasteRecord {
@@ -183,6 +187,7 @@ export interface WasteRecord {
 export interface ItemPurchaseWithName extends ItemPurchase {
   item_name?: string
   unit_cost_cents?: number
+  yield_item_name?: string
 }
 
 export interface WasteByItem {
@@ -318,7 +323,7 @@ export interface Api {
   'till:close': (countedCents: number) => Promise<{ expected: number; variance: number }>
   'till:current': () => Promise<TillSession | null>
   'till:countCash': () => Promise<TillCountData | null>
-  'inventory:recordPurchase': (payload: { item_id: number; quantity: number; cost_cents: number; date: string; created_by: number | null }) => Promise<ItemPurchaseWithName>
+  'inventory:recordPurchase': (payload: { item_id: number; quantity: number; cost_cents: number; date: string; created_by: number | null; unit?: string; yield_item_id?: number | null; expected_yield?: number }) => Promise<ItemPurchaseWithName>
   'inventory:byDate': (date: string) => Promise<ItemPurchaseWithName[]>
   'inventory:byDateRange': (start: string, end: string) => Promise<ItemPurchaseWithName[]>
   'inventory:dailyTotal': (date: string) => Promise<number>

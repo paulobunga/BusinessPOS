@@ -7,6 +7,8 @@ import { runDebtsMigration } from '../migrations/004_debts_payment_allocations'
 import { runReimbursementsMigration } from '../migrations/005_reimbursements_add_columns'
 import { runWasteMigration } from '../migrations/006_waste_table'
 import { runCategoriesMigration } from '../migrations/007_categories'
+import { runMenuSeedMigration } from '../migrations/009_menu_seed'
+import { runPurchaseYieldMigration } from '../migrations/010_purchase_yield'
 
 let db: Database.Database
 
@@ -38,6 +40,8 @@ describe('Categories / items / attributes repos', () => {
     runReimbursementsMigration(db)
     runWasteMigration(db)
     runCategoriesMigration(db)
+    runMenuSeedMigration(db)
+    runPurchaseYieldMigration(db)
 
     const user = usersRepo.create('Test Owner', 'manager', '1234')
     userId = user.id as number

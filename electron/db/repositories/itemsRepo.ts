@@ -67,10 +67,10 @@ export const itemsRepo = {
     return row ? joinItemRow(row) : undefined
   },
 
-  upsert(data: { id?: number; category_id: number; name: string; selling_price_cents?: number; cost_price_cents?: number; out_of_stock?: number; active?: number }): MenuItemWithCategory {
+  upsert(data: { id?: number; category_id: number; name: string; selling_price_cents?: number; cost_price_cents?: number; out_of_stock?: number; active?: number; purchase_unit?: string }): MenuItemWithCategory {
     const db = getDb()
     if (data.id) {
-      const existing = db.prepare('SELECT category_id FROM menu_items WHERE id = ?').get(data.id) as { category_id: number } | undefined
+      const existing = db.prepare('SELECT category_id, purchase_unit FROM menu_items WHERE id = ?').get(data.id) as { category_id: number; purchase_unit?: string } | undefined
       if (existing && existing.category_id !== data.category_id) {
         const defsToDelete = db.prepare(`
           SELECT v.id FROM item_attribute_values v
@@ -82,12 +82,12 @@ export const itemsRepo = {
           db.prepare(`DELETE FROM item_attribute_values WHERE id IN (${ids.map(() => '?').join(',')})`).run(...ids)
         }
       }
-      db.prepare('UPDATE menu_items SET category_id=?, name=?, selling_price_cents=?, cost_price_cents=?, out_of_stock=?, active=? WHERE id=?')
-        .run(data.category_id, data.name, data.selling_price_cents ?? 0, data.cost_price_cents ?? 0, data.out_of_stock ?? 0, data.active ?? 1, data.id)
+      db.prepare('UPDATE menu_items SET category_id=?, name=?, selling_price_cents=?, cost_price_cents=?, purchase_unit=?, out_of_stock=?, active=? WHERE id=?')
+        .run(data.category_id, data.name, data.selling_price_cents ?? 0, data.cost_price_cents ?? 0, data.purchase_unit ?? existing?.purchase_unit ?? 'kg', data.out_of_stock ?? 0, data.active ?? 1, data.id)
       return this.getById(data.id)!
     }
-    const result = db.prepare('INSERT INTO menu_items (category_id, name, selling_price_cents, cost_price_cents, out_of_stock, active) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(data.category_id, data.name, data.selling_price_cents ?? 0, data.cost_price_cents ?? 0, data.out_of_stock ?? 0, data.active ?? 1)
+    const result = db.prepare('INSERT INTO menu_items (category_id, name, selling_price_cents, cost_price_cents, purchase_unit, out_of_stock, active) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run(data.category_id, data.name, data.selling_price_cents ?? 0, data.cost_price_cents ?? 0, data.purchase_unit ?? 'kg', data.out_of_stock ?? 0, data.active ?? 1)
     return this.getById(result.lastInsertRowid as number)!
   },
 

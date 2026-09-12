@@ -32,7 +32,7 @@ export function SellPage() {
   const [success, setSuccess] = useState(false)
   const [pendingSale, setPendingSale] = useState<{ paymentMethod: 'cash' | 'debt'; customerName?: string } | null>(null)
 
-  const activeCategories = categories.filter(c => c.active)
+  const activeCategories = categories.filter(c => c.active && c.purchase_only !== 1)
   const pricedCategories = activeCategories.filter(c => c.kind === 'priced')
   const selectedCategory: Category | undefined = activeCategories.find(c => c.id === selectedCategoryId) ?? pricedCategories[0] ?? activeCategories[0]
 
@@ -126,10 +126,11 @@ export function SellPage() {
   )
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 p-6">
-      <h1 className="text-2xl font-bold">Point of Sale</h1>
+    <div className="flex h-full min-h-0">
+      {/* Item selection — scrolls independently */}
+      <div className="flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-6 pr-3">
+        <h1 className="text-2xl font-bold">Point of Sale</h1>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4">
         {/* Category chips */}
         <div className="flex flex-wrap gap-2">
           {activeCategories.map(c => {
@@ -151,59 +152,53 @@ export function SellPage() {
           })}
         </div>
 
-        <div className="flex min-h-0 flex-1 gap-6">
-          {/* Item Grid */}
-          <div className="flex min-w-0 flex-[2] flex-col">
-            <h2 className="mb-4 text-xl font-bold">Select {selectedCategory?.name ?? 'Item'}</h2>
-            <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-              <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(180px,1fr))]">
-                {categoryItems.map(item => (
-                  <ItemCard
-                    key={item.id}
-                    item={item}
-                    selected={selectedItem?.id === item.id}
-                    onSelect={handleItemSelect}
-                  />
-                ))}
-              </div>
+        <h2 className="text-xl font-bold">Select {selectedCategory?.name ?? 'Item'}</h2>
 
-              {selectedItem && freeCategories.length > 0 && (
-                <div className="mt-4 rounded-[var(--radius-lg)] border border-border bg-card p-4">
-                  <p className="font-semibold">
-                    {selectedItem.name} — pick a free add-on
-                  </p>
-                  <AddOnSelector addOns={freeItems} onSelect={handleAddOnSelect} />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Cart */}
-          <div className="flex w-[360px] min-w-[360px] flex-col rounded-[var(--radius-lg)] border border-border bg-card p-6">
-            {!currentTill && (
-              <p className="mb-4 font-semibold text-warning">
-                No till session is open. Sales cannot be completed until the till is opened.
-              </p>
-            )}
-            {message && (
-              <p className="mb-4 font-semibold text-destructive">{message}</p>
-            )}
-
-            <Cart
-              items={cart.items}
-              subtotal={cart.subtotal}
-              discountCents={cart.discountCents}
-              discountReason={cart.discountReason}
-              total={cart.total}
-              onRemoveItem={cart.removeItem}
-              onIncrement={cart.increment}
-              onDecrement={cart.decrement}
-              onClear={cart.clearCart}
-              onOpenOptions={() => setShowOptions(true)}
-              onCompleteSale={() => requestSale('cash')}
+        <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(180px,1fr))]">
+          {categoryItems.map(item => (
+            <ItemCard
+              key={item.id}
+              item={item}
+              selected={selectedItem?.id === item.id}
+              onSelect={handleItemSelect}
             />
-          </div>
+          ))}
         </div>
+
+        {selectedItem && freeCategories.length > 0 && (
+          <div className="mt-2 rounded-[var(--radius-lg)] border border-border bg-card p-4">
+            <p className="font-semibold">
+              {selectedItem.name} — pick a free add-on
+            </p>
+            <AddOnSelector addOns={freeItems} onSelect={handleAddOnSelect} />
+          </div>
+        )}
+      </div>
+
+      {/* Cart — flush under <main>, full height */}
+      <div className="flex w-[360px] min-w-[360px] shrink-0 flex-col border-l border-border bg-card p-6">
+        {!currentTill && (
+          <p className="mb-4 font-semibold text-warning">
+            No till session is open. Sales cannot be completed until the till is opened.
+          </p>
+        )}
+        {message && (
+          <p className="mb-4 font-semibold text-destructive">{message}</p>
+        )}
+
+        <Cart
+          items={cart.items}
+          subtotal={cart.subtotal}
+          discountCents={cart.discountCents}
+          discountReason={cart.discountReason}
+          total={cart.total}
+          onRemoveItem={cart.removeItem}
+          onIncrement={cart.increment}
+          onDecrement={cart.decrement}
+          onClear={cart.clearCart}
+          onOpenOptions={() => setShowOptions(true)}
+          onCompleteSale={() => requestSale('cash')}
+        />
       </div>
 
       {showOptions && (

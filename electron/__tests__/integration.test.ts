@@ -8,6 +8,8 @@ import { runReimbursementsMigration } from '../db/migrations/005_reimbursements_
 import { runWasteMigration } from '../db/migrations/006_waste_table'
 import { runCategoriesMigration } from '../db/migrations/007_categories'
 import { runMoneyWholeUgxMigration } from '../db/migrations/008_money_whole_ugx'
+import { runMenuSeedMigration } from '../db/migrations/009_menu_seed'
+import { runPurchaseYieldMigration } from '../db/migrations/010_purchase_yield'
 
 let db: Database.Database
 
@@ -45,6 +47,8 @@ describe('Full day at the restaurant (integration)', () => {
     runWasteMigration(db)
     runCategoriesMigration(db)
     runMoneyWholeUgxMigration(db)
+    runMenuSeedMigration(db)
+    runPurchaseYieldMigration(db)
 
     const user = usersRepo.create('Test Manager', 'manager', '1234')
     userId = user.id as number
@@ -168,5 +172,39 @@ describe('Full day at the restaurant (integration)', () => {
     expect(rows[0].unit_price_cents).toBe(8000)
     expect(rows[0].line_total_cents).toBe(24000)
     expect(rows[0].name_snapshot).toBe('Chicken')
+  })
+
+  test('10. Purchase-only category + whole chicken purchase backs out dish cost to portions', () => {
+    const stockCat = categoriesRepo.upsert({ name: 'Test Stock', kind: 'priced', purchase_only: 1 })
+    const stockRow = categoriesRepo.list().find(c => c.id === stockCat.id)!
+    expect(stockRow.purchase_only).toBe(1)
+
+    const wholeChicken = itemsRepo.upsert({ category_id: stockCat.id, name: 'Whole Chicken', purchase_unit: 'whole' })
+    const boiled = itemsRepo.upsert({ category_id: chicken.category_id, name: 'Chicken (Boiled)', selling_price_cents: 10000, cost_price_cents: 5000 })
+
+    const purchase = purchasesRepo.recordPurchase(wholeChicken.id, 1, 17000, reportDate, userId, {
+      unit: 'whole',
+      yieldItemId: boiled.id,
+      expectedYield: 4,
+    }) as any
+    expect(purchase.cost_cents).toBe(17000)
+    expect(purchase.unit).toBe('whole')
+    expect(purchase.yield_item_id).toBe(boiled.id)
+    expect(purchase.yield_item_name).toBe('Chicken (Boiled)')
+
+    const wholeAfter = itemsRepo.getById(wholeChicken.id)!
+    expect(wholeAfter.cost_price_cents).toBe(17000)
+    expect(wholeAfter.purchase_unit).toBe('whole')
+
+    const boiledAfter = itemsRepo.getById(boiled.id)!
+    expect(boiledAfter.cost_price_cents).toBe(4250)
+  })
+
+  test('11. Purchase list surfaces yield dish via getByDate', () => {
+    const rows = purchasesRepo.getByDate(reportDate) as any[]
+    const whole = rows.find((r: any) => r.item_name === 'Whole Chicken')
+    expect(whole).toBeDefined()
+    expect(whole!.unit).toBe('whole')
+    expect(whole!.yield_item_name).toBe('Chicken (Boiled)')
   })
 })

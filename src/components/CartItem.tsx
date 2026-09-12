@@ -1,5 +1,4 @@
 import { Minus, Plus, Trash2 } from 'lucide-react'
-import { Button } from './ui/button'
 import { calcLineTotal } from '../hooks/cartItems'
 import type { CartLine } from '../hooks/cartItems'
 
@@ -17,50 +16,53 @@ export function CartItem({ item, index, onRemove, onIncrement, onDecrement }: Ca
   const tile = item.itemName.trim().charAt(0).toUpperCase() || '?'
 
   return (
-    <div className="border-b border-border py-2">
-      <div className="flex items-center gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-primary/10 text-sm font-extrabold text-primary">
-          {tile}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-bold">{item.itemName}</p>
-          <p className="truncate text-xs font-medium text-muted-foreground">
-            {item.addOnName ? `+ ${item.addOnName}` : `${fmt(item.itemPrice)} each`}
-          </p>
-        </div>
-        <span className="shrink-0 text-sm font-extrabold tabular-nums">{fmt(calcLineTotal(item))}</span>
+    <div className="flex items-center gap-3 py-3">
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm font-extrabold text-primary">
+        {tile}
+      </span>
+
+      <div className="min-w-0 flex-1">
+        <p className="line-clamp-2 leading-snug text-sm font-semibold">{item.itemName}</p>
+        {item.addOnName && (
+          <p className="truncate text-[0.6875rem] font-medium text-muted-foreground">+ {item.addOnName}</p>
+        )}
       </div>
-      <div className="mt-2 flex items-center justify-between pl-[52px]">
-        <div className="flex items-center">
-          <Button
+
+      <div className="flex shrink-0 items-center gap-2">
+        {item.quantity === 1 ? (
+          <button
+            type="button"
+            onClick={() => onRemove(index)}
+            aria-label={`Remove ${item.itemName}`}
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-destructive/10 text-destructive transition-transform active:scale-95"
+          >
+            <Trash2 size={14} />
+          </button>
+        ) : (
+          <button
+            type="button"
             onClick={() => onDecrement(index)}
-            variant="outline"
-            size="icon"
-            aria-label="Decrease quantity"
-            className="h-11 w-11 rounded-full bg-card"
+            aria-label={`Decrease ${item.itemName} quantity`}
+            className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted-foreground transition-transform active:scale-95"
           >
-            <Minus className="h-4 w-4" />
-          </Button>
-          <span className="w-7 text-center text-sm font-extrabold tabular-nums">{item.quantity}</span>
-          <Button
-            onClick={() => onIncrement(index)}
-            variant="outline"
-            size="icon"
-            aria-label="Increase quantity"
-            className="h-11 w-11 rounded-full bg-card"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
-        </div>
-        <Button
-          onClick={() => onRemove(index)}
-          variant="ghost"
-          size="icon"
-          aria-label="Remove line"
-          className="h-11 w-11 text-destructive hover:bg-destructive/10 hover:text-destructive"
+            <Minus size={14} />
+          </button>
+        )}
+
+        <span className="w-4 text-center text-sm font-bold tabular-nums">{item.quantity}</span>
+
+        <button
+          type="button"
+          onClick={() => onIncrement(index)}
+          aria-label={`Increase ${item.itemName} quantity`}
+          className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted-foreground transition-transform active:scale-95"
         >
-          <Trash2 className="h-5 w-5" />
-        </Button>
+          <Plus size={14} />
+        </button>
+      </div>
+
+      <div className="w-16 shrink-0 text-right">
+        <span className="text-sm font-extrabold tabular-nums">{fmt(calcLineTotal(item))}</span>
       </div>
     </div>
   )

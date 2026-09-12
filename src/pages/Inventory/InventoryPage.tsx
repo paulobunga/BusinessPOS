@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useInventory } from '../../hooks/useInventory'
 import { useItems } from '../../hooks/useItems'
+import { useCategories } from '../../hooks/useCategories'
 import { useAuth } from '../../context/AuthContext'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import { Checkbox } from '../../components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -29,25 +31,54 @@ export function InventoryPage() {
   const today = new Date().toISOString().slice(0, 10)
   const [date, setDate] = useState(today)
   const { items } = useItems({ kind: 'priced', activeOnly: true })
+  const { categories } = useCategories()
+  const purchaseOnlyCatIds = new Set(categories.filter(c => c.purchase_only === 1).map(c => c.id))
   const { purchases, dailyTotal, loading, record } = useInventory(date)
   const { userId } = useAuth()
 
   const [open, setOpen] = useState(false)
   const [itemId, setItemId] = useState('')
   const [quantity, setQuantity] = useState('')
+  const [unit, setUnit] = useState('kg')
+  const [costPerUnit, setCostPerUnit] = useState('')
+  const [yieldEnabled, setYieldEnabled] = useState(false)
+  const [yieldItemId, setYieldItemId] = useState('')
+  const [portions, setPortions] = useState('')
   const [error, setError] = useState('')
   const [processing, setProcessing] = useState(false)
 
   const selectedItem = items.find(p => String(p.id) === itemId)
-  const unitCostCents = selectedItem?.cost_price_cents ?? 0
   const quantityNum = parseFloat(quantity)
-  const computedTotal = isNaN(quantityNum) || quantityNum <= 0 ? 0 : Math.round(quantityNum * unitCostCents)
+  const costPerUnitNum = parseFloat(costPerUnit)
+  const portionsNum = parseFloat(portions)
+  const computedTotal =
+    isNaN(quantityNum) || isNaN(costPerUnitNum) || quantityNum <= 0 || costPerUnitNum < 0
+      ? 0
+      : Math.round(quantityNum * costPerUnitNum)
+  const yieldDishCount = yieldEnabled && !isNaN(quantityNum) && !isNaN(portionsNum) && quantityNum > 0 && portionsNum > 0
+    ? Math.round(quantityNum * portionsNum)
+    : 0
+  const perPlateCost = yieldDishCount > 0 && computedTotal > 0 ? Math.round(computedTotal / yieldDishCount) : 0
+  const yieldItems = items.filter(p => !purchaseOnlyCatIds.has(p.category_id))
+
+  useEffect(() => {
+    setCostPerUnit(selectedItem ? String(selectedItem.cost_price_cents) : '')
+    if (selectedItem?.purchase_unit) setUnit(selectedItem.purchase_unit)
+  }, [selectedItem])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     if (!itemId || !quantity || isNaN(quantityNum) || quantityNum <= 0) {
       setError('Select an item and enter a valid quantity')
+      return
+    }
+    if (isNaN(costPerUnitNum) || costPerUnitNum < 0) {
+      setError('Enter a valid cost per unit')
+      return
+    }
+    if (yieldEnabled && (!yieldItemId || isNaN(portionsNum) || portionsNum <= 0)) {
+      setError('Select the yield dish and enter portions')
       return
     }
     setProcessing(true)
@@ -57,10 +88,18 @@ export function InventoryPage() {
       cost_cents: computedTotal,
       date,
       created_by: userId ?? null,
+      unit: unit.trim() || 'kg',
+      yield_item_id: yieldEnabled ? Number(yieldItemId) : null,
+      expected_yield: yieldEnabled && !isNaN(portionsNum) ? Math.max(1, Math.round(portionsNum)) : undefined,
     })
     setProcessing(false)
     setItemId('')
     setQuantity('')
+    setUnit('kg')
+    setCostPerUnit('')
+    setYieldEnabled(false)
+    setYieldItemId('')
+    setPortions('')
     setOpen(false)
   }
 
@@ -96,18 +135,17 @@ export function InventoryPage() {
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Record Daily Purchase</DialogTitle>
-            <DialogDescription>
-              Enter the item and quantity purchased today.
-            </DialogDescription>
-          </DialogHeader>
+<DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Record Daily Purchase</DialogTitle>
+              <DialogDescription>
+                Enter the item, quantity and cost purchased today.
+              </DialogDescription>
+            </DialogHeader>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            {error && <p className="m-0 font-semibold text-destructive">{error}</p>}
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              {error && <p className="m-0 font-semibold text-destructive">{error}</p>}
 
-            <div className="grid grid-cols-2 gap-4">
               <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
                 Item
                 <Select value={itemId} onValueChange={setItemId}>
@@ -117,35 +155,89 @@ export function InventoryPage() {
                   <SelectContent>
                     {items.map(p => (
                       <SelectItem key={p.id} value={String(p.id)}>
-                        {p.name} — {fmt.format(p.cost_price_cents)}/kg
+                        {p.name} — {fmt.format(p.cost_price_cents)}/{p.purchase_unit ?? 'kg'}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </Label>
 
+              <div className="grid grid-cols-2 gap-4">
+                <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+                  Quantity ({selectedItem?.purchase_unit ?? 'kg'})
+                  <Input type="number" placeholder="0" value={quantity} onChange={e => setQuantity(e.target.value)} className={inputClass} min="0" step="0.1" />
+                </Label>
+                <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+                  Unit
+                  <Input value={unit} onChange={e => setUnit(e.target.value)} className={inputClass} placeholder="kg" />
+                </Label>
+              </div>
+
               <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
-                Quantity (kg)
-                <Input type="number" placeholder="0" value={quantity} onChange={e => setQuantity(e.target.value)} className={inputClass} min="0" step="0.1" />
+                Cost per {unit || 'unit'} (UGX)
+                <Input type="number" placeholder="0" value={costPerUnit} onChange={e => setCostPerUnit(e.target.value)} className={inputClass} min="0" step="0.5" />
               </Label>
-            </div>
 
-            <div className="flex items-center gap-3 rounded-[var(--radius-md)] border border-border bg-background px-4 py-3">
-              <span className="text-[0.875rem] text-muted-foreground">
-                {selectedItem ? `${selectedItem.name} × ${quantity || '0'} kg @ ${fmt.format(unitCostCents)}/kg` : 'Select an item to preview cost'}
-              </span>
-              <span className="ml-auto text-lg font-extrabold">
-                {fmt.format(computedTotal)}
-              </span>
-            </div>
+              <div className="flex items-center gap-3 rounded-[var(--radius-md)] border border-border bg-background px-4 py-3">
+                <span className="text-[0.875rem] text-muted-foreground">
+                  {selectedItem && !isNaN(costPerUnitNum)
+                    ? `${selectedItem.name} × ${quantity || '0'} ${unit || 'unit'} @ ${fmt.format(costPerUnitNum)}/${unit || 'unit'}`
+                    : 'Select an item and enter cost to preview total'}
+                </span>
+                <span className="ml-auto text-lg font-extrabold">
+                  {fmt.format(computedTotal)}
+                </span>
+              </div>
 
-            <DialogFooter>
-              <Button type="submit" disabled={processing} className="bg-primary font-semibold">
-                {processing ? 'Saving...' : 'Record Purchase'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
+              <div className="flex items-center gap-3 rounded-[var(--radius-md)] border border-border bg-background p-3">
+                <Checkbox
+                  id="yields-enabled"
+                  checked={yieldEnabled}
+                  onCheckedChange={v => setYieldEnabled(!!v)}
+                />
+                <Label htmlFor="yields-enabled" className="text-[0.875rem] font-semibold">
+                  Yields sellable portions (e.g. whole chicken → plates)
+                </Label>
+              </div>
+
+              {yieldEnabled && (
+                <div className="flex flex-col gap-4 rounded-[var(--radius-md)] border border-border bg-background p-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+                      Yields dish
+                      <Select value={yieldItemId} onValueChange={setYieldItemId}>
+                        <SelectTrigger className="h-11 w-full rounded-[var(--radius-md)]">
+                          <SelectValue placeholder="Select dish..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {yieldItems.map(p => (
+                            <SelectItem key={p.id} value={String(p.id)}>
+                              {p.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Label>
+                    <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+                      Portions per {unit || 'unit'}
+                      <Input type="number" placeholder="0" value={portions} onChange={e => setPortions(e.target.value)} className={inputClass} min="1" />
+                    </Label>
+                  </div>
+                  {yieldDishCount > 0 && computedTotal > 0 && (
+                    <p className="m-0 text-[0.875rem] text-muted-foreground">
+                      {quantityNum} {unit || 'unit'} → {yieldDishCount} plates @ {fmt.format(perPlateCost)}/plate
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <DialogFooter>
+                <Button type="submit" disabled={processing} className="bg-primary font-semibold">
+                  {processing ? 'Saving...' : 'Record Purchase'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
       </Dialog>
 
       {/* List */}
@@ -159,12 +251,15 @@ export function InventoryPage() {
         <div className="flex flex-col gap-2">
           {purchases.map((p: ItemPurchaseWithName) => (
             <div key={p.id} className="flex items-center justify-between rounded-[var(--radius-md)] border border-border bg-card px-4 py-3">
-              <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3">
                 <p className="m-0 text-[0.9375rem] font-bold">{p.item_name ?? `Item #${p.item_id}`}</p>
+                {p.yield_item_name && (
+                  <span className="text-[0.8125rem] text-muted-foreground">→ {p.yield_item_name}</span>
+                )}
               </div>
               <div className="flex items-center gap-4">
-                <span className="text-[0.875rem] text-muted-foreground">{p.quantity_kg} kg</span>
-                <span className="text-[0.8125rem] text-muted-foreground">@{fmt.format(p.unit_cost_cents ?? p.cost_cents)}/kg</span>
+                <span className="text-[0.875rem] text-muted-foreground">{p.quantity_kg} {p.unit ?? 'kg'}</span>
+                <span className="text-[0.8125rem] text-muted-foreground">@{fmt.format(p.unit_cost_cents ?? p.cost_cents)}/{p.unit ?? 'kg'}</span>
                 <span className="w-[100px] text-right text-[0.9375rem] font-bold">{fmt.format(p.cost_cents)}</span>
               </div>
             </div>

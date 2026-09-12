@@ -10,16 +10,17 @@ export const categoriesRepo = {
     return getDb().prepare('SELECT * FROM categories WHERE active = 1 ORDER BY sort_order, name').all() as Category[]
   },
 
-  upsert(data: { id?: number; name: string; kind?: 'priced' | 'free'; sort_order?: number; active?: number }): Category {
+  upsert(data: { id?: number; name: string; kind?: 'priced' | 'free'; sort_order?: number; active?: number; purchase_only?: number }): Category {
     const db = getDb()
     if (data.id) {
-      db.prepare('UPDATE categories SET name=?, kind=?, sort_order=?, active=? WHERE id=?')
-        .run(data.name, data.kind ?? 'priced', data.sort_order ?? 0, data.active ?? 1, data.id)
+      const existing = db.prepare('SELECT purchase_only FROM categories WHERE id = ?').get(data.id) as { purchase_only?: number } | undefined
+      db.prepare('UPDATE categories SET name=?, kind=?, sort_order=?, active=?, purchase_only=? WHERE id=?')
+        .run(data.name, data.kind ?? 'priced', data.sort_order ?? 0, data.active ?? 1, data.purchase_only ?? existing?.purchase_only ?? 0, data.id)
       return db.prepare('SELECT * FROM categories WHERE id = ?').get(data.id) as Category
     }
     try {
-      const result = db.prepare('INSERT INTO categories (name, kind, sort_order, active) VALUES (?, ?, ?, ?)')
-        .run(data.name, data.kind ?? 'priced', data.sort_order ?? 0, data.active ?? 1)
+      const result = db.prepare('INSERT INTO categories (name, kind, sort_order, active, purchase_only) VALUES (?, ?, ?, ?, ?)')
+        .run(data.name, data.kind ?? 'priced', data.sort_order ?? 0, data.active ?? 1, data.purchase_only ?? 0)
       return db.prepare('SELECT * FROM categories WHERE id = ?').get(result.lastInsertRowid) as Category
     } catch (e: any) {
       if (e.message?.includes('UNIQUE constraint failed')) {

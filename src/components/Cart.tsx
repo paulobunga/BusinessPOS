@@ -23,14 +23,14 @@ export function Cart({ items, subtotal, discountCents, discountReason, total, on
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-border px-1 pb-3">
+      <div className="flex items-center justify-between px-1 pb-3">
         <h2 className="text-xl font-bold">Current Order</h2>
         <div className="flex items-center gap-2">
           <Button
             onClick={onClear}
             disabled={items.length === 0}
             variant="ghost"
-            className="h-11 px-3 font-bold text-destructive hover:bg-destructive/10 hover:text-destructive"
+            className="h-9 rounded-full bg-destructive/10 px-3 text-xs font-bold text-destructive hover:bg-destructive/20 hover:text-destructive"
           >
             Clear All
           </Button>
@@ -38,17 +38,17 @@ export function Cart({ items, subtotal, discountCents, discountReason, total, on
             onClick={onOpenOptions}
             variant="outline"
             size="icon"
-            aria-label="Order options"
-            className="h-11 w-11 rounded-full bg-card"
+            aria-label="Order settings"
+            className="h-9 w-9 rounded-full border-border bg-card text-muted-foreground"
           >
-            <Settings2 className="h-5 w-5" />
+            <Settings2 className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto px-1 py-2">
+      <div className="min-h-0 flex-1 overflow-auto divide-y divide-border pr-1">
         {items.length === 0 ? (
-          <p className="mt-6 text-center text-sm font-medium text-muted-foreground">Cart is empty</p>
+          <p className="mt-6 text-center text-sm font-medium text-muted-foreground">No items in this order</p>
         ) : (
           items.map((item, i) => (
             <CartItem
@@ -63,8 +63,8 @@ export function Cart({ items, subtotal, discountCents, discountReason, total, on
         )}
       </div>
 
-      <div className="flex flex-col gap-3 border-t-2 border-border p-4">
-        <div className="flex flex-col gap-1.5">
+      <div className="mt-4 flex flex-col gap-3 border-t-2 border-border pt-4">
+        <div className="flex flex-col gap-1.5 rounded-[var(--radius-lg)] border border-border bg-background/50 p-4">
           <div className="flex justify-between">
             <span className="text-sm font-medium text-muted-foreground">Subtotal</span>
             <span className="text-sm font-bold">{fmt(subtotal)}</span>

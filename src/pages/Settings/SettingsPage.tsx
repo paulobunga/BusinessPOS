@@ -70,7 +70,7 @@ export function SettingsPage() {
   // Categories
   const { categories, loading: categoriesLoading, error: categoriesError, retry: retryCategories } = useCategories(false)
   const [categoryModal, setCategoryModal] = useState<CategoryModal | null>(null)
-  const [categoryDraft, setCategoryDraft] = useState({ name: '', kind: 'priced', sort_order: '0' })
+  const [categoryDraft, setCategoryDraft] = useState({ name: '', kind: 'priced', sort_order: '0', purchase_only: false })
   const [categoryStatus, setCategoryStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   // Attributes
@@ -84,7 +84,7 @@ export function SettingsPage() {
   const [menuCatId, setMenuCatId] = useState<number | null>(null)
   const { attributes: categoryDefs, retry: retryCategoryDefs } = useAttributes(menuCatId)
   const [itemModal, setItemModal] = useState<ItemModal | null>(null)
-  const [itemDraft, setItemDraft] = useState<{ name: string; selling: string; cost: string; values: Record<number, { text?: string; number?: string; boolean?: boolean }> }>({ name: '', selling: '', cost: '', values: {} })
+  const [itemDraft, setItemDraft] = useState<{ name: string; selling: string; cost: string; purchase_unit: string; values: Record<number, { text?: string; number?: string; boolean?: boolean }> }>({ name: '', selling: '', cost: '', purchase_unit: 'kg', values: {} })
   const [itemStatus, setItemStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   // PIN
@@ -118,13 +118,13 @@ export function SettingsPage() {
 
   // === Categories ===
   const openAddCategory = () => {
-    setCategoryDraft({ name: '', kind: 'priced', sort_order: '0' })
+    setCategoryDraft({ name: '', kind: 'priced', sort_order: '0', purchase_only: false })
     setCategoryStatus(null)
     setCategoryModal({ mode: 'add' })
   }
 
   const openEditCategory = (c: Category) => {
-    setCategoryDraft({ name: c.name, kind: c.kind, sort_order: String(c.sort_order) })
+    setCategoryDraft({ name: c.name, kind: c.kind, sort_order: String(c.sort_order), purchase_only: c.purchase_only === 1 })
     setCategoryStatus(null)
     setCategoryModal({ mode: 'edit', category: c })
   }
@@ -133,13 +133,13 @@ export function SettingsPage() {
     if (!categoryDraft.name.trim()) { setCategoryStatus({ type: 'error', text: 'Name is required' }); return }
     if (categoryModal?.mode === 'edit') {
       const c = categoryModal.category
-      await window.api['categories:upsert']({ id: c.id, name: categoryDraft.name.trim(), kind: categoryDraft.kind as 'priced' | 'free', sort_order: parseInt(categoryDraft.sort_order, 10) || 0, active: c.active })
+      await window.api['categories:upsert']({ id: c.id, name: categoryDraft.name.trim(), kind: categoryDraft.kind as 'priced' | 'free', sort_order: parseInt(categoryDraft.sort_order, 10) || 0, active: c.active, purchase_only: categoryDraft.purchase_only ? 1 : 0 })
       setCategoryModal(null)
       await retryCategories()
       await retryItems()
       setCategoryStatus({ type: 'success', text: 'Category saved' })
     } else {
-      await window.api['categories:upsert']({ name: categoryDraft.name.trim(), kind: categoryDraft.kind as 'priced' | 'free', sort_order: parseInt(categoryDraft.sort_order, 10) || 0, active: 1 })
+      await window.api['categories:upsert']({ name: categoryDraft.name.trim(), kind: categoryDraft.kind as 'priced' | 'free', sort_order: parseInt(categoryDraft.sort_order, 10) || 0, active: 1, purchase_only: categoryDraft.purchase_only ? 1 : 0 })
       setCategoryModal(null)
       await retryCategories()
       await retryItems()
@@ -210,7 +210,7 @@ export function SettingsPage() {
   const menuItems = menuCatId == null ? [] : items.filter(i => i.category_id === menuCatId)
 
   const openAddItem = () => {
-    setItemDraft({ name: '', selling: '', cost: '', values: {} })
+    setItemDraft({ name: '', selling: '', cost: '', purchase_unit: 'kg', values: {} })
     setItemStatus(null)
     setItemModal({ mode: 'add' })
   }
@@ -223,7 +223,7 @@ export function SettingsPage() {
       else if (def.type === 'number') values[def.id] = { number: val?.value_number != null ? String(val.value_number) : '' }
       else values[def.id] = { boolean: val?.value_boolean === 1 }
     }
-    setItemDraft({ name: item.name, selling: String(item.selling_price_cents), cost: String(item.cost_price_cents), values })
+    setItemDraft({ name: item.name, selling: String(item.selling_price_cents), cost: String(item.cost_price_cents), purchase_unit: item.purchase_unit ?? 'kg', values })
     setItemStatus(null)
     setItemModal({ mode: 'edit', item })
   }
@@ -236,7 +236,7 @@ export function SettingsPage() {
 
     if (itemModal?.mode === 'edit') {
       const item = itemModal.item
-      await window.api['items:upsert']({ id: item.id, name: itemDraft.name.trim(), selling_price_cents: selling, cost_price_cents: cost })
+      await window.api['items:upsert']({ id: item.id, name: itemDraft.name.trim(), selling_price_cents: selling, cost_price_cents: cost, purchase_unit: itemDraft.purchase_unit.trim() || 'kg' })
       if (categoryDefs.length > 0) {
         const values: Array<{ attr_def_id: number; value_text?: string; value_number?: number; value_boolean?: boolean }> = []
         for (const def of categoryDefs) {
@@ -255,7 +255,7 @@ export function SettingsPage() {
       setItemStatus({ type: 'success', text: 'Item saved' })
     } else {
       if (menuCatId == null) { setItemStatus({ type: 'error', text: 'Select a category first' }); return }
-      await window.api['items:upsert']({ category_id: menuCatId, name: itemDraft.name.trim(), selling_price_cents: selling, cost_price_cents: cost, active: 1 })
+      await window.api['items:upsert']({ category_id: menuCatId, name: itemDraft.name.trim(), selling_price_cents: selling, cost_price_cents: cost, purchase_unit: itemDraft.purchase_unit.trim() || 'kg', active: 1 })
       setItemModal(null)
       await retryItems()
       setItemStatus({ type: 'success', text: 'Item added' })
@@ -361,6 +361,7 @@ export function SettingsPage() {
               <div className="flex min-w-0 flex-wrap items-center gap-3">
                 <p className="m-0 text-[0.9375rem] font-bold text-foreground">{c.name}</p>
                 <KindBadge kind={c.kind} />
+                {c.purchase_only === 1 && <Badge variant="secondary">Stock</Badge>}
                 {!c.active && <span className="text-[0.8125rem] font-semibold text-muted-foreground">inactive</span>}
               </div>
               <div className="flex items-center gap-2">
@@ -516,6 +517,16 @@ export function SettingsPage() {
                 </SelectContent>
               </Select>
             </Label>
+            <div className="flex items-center gap-3 rounded-[var(--radius-md)] border border-border bg-background p-3">
+              <Checkbox
+                id="cat-purchase-only"
+                checked={categoryDraft.purchase_only}
+                onCheckedChange={v => setCategoryDraft(d => ({ ...d, purchase_only: v === true }))}
+              />
+              <Label htmlFor="cat-purchase-only" className="text-[0.875rem] font-semibold">
+                Purchase-only (hidden from POS screen)
+              </Label>
+            </div>
             <DialogFooter>
               <Button type="button" variant="outline" className="border-border bg-card font-semibold" onClick={() => setCategoryModal(null)}>Cancel</Button>
               <Button type="button" className="bg-primary font-semibold" onClick={submitCategory}>{categoryModal?.mode === 'edit' ? 'Save' : 'Add Category'}</Button>
@@ -587,6 +598,10 @@ export function SettingsPage() {
               <Label className="flex min-w-0 flex-col gap-1 text-[0.875rem] font-semibold">Selling (UGX)<Input className={inputClass} type="number" min="0" value={itemDraft.selling} onChange={e => setItemDraft(d => ({ ...d, selling: e.target.value }))} /></Label>
               <Label className="flex min-w-0 flex-col gap-1 text-[0.875rem] font-semibold">Cost (UGX)<Input className={inputClass} type="number" min="0" value={itemDraft.cost} onChange={e => setItemDraft(d => ({ ...d, cost: e.target.value }))} /></Label>
             </div>
+            <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+              Purchase unit
+              <Input className={`${inputClass} max-w-[160px]`} value={itemDraft.purchase_unit} onChange={e => setItemDraft(d => ({ ...d, purchase_unit: e.target.value }))} placeholder="kg" />
+            </Label>
             {itemModal?.mode === 'edit' && categoryDefs.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {categoryDefs.map(def => {
