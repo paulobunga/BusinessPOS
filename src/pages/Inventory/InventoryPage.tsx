@@ -30,8 +30,8 @@ const fmt = new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX',
 export function InventoryPage() {
   const today = new Date().toISOString().slice(0, 10)
   const [date, setDate] = useState(today)
-  const { items } = useItems({ kind: 'priced', activeOnly: true })
-  const { categories } = useCategories()
+  const { items, retry: retryItems } = useItems({ kind: 'priced', activeOnly: true })
+  const { categories, retry: retryCategories } = useCategories()
   const purchaseOnlyCatIds = new Set(categories.filter(c => c.purchase_only === 1).map(c => c.id))
   const { purchases, dailyTotal, loading, record } = useInventory(date)
   const { userId } = useAuth()
@@ -46,6 +46,13 @@ export function InventoryPage() {
   const [portions, setPortions] = useState('')
   const [error, setError] = useState('')
   const [processing, setProcessing] = useState(false)
+
+  const [addOpen, setAddOpen] = useState(false)
+  const [addName, setAddName] = useState('')
+  const [addUnit, setAddUnit] = useState('kg')
+  const [addCost, setAddCost] = useState('')
+  const [addError, setAddError] = useState('')
+  const [addProcessing, setAddProcessing] = useState(false)
 
   const selectedItem = items.find(p => String(p.id) === itemId)
   const quantityNum = parseFloat(quantity)
@@ -103,6 +110,46 @@ export function InventoryPage() {
     setOpen(false)
   }
 
+  const handleAddItem = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setAddError('')
+    const name = addName.trim()
+    const cost = parseFloat(addCost)
+    if (!name) {
+      setAddError('Item name is required')
+      return
+    }
+    if (!isNaN(cost) && cost < 0) {
+      setAddError('Cost must be 0 or more')
+      return
+    }
+    setAddProcessing(true)
+    try {
+      let stockCat = categories.find(c => c.purchase_only === 1)
+      if (!stockCat) {
+        stockCat = await window.api['categories:upsert']({ name: 'Stock', kind: 'priced', purchase_only: 1 })
+        retryCategories()
+      }
+      await window.api['items:upsert']({
+        category_id: stockCat.id,
+        name,
+        selling_price_cents: 0,
+        cost_price_cents: isNaN(cost) ? 0 : Math.round(cost),
+        purchase_unit: addUnit.trim() || 'kg',
+        active: 1,
+      })
+      retryItems()
+      setAddOpen(false)
+      setAddName('')
+      setAddUnit('kg')
+      setAddCost('')
+    } catch (err) {
+      setAddError((err as Error).message || 'Failed to add item')
+    } finally {
+      setAddProcessing(false)
+    }
+  }
+
   const inputClass = 'h-11 rounded-[var(--radius-md)] bg-background text-[0.875rem]'
 
   return (
@@ -128,11 +175,52 @@ export function InventoryPage() {
       </div>
 
       {/* Record form */}
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <Button onClick={() => { setAddError(''); setAddOpen(true) }} variant="outline" className="h-11 border-border bg-card font-semibold">
+          + Add Item
+        </Button>
         <Button onClick={() => { setError(''); setOpen(true) }} className="bg-primary font-semibold">
           + Record Purchase
         </Button>
       </div>
+
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Purchase Item</DialogTitle>
+            <DialogDescription>
+              Add a stock/buyable item (e.g. sugar, milk, whole chicken). Stored in a purchase-only "Stock" category — hidden from the POS screen.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleAddItem} className="flex flex-col gap-4">
+            {addError && <p className="m-0 font-semibold text-destructive">{addError}</p>}
+
+            <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+              Item name
+              <Input value={addName} onChange={e => setAddName(e.target.value)} className={inputClass} placeholder="e.g. Sugar 10kg bag" autoFocus />
+            </Label>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+                Purchase unit
+                <Input value={addUnit} onChange={e => setAddUnit(e.target.value)} className={inputClass} placeholder="kg" />
+              </Label>
+              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+                Default cost/unit (UGX)
+                <Input type="number" min="0" step="0.5" value={addCost} onChange={e => setAddCost(e.target.value)} className={inputClass} placeholder="0" />
+              </Label>
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" className="border-border bg-card font-semibold" onClick={() => setAddOpen(false)}>Cancel</Button>
+              <Button type="submit" className="bg-primary font-semibold" disabled={addProcessing}>
+                {addProcessing ? 'Adding...' : 'Add Item'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={open} onOpenChange={setOpen}>
 <DialogContent className="sm:max-w-lg">
