@@ -28,7 +28,7 @@ export function runUserRolesMigration(db: Database.Database) {
 
   const fkCheck = db.prepare('PRAGMA foreign_key_check').all()
   if (fkCheck.length > 0) {
-    throw new Error(`Foreign key check failed after migration 008: ${fkCheck.length} violations`)
+    throw new Error(`Foreign key check failed after migration 013: ${fkCheck.length} violations`)
   }
 
   db.exec(`INSERT INTO schema_migrations (version) VALUES (13);`)
