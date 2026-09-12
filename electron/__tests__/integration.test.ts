@@ -11,6 +11,7 @@ import { runMoneyWholeUgxMigration } from '../db/migrations/008_money_whole_ugx'
 import { runMenuSeedMigration } from '../db/migrations/009_menu_seed'
 import { runPurchaseYieldMigration } from '../db/migrations/010_purchase_yield'
 import { runPurchaseYieldsMigration } from '../db/migrations/011_purchase_yields'
+import { runUserRolesMigration } from '../db/migrations/008_user_roles'
 
 let db: Database.Database
 
@@ -53,8 +54,9 @@ describe('Full day at the restaurant (integration)', () => {
     runMenuSeedMigration(db)
     runPurchaseYieldMigration(db)
     runPurchaseYieldsMigration(db)
+    runUserRolesMigration(db)
 
-    const user = usersRepo.create('Test Manager', 'manager', '1234')
+    const user = usersRepo.create('Test Manager', 'cashier', '1234')
     userId = user.id as number
 
     const meatCat = categoriesRepo.upsert({ name: 'Test Meats', kind: 'priced', sort_order: 0 })

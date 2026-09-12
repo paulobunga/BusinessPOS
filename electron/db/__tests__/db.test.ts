@@ -9,6 +9,7 @@ import { runDebtsMigration } from '../migrations/004_debts_payment_allocations'
 import { runReimbursementsMigration } from '../migrations/005_reimbursements_add_columns'
 import { runWasteMigration } from '../migrations/006_waste_table'
 import { runCategoriesMigration } from '../migrations/007_categories'
+import { runUserRolesMigration } from '../migrations/008_user_roles'
 import { itemsRepo } from '../repositories/itemsRepo'
 
 const TEST_DB_PATH = path.join(__dirname, '..', '__test.sqlite')
@@ -28,6 +29,7 @@ describe('Database initialization', () => {
     runReimbursementsMigration(db)
     runWasteMigration(db)
     runCategoriesMigration(db)
+    runUserRolesMigration(db)
   })
 
   afterAll(() => {
@@ -76,5 +78,13 @@ describe('Database initialization', () => {
   test('legacy proteins/starches tables are gone', () => {
     const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('proteins','starches','protein_purchases')").all() as { name: string }[]
     expect(tables).toHaveLength(0)
+  })
+
+  test('users table rebuilt with admin/cashier roles', () => {
+    const cols = db.prepare('PRAGMA table_info(users)').all() as { name: string }[]
+    expect(cols.map(c => c.name)).toContain('created_at')
+    expect(() => {
+      db.prepare("INSERT INTO users (name, role, pin_hash) VALUES ('bad','manager','abcd')").run()
+    }).toThrow()
   })
 })
