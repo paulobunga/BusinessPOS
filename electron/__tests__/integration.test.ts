@@ -11,7 +11,7 @@ import { runMoneyWholeUgxMigration } from '../db/migrations/008_money_whole_ugx'
 import { runMenuSeedMigration } from '../db/migrations/009_menu_seed'
 import { runPurchaseYieldMigration } from '../db/migrations/010_purchase_yield'
 import { runPurchaseYieldsMigration } from '../db/migrations/011_purchase_yields'
-import { runUserRolesMigration } from '../db/migrations/008_user_roles'
+import { runUserRolesMigration } from '../db/migrations/013_user_roles'
 
 let db: Database.Database
 

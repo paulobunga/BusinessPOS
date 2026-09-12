@@ -9,7 +9,7 @@ import { runDebtsMigration } from '../migrations/004_debts_payment_allocations'
 import { runReimbursementsMigration } from '../migrations/005_reimbursements_add_columns'
 import { runWasteMigration } from '../migrations/006_waste_table'
 import { runCategoriesMigration } from '../migrations/007_categories'
-import { runUserRolesMigration } from '../migrations/008_user_roles'
+import { runUserRolesMigration } from '../migrations/013_user_roles'
 import { itemsRepo } from '../repositories/itemsRepo'
 
 const TEST_DB_PATH = path.join(__dirname, '..', '__test.sqlite')
