@@ -56,6 +56,11 @@ A simple PIN-based login (local, no external auth) distinguishes the manager fro
 - FR-10: Debts screen showing all customers with outstanding balances: customer name, total owed, last order date, number of unpaid orders.
 - FR-11: View individual customer's unpaid order history with amounts and dates.
 - FR-12: Clear a customer's balance when fully paid; retain payment history for audit.
+- FR-12a: **Partial payment at checkout (`mixed`)** — when recording an unpaid sale, allow the manager to record cash tendered now; the remainder automatically becomes the customer's debt (`payment_method='mixed'`), instead of the whole total going to debt.
+- FR-12b: **Repeat-credit warning** — before recording a debt sale for a customer who already has an outstanding balance, surface their total owed in the debt prompt so the manager isn't caught unaware.
+- FR-12c: **Overpayment guard** — a debt payment cannot exceed the remaining balance of the open debt; a surplus/repeat payment is surfaced as an error rather than silently over-credited.
+- FR-12d: **Aging indicators** — every open debt shows its age (days since sale and days since last payment), color-coded (fresh → warning → overdue), with sort-by-age/amount on the Debts screen.
+- FR-12e: **Per-customer balance view** — Debts screen aggregates open debts by customer (name, total owed, oldest open sale, number of unpaid orders) alongside the per-sale rows, implementing FR-8/FR-10; the balance is always *derived* by summing the append-only `payment_allocations` ledger, never stored as a mutable field.
 
 ### 5.3 Expenses (Ledger — Outgoing)
 - FR-13: Record an expense with: date, category (ingredients, utilities, rent, supplies, wages, transport, other), description, amount.

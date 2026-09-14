@@ -46,6 +46,7 @@ Ordered so each phase produces something runnable. Checkboxes for tracking.
 - [ ] Sale completion: mark as `completed` (cash paid) or `unpaid` (linked to customer name).
 - [ ] Unpaid flow: when marking as unpaid, prompt for customer name (create new or select existing).
 - [ ] On-screen receipt summary after a completed sale.
+- [ ] **Preserve in-progress sale**: persist the current cart locally and restore it after app restart/crash, so an unfinalized order is never lost.
 - [ ] Void flow: locate a recent sale, require manager PIN, capture void reason, call `sales:void`.
 
 ## Phase 6 — Customer Debts
@@ -54,6 +55,11 @@ Ordered so each phase produces something runnable. Checkboxes for tracking.
 - [ ] Record payment flow: select customer, enter amount, allocate to specific sales (full, partial, or per-sale).
 - [ ] Auto-clear customer balance when fully paid; retain payment history for audit.
 - [ ] Search/filter on debts list (by name).
+- [ ] **Partial payment at checkout**: extend the debt-sale flow to accept cash tendered now and carry the remainder as debt (`payment_method='mixed'`).
+- [ ] **Per-customer balance aggregation**: Debts screen totals open debts per customer (name, total owed, oldest open sale, unpaid order count) alongside the per-sale rows.
+- [ ] **Debt aging**: show days-open and color-code each open debt (fresh / warn / overdue); sortable by age and by amount.
+- [ ] **Repeat-credit warning**: surface a customer's outstanding balance in the debt prompt before recording a new debt sale.
+- [ ] **Overpayment guard**: block a payment that exceeds the open balance; surface the surplus as an error.
 
 ## Phase 7 — Expenses (with Payment Source)
 - [ ] Expense entry form: category, description, amount via NumPad, payment source toggle (till / personal), reference.
@@ -114,3 +120,5 @@ Ordered so each phase produces something runnable. Checkboxes for tracking.
 - [ ] Kitchen display system (order routing to kitchen screen).
 - [ ] Multi-currency / multi-tax-rate support.
 - [ ] Photo attachments for receipts/expenses.
+- [ ] Multiple concurrent open orders at the POS (browser-tab-style carts, one per dine-in group) — kafunda learnings.
+- [ ] Layaway / prepaid-item facility (customer pays toward an item in installments; item released when fully paid) — kafunda learnings.

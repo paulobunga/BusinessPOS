@@ -66,6 +66,8 @@ No text weight below 500 is used — thin fonts read poorly on kiosk displays.
 - **PrimaryButton / SecondaryButton / DangerButton** — consistent 56px/48px height, full-width in modals, icon+label.
 - **SummaryCard** — used on Dashboard/Reports: label, big number, delta/trend, colored accent (green for sales, red for expenses).
 - **StatusBadge** — Paid / Unpaid / Voided / Refunded, color-coded (success/warning/danger/neutral).
+- **DebtAgingBadge** — color-coded age indicator on open debts (fresh / warn / overdue), scaled from `--color-warning` toward `--color-danger` as a debt ages; drives sortability on the Debts screen.
+- **BalanceWarning** — inline warning in the debt-sale prompt showing a returning debtor's total owed before extending new credit (prevents staff being caught unaware by repeat credit).
 - **PinPad** — for role login and manager-authorization prompts (void, delete, close till).
 - **DataTable** — for transaction history: sticky header, zebra striping (`--color-surface-alt`), filter bar above.
 - **Modal / Drawer** — used for item details, expense entry, till close reconciliation, debt payment.
@@ -290,6 +292,8 @@ Design notes:
 - SQLite opened in **WAL mode** (`PRAGMA journal_mode=WAL;`) for crash resilience and read/write concurrency between main-process operations.
 - `customers` table is lightweight — just name (and optional phone) for debt tracking.
 - `payments` + `payment_allocations` support partial payments and payment across multiple sales.
+- `payment_allocations` are **append-only**: an open debt's paid/remaining balance is always *derived* by `SUM(amount_cents)`, never stored as a mutable field — guards against drift and double-entry (a payment that would exceed the open balance is rejected, not silently over-credited).
+- Checkout supports **mixed payment**: `payment_method='mixed'` records cash tendered at the till plus a carried `debt_cents` remainder on the same sale (the `mixed` value already exists in the sales CHECK constraint).
 - `protein_purchases` + `cook_events` enable waste calculation: cooked − sold = waste.
 
 ### 2.5 IPC Contract (illustrative)
