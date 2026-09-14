@@ -2,8 +2,6 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
-
 :root {
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -60,53 +58,6 @@
   --sidebar-accent-foreground: #241F3D;
   --sidebar-border: #F0E7DC;
   --sidebar-ring: #F0B27D;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #17121F;
-    --foreground: #F7F2EC;
-
-    --card: #221C2E;
-    --card-foreground: #F7F2EC;
-
-    --popover: #221C2E;
-    --popover-foreground: #F7F2EC;
-
-    --primary: #F5A14D;
-    --primary-foreground: #17121F;
-
-    --secondary: #2C2536;
-    --secondary-foreground: #F7F2EC;
-
-    --muted: #2C2536;
-    --muted-foreground: #B9B3C4;
-
-    --accent: #2C2536;
-    --accent-foreground: #F7F2EC;
-
-    --destructive: #FF5C85;
-    --destructive-foreground: #FFFFFF;
-
-    --border: #3A3344;
-    --input: #3A3344;
-    --ring: #F5A14D;
-
-    --chart-1: #F5A14D;
-    --chart-2: #34D399;
-    --chart-3: #FBBF24;
-    --chart-4: #FF5C85;
-    --chart-5: #A78BFA;
-
-    --sidebar: #221C2E;
-    --sidebar-foreground: #F7F2EC;
-    --sidebar-primary: #F5A14D;
-    --sidebar-primary-foreground: #17121F;
-    --sidebar-accent: #2C2536;
-    --sidebar-accent-foreground: #F7F2EC;
-    --sidebar-border: #3A3344;
-    --sidebar-ring: #F5A14D;
-  }
 }
 
 @theme inline {
