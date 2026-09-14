@@ -8,25 +8,30 @@ import {
   Settings,
   ShoppingCart,
   Trash2,
+  Users,
   Wallet,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '../context/AuthContext'
+import type { Module } from '../lib/permissions'
 
-const navItems = [
-  { to: '/sell', label: 'Sell', icon: ShoppingCart },
-  { to: '/expenses', label: 'Expenses', icon: ReceiptText },
-  { to: '/debts', label: 'Debts', icon: Wallet },
-  { to: '/reimbursements', label: 'Reimbursements', icon: ArrowLeftRight },
-  { to: '/inventory', label: 'Inventory', icon: Package },
-  { to: '/waste', label: 'Waste', icon: Trash2 },
-  { to: '/reports', label: 'Reports', icon: BarChart3 },
-  { to: '/settings', label: 'Settings', icon: Settings },
+const navItems: { to: string; label: string; icon: React.ElementType; module: Module }[] = [
+  { to: '/sell', label: 'Sell', icon: ShoppingCart, module: 'pos' },
+  { to: '/expenses', label: 'Expenses', icon: ReceiptText, module: 'expenses' },
+  { to: '/debts', label: 'Debts', icon: Wallet, module: 'debts' },
+  { to: '/reimbursements', label: 'Reimbursements', icon: ArrowLeftRight, module: 'reimbursements' },
+  { to: '/inventory', label: 'Inventory', icon: Package, module: 'inventory' },
+  { to: '/waste', label: 'Waste', icon: Trash2, module: 'waste' },
+  { to: '/reports', label: 'Reports', icon: BarChart3, module: 'reports' },
+  { to: '/settings', label: 'Settings', icon: Settings, module: 'settings' },
+  { to: '/users', label: 'Users', icon: Users, module: 'users' },
 ]
 
 export function Sidebar() {
   const navigate = useNavigate()
   const { logout } = useAuth()
+  const { canSee } = useAuth()
+  const items = navItems.filter((i) => canSee(i.module))
 
   const handleLogout = () => {
     logout()
@@ -39,7 +44,7 @@ export function Sidebar() {
         <span className="mb-2 flex h-10 w-10 items-center justify-center text-xs font-extrabold text-primary" title="BusinessPOS">
           BP
         </span>
-        {navItems.map(item => {
+        {items.map(item => {
           const Icon = item.icon
           return (
             <NavLink
