@@ -20,3 +20,10 @@ test('canSeeRole', () => {
   expect(canSeeRole('cashier', 'users')).toBe(false)
   expect(canSeeRole('admin', 'users')).toBe(true)
 })
+test('assets module exists; admin sees it, cashier does not', () => {
+  expect(ALL_PERMISSIONS).toContain('assets.view')
+  expect(hasPermission('admin', 'assets.manage')).toBe(true)
+  expect(hasPermission('cashier', 'assets.view')).toBe(false)
+  expect(canSeeRole('admin', 'assets')).toBe(true)
+  expect(canSeeRole('cashier', 'assets')).toBe(false)
+})

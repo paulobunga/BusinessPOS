@@ -16,6 +16,7 @@ import { ReportsPage } from './pages/Reports/ReportsPage'
 import { SettingsPage } from './pages/Settings/SettingsPage'
 import { RequireModule } from './components/RequireModule'
 import { UsersPage } from './pages/Users/UsersPage'
+import { AssetsPage } from './pages/Assets/AssetsPage'
 
 type Phase = 'loading' | 'setup' | 'ready'
 
@@ -52,6 +53,7 @@ function Root() {
             <Route path="/reimbursements" element={<RequireModule module="reimbursements"><ReimbursementsPage /></RequireModule>} />
             <Route path="/inventory" element={<RequireModule module="inventory"><InventoryPage /></RequireModule>} />
             <Route path="/waste" element={<RequireModule module="waste"><WastePage /></RequireModule>} />
+            <Route path="/assets" element={<RequireModule module="assets"><AssetsPage /></RequireModule>} />
             <Route path="/reports" element={<RequireModule module="reports"><ReportsPage /></RequireModule>} />
             <Route path="/settings" element={<RequireModule module="settings"><SettingsPage /></RequireModule>} />
             <Route path="/users" element={<RequireModule module="users"><UsersPage /></RequireModule>} />

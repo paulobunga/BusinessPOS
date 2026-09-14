@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   ArrowLeftRight,
   BarChart3,
+  Boxes,
   LogOut,
   Package,
   ReceiptText,
@@ -22,6 +23,7 @@ const navItems: { to: string; label: string; icon: React.ElementType; module: Mo
   { to: '/reimbursements', label: 'Reimbursements', icon: ArrowLeftRight, module: 'reimbursements' },
   { to: '/inventory', label: 'Inventory', icon: Package, module: 'inventory' },
   { to: '/waste', label: 'Waste', icon: Trash2, module: 'waste' },
+  { to: '/assets', label: 'Assets', icon: Boxes, module: 'assets' },
   { to: '/reports', label: 'Reports', icon: BarChart3, module: 'reports' },
   { to: '/settings', label: 'Settings', icon: Settings, module: 'settings' },
   { to: '/users', label: 'Users', icon: Users, module: 'users' },
