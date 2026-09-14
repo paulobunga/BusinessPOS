@@ -164,6 +164,7 @@ export function AssetsPage() {
       />
 
       <DisposeAssetDialog
+        key={disposing?.id ?? 'none'}
         open={disposing != null}
         asset={disposing}
         onSubmit={async payload => {
