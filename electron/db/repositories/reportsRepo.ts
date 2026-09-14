@@ -294,11 +294,17 @@ export const reportsRepo = {
       SELECT
         s.customer_name,
         s.id AS sale_id,
-        s.debt_cents AS total_debt_cents,
+        s.debt_cents,
+        COALESCE(SUM(pa.amount_cents), 0) AS paid_cents,
+        s.debt_cents - COALESCE(SUM(pa.amount_cents), 0) AS total_debt_cents,
+        CAST(julianday('now') - julianday(s.created_at) AS INTEGER) AS days_open,
+        MAX(pa.created_at) AS last_payment_at,
         s.created_at
       FROM sales s
-      WHERE s.status IN ('unpaid')
-        AND s.debt_cents > 0
+      LEFT JOIN payment_allocations pa ON pa.sale_id = s.id
+      WHERE s.status IN ('unpaid') AND s.debt_cents > 0
+      GROUP BY s.id
+      HAVING total_debt_cents > 0
       ORDER BY s.created_at DESC
     `).all() as DebtSummaryItem[]
   },

@@ -12,6 +12,7 @@ vi.mock('../index', () => ({
 }))
 
 import { debtsRepo } from '../repositories/debtsRepo'
+import { reportsRepo } from '../repositories/reportsRepo'
 
 function insertSale(opts: { customer?: string; debtCents: number; totalCents?: number; status?: string; createdAt?: string }): number {
   const res = db.prepare(`
@@ -40,6 +41,7 @@ function pay(saleId: number, amountCents: number) {
 describe('debts v2', () => {
   let s2 = 0
   let s3 = 0
+  let anon = 0
 
   beforeAll(() => {
     db = new Database(':memory:')
@@ -60,7 +62,7 @@ describe('debts v2', () => {
     const s2 = insertSale({ customer: 'Bob', debtCents: 2000 })
     pay(s2, 2000)
     insertSale({ customer: 'Alice', debtCents: 500, status: 'voided' })
-    const anon = insertSale({ debtCents: 1200, createdAt: '2026-09-15 08:00:00' })
+    anon = insertSale({ debtCents: 1200, createdAt: '2026-09-15 08:00:00' })
 
     const rows = debtsRepo.listOpen()
     expect(rows).toHaveLength(2)
@@ -153,5 +155,23 @@ describe('debts v2', () => {
     expect(detail.open_debts.length).toBe(2)
     expect(detail.payments.length).toBeGreaterThanOrEqual(2)
     expect(detail.payments[0].sale_total_cents).toBeGreaterThan(0)
+  })
+
+  test('reports getDebtSummary subtracts allocations and lists only open debts', () => {
+    const rows = reportsRepo.getDebtSummary()
+
+    const dan = rows.filter(r => r.customer_name === 'Dan')
+    expect(dan.length).toBe(2)
+    const s2Row = dan.find(r => r.sale_id === s2)!
+    expect(s2Row.debt_cents).toBe(2000)
+    expect(s2Row.paid_cents).toBe(1500)
+    expect(s2Row.total_debt_cents).toBe(500)
+    expect(s2Row.paid_cents).toBeGreaterThan(0)
+
+    const anonRow = rows.find(r => r.sale_id === anon)!
+    expect(anonRow.total_debt_cents).toBe(anonRow.debt_cents)
+
+    const settled = rows.find(r => r.customer_name === 'Bob')
+    expect(settled).toBeUndefined()
   })
 })
