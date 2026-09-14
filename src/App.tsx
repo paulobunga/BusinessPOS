@@ -9,6 +9,7 @@ import { SetupPage } from './pages/Setup/SetupPage'
 import { SellPage } from './pages/Sell/SellPage'
 import { ExpensesPage } from './pages/Expenses/ExpensesPage'
 import { DebtsPage } from './pages/Debts/DebtsPage'
+import { DebtDetailPage } from './pages/Debts/DebtDetailPage'
 import { ReimbursementsPage } from './pages/Reimbursements/ReimbursementsPage'
 import { InventoryPage } from './pages/Inventory/InventoryPage'
 import { WastePage } from './pages/Waste/WastePage'
@@ -50,6 +51,7 @@ function Root() {
             <Route path="/sell" element={<SellPage />} />
             <Route path="/expenses" element={<RequireModule module="expenses"><ExpensesPage /></RequireModule>} />
             <Route path="/debts" element={<RequireModule module="debts"><DebtsPage /></RequireModule>} />
+            <Route path="/debts/:customerName" element={<RequireModule module="debts"><DebtDetailPage /></RequireModule>} />
             <Route path="/reimbursements" element={<RequireModule module="reimbursements"><ReimbursementsPage /></RequireModule>} />
             <Route path="/inventory" element={<RequireModule module="inventory"><InventoryPage /></RequireModule>} />
             <Route path="/waste" element={<RequireModule module="waste"><WastePage /></RequireModule>} />
