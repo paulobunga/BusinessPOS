@@ -13,6 +13,7 @@ import { runMenuSeedMigration } from './migrations/009_menu_seed.js'
 import { runPurchaseYieldMigration } from './migrations/010_purchase_yield.js'
 import { runPurchaseYieldsMigration } from './migrations/011_purchase_yields.js'
 import { runUserRolesMigration } from './migrations/013_user_roles.js'
+import { runAssetsMigration } from './migrations/015_assets.js'
 import { runRemovePaymentIdMigration } from './migrations/014_debt_allocations_cleanup.js'
 import { runSetupMigration } from './migrations/012_setup.js'
 import { usersRepo } from './repositories/usersRepo.js'
@@ -33,6 +34,7 @@ const DATA_TABLES = [
   'menu_items',
   'categories',
   'waste',
+  'assets',
   'cook_events',
   'payments',
   'payment_allocations',
@@ -77,6 +79,7 @@ export function getDb(): Database.Database {
     runSetupMigration(db)
     runRemovePaymentIdMigration(db)
     runUserRolesMigration(db)
+    runAssetsMigration(db)
 
     const setupComplete = db.prepare("SELECT value FROM settings WHERE key = 'setup_complete'").get() as { value: string } | undefined
     const userCount = (db.prepare('SELECT COUNT(*) as c FROM users').get() as { c: number }).c
