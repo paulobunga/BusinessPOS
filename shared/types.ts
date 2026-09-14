@@ -163,6 +163,69 @@ export interface Reimbursement {
   created_at: string
 }
 
+// === Assets ===
+export const ASSET_CATEGORIES: { name: string; default_life_months: number }[] = [
+  { name: 'Kitchen Equipment', default_life_months: 120 },
+  { name: 'Utensils / Smallware', default_life_months: 24 },
+  { name: 'Furniture', default_life_months: 60 },
+  { name: 'Electronics', default_life_months: 60 },
+  { name: 'Vehicle', default_life_months: 120 },
+  { name: 'Other', default_life_months: 60 },
+]
+
+export interface Asset {
+  id: number
+  name: string
+  category: string
+  quantity: number
+  purchase_date: string
+  purchase_cost_cents: number
+  salvage_cents: number
+  useful_life_months: number
+  location: string | null
+  notes: string | null
+  active: number
+  disposed_at: string | null
+  disposed_reason: string | null
+  sold_proceeds_cents: number | null
+  created_at: string
+  created_by: number | null
+}
+
+export interface AssetWithValue extends Asset {
+  months_elapsed: number
+  accumulated_depreciation_cents: number
+  net_book_value_cents: number
+  monthly_depreciation_cents: number
+}
+
+export interface CreateAssetPayload {
+  name: string
+  category: string
+  quantity?: number
+  purchase_date: string
+  purchase_cost_cents: number
+  salvage_cents?: number
+  useful_life_months: number
+  location?: string
+  notes?: string
+}
+
+export interface DisposeAssetPayload {
+  disposed_at: string
+  reason: string
+  proceeds_cents?: number
+}
+
+export interface AssetSummary {
+  total_cost_cents: number
+  total_book_value_cents: number
+  total_monthly_depreciation_cents: number
+  total_accumulated_cents: number
+  active_count: number
+  disposed_count: number
+}
+
 export interface ItemPurchase {
   id: number
   item_id: number
@@ -410,4 +473,10 @@ export interface Api {
   'debts:recordPayment': (payload: { sale_id: number; amount_cents: number; payment_method: string; till_session_id: number | null; created_by: number }) => Promise<void>
   'debts:getTotalOwed': (sale_id: number) => Promise<number>
   'debts:history': (sale_id: number) => Promise<any[]>
+  'assets:list': () => Promise<AssetWithValue[]>
+  'assets:get': (id: number) => Promise<AssetWithValue | null>
+  'assets:create': (payload: CreateAssetPayload) => Promise<AssetWithValue>
+  'assets:update': (id: number, payload: Partial<CreateAssetPayload>) => Promise<AssetWithValue>
+  'assets:dispose': (id: number, payload: DisposeAssetPayload) => Promise<AssetWithValue>
+  'assets:summary': () => Promise<AssetSummary>
 }

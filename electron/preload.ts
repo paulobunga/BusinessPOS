@@ -70,6 +70,12 @@ const api: Api = {
   'debts:recordPayment': (payload) => ipcRenderer.invoke('debts:recordPayment', payload),
   'debts:getTotalOwed': (sale_id) => ipcRenderer.invoke('debts:getTotalOwed', sale_id),
   'debts:history': (sale_id) => ipcRenderer.invoke('debts:history', sale_id),
+  'assets:list': () => ipcRenderer.invoke('assets:list'),
+  'assets:get': (id) => ipcRenderer.invoke('assets:get', id),
+  'assets:create': (payload) => ipcRenderer.invoke('assets:create', payload),
+  'assets:update': (id, payload) => ipcRenderer.invoke('assets:update', id, payload),
+  'assets:dispose': (id, payload) => ipcRenderer.invoke('assets:dispose', id, payload),
+  'assets:summary': () => ipcRenderer.invoke('assets:summary'),
 }
 
 contextBridge.exposeInMainWorld('api', api)
