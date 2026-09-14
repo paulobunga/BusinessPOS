@@ -12,7 +12,7 @@ import type { CustomerBalance } from '../../../shared/types'
 const fmt = (n: number) => new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 }).format(n)
 
 export function DebtsPage() {
-  const { balances, loading, error, fetchBalances, payOnAccount } = useDebts()
+  const { balances, loading, error, payOnAccount } = useDebts()
   const { userId } = useAuth()
   const { currentTill } = useTill()
   const navigate = useNavigate()
