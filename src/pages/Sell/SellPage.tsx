@@ -31,7 +31,7 @@ export function SellPage() {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
-  const [pendingSale, setPendingSale] = useState<{ paymentMethod: 'cash' | 'debt'; customerName?: string } | null>(null)
+  const [pendingSale, setPendingSale] = useState<{ paymentMethod: 'cash' | 'debt'; customerName?: string; paidNowCents: number } | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
@@ -111,7 +111,7 @@ export function SellPage() {
     setSelectedItem(null)
   }
 
-  const requestSale = (paymentMethod: 'cash' | 'debt', customerName?: string) => {
+  const requestSale = (paymentMethod: 'cash' | 'debt', customerName?: string, paidNowCents = 0) => {
     if (cart.items.length === 0) return
     if (!currentTill) {
       setMessage('No till session is open. Open the till before completing a sale.')
@@ -121,22 +121,31 @@ export function SellPage() {
       setMessage('You must be signed in to complete a sale.')
       return
     }
-    setPendingSale({ paymentMethod, customerName })
+    setPendingSale({ paymentMethod, customerName, paidNowCents })
   }
 
-  const completeSale = async (paymentMethod: 'cash' | 'debt', customerName?: string) => {
+  const completeSale = async (paymentMethod: 'cash' | 'debt', customerName?: string, paidNowCents = 0) => {
     if (!currentTill || userId == null || cart.items.length === 0) return
     setSaving(true)
     setMessage(null)
     try {
+      const isDebtFlow = paymentMethod === 'debt'
+      const method: 'cash' | 'debt' | 'mixed' = !isDebtFlow
+        ? 'cash'
+        : paidNowCents >= cart.total
+          ? 'cash'
+          : paidNowCents > 0
+            ? 'mixed'
+            : 'debt'
+      const debtCents = method === 'cash' ? 0 : cart.total - paidNowCents
       const payload: CreateSalePayload = {
-        customer_name: paymentMethod === 'debt' ? customerName : undefined,
+        customer_name: method !== 'cash' ? customerName : undefined,
         subtotal_cents: cart.subtotal,
         discount_cents: cart.discountCents,
         discount_reason: cart.discountReason || undefined,
         total_cents: cart.total,
-        debt_cents: paymentMethod === 'debt' ? cart.total : 0,
-        payment_method: paymentMethod,
+        debt_cents: debtCents,
+        payment_method: method,
         till_session_id: currentTill.id,
         created_by: userId,
         items: cart.items.map(item => ({
@@ -304,9 +313,9 @@ export function SellPage() {
       {showDebt && (
         <DebtModal
           total={cart.total}
-          onConfirm={(name) => {
+          onConfirm={(name, paidNowCents) => {
             setShowDebt(false)
-            requestSale('debt', name)
+            requestSale('debt', name, paidNowCents)
           }}
           onClose={() => setShowDebt(false)}
         />
@@ -321,7 +330,7 @@ export function SellPage() {
         onConfirm={() => {
           const p = pendingSale
           setPendingSale(null)
-          if (p) completeSale(p.paymentMethod, p.customerName)
+          if (p) completeSale(p.paymentMethod, p.customerName, p.paidNowCents)
         }}
       />
 
