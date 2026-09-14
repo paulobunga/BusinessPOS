@@ -6,6 +6,13 @@ function hashPin(pin: string): string {
   return crypto.createHash('sha256').update(pin).digest('hex')
 }
 
+function pinInUse(pin: string, excludeId?: number): boolean {
+  const row = excludeId
+    ? getDb().prepare('SELECT 1 FROM users WHERE pin_hash = ? AND id != ?').get(hashPin(pin), excludeId)
+    : getDb().prepare('SELECT 1 FROM users WHERE pin_hash = ?').get(hashPin(pin))
+  return row !== undefined
+}
+
 export const usersRepo = {
   get(id: number): User | undefined {
     return getDb().prepare('SELECT * FROM users WHERE id = ?').get(id) as User | undefined
@@ -23,11 +30,13 @@ export const usersRepo = {
     const trimmed = name.trim()
     if (!trimmed) throw new Error('Name is required')
     if (!/^\d{4}$/.test(pin)) throw new Error('PIN must be 4 digits')
+    if (pinInUse(pin)) throw new Error('PIN already in use for another user')
     const info = getDb().prepare('INSERT INTO users (name, role, pin_hash) VALUES (?, ?, ?)').run(trimmed, role, hashPin(pin))
     return this.get(Number(info.lastInsertRowid)) as User
   },
   resetPin(id: number, newPin: string): boolean {
     if (!/^\d{4}$/.test(newPin)) throw new Error('PIN must be 4 digits')
+    if (pinInUse(newPin, id)) throw new Error('PIN already in use for another user')
     return getDb().prepare('UPDATE users SET pin_hash = ? WHERE id = ?').run(hashPin(newPin), id).changes > 0
   },
   update(id: number, changes: { name?: string; role?: Role; active?: number }): User | null {
@@ -48,6 +57,7 @@ export const usersRepo = {
     const user = getDb().prepare('SELECT * FROM users WHERE id = ? AND active = 1').get(userId) as { pin_hash: string } | undefined
     if (!user) return false
     if (user.pin_hash !== hashPin(oldPin)) return false
+    if (pinInUse(newPin, userId)) throw new Error('PIN already in use for another user')
     getDb().prepare('UPDATE users SET pin_hash = ? WHERE id = ?').run(hashPin(newPin), userId)
     return true
   },

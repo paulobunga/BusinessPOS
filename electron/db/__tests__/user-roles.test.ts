@@ -9,6 +9,7 @@ import { runWasteMigration } from '../migrations/006_waste_table'
 import { runCategoriesMigration } from '../migrations/007_categories'
 import { runUserRolesMigration } from '../migrations/013_user_roles'
 import { runRemovePaymentIdMigration } from '../migrations/014_debt_allocations_cleanup'
+import { runPinUniquenessMigration } from '../migrations/016_pin_uniqueness'
 
 let db: Database.Database
 
@@ -30,6 +31,7 @@ function runChain(d: Database.Database, withRolesMigration = true) {
     runCategoriesMigration(d)
     if (withRolesMigration) runUserRolesMigration(d)
     runRemovePaymentIdMigration(d)
+    runPinUniquenessMigration(d)
   }
 
 describe('usersRepo CRUD + guards', () => {
@@ -141,5 +143,47 @@ describe('manager -> admin mapping on migration 013', () => {
     const viaRepo = usersRepo.list()
     expect(viaRepo).toHaveLength(1)
     expect(viaRepo[0].id).toBe(rows[0].id)
+  })
+})
+
+describe('usersRepo PIN uniqueness', () => {
+  let aliceId: number
+  let bobId: number
+
+  beforeAll(() => {
+    db = new Database(':memory:')
+    runChain(db)
+    aliceId = usersRepo.create('Alice', 'admin', '1111').id
+    bobId = usersRepo.create('Bob', 'cashier', '2222').id
+  })
+
+  afterAll(() => {
+    db.close()
+  })
+
+  test('create rejects a PIN already in use by another user', () => {
+    expect(() => usersRepo.create('Eve', 'cashier', '1111')).toThrow('PIN already in use for another user')
+  })
+
+  test('create still succeeds with a distinct PIN', () => {
+    const eve = usersRepo.create('Eve', 'cashier', '3333')
+    expect(eve.id).toBeGreaterThan(0)
+  })
+
+  test('resetPin rejects a PIN owned by another user', () => {
+    expect(() => usersRepo.resetPin(bobId, '1111')).toThrow('PIN already in use for another user')
+    expect(() => usersRepo.resetPin(bobId, '3333')).toThrow('PIN already in use for another user')
+  })
+
+  test('setPin rejects a PIN owned by another user but allows keeping your own', () => {
+    expect(() => usersRepo.setPin(bobId, '2222', '1111')).toThrow('PIN already in use for another user')
+    expect(usersRepo.setPin(bobId, '2222', '2222')).toBe(true)
+  })
+
+  test('the unique index backstop rejects duplicate pin_hash at the SQL level', () => {
+    const alice = db.prepare('SELECT pin_hash FROM users WHERE id = ?').get(aliceId) as { pin_hash: string }
+    expect(() =>
+      db.prepare("INSERT INTO users (name, role, pin_hash) VALUES ('Dup', 'cashier', ?)").run(alice.pin_hash)
+    ).toThrow(/UNIQUE/i)
   })
 })
