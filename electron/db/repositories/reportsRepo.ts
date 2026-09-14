@@ -1,5 +1,5 @@
 import { getDb } from '../index'
-import type { ItemPerformance, SaleWithItems, SaleItem } from '../../../shared/types'
+import type { ItemPerformance, SaleWithItems, SaleItem, DebtSummaryItem } from '../../../shared/types'
 
 export interface DailyReport {
   date: string
@@ -26,13 +26,6 @@ export interface MonthlyReport {
 export interface CategoryBreakdown {
   category: string
   amount_cents: number
-}
-
-export interface DebtSummaryItem {
-  customer_name: string | null
-  sale_id: number
-  total_debt_cents: number
-  created_at: string
 }
 
 export interface TillSummaryData {
