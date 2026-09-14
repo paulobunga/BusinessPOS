@@ -2,7 +2,7 @@ import { getDb } from '../index.js'
 import { settingsRepo } from './settingsRepo.js'
 import { usersRepo } from './usersRepo.js'
 import { categoriesRepo } from './categoriesRepo.js'
-import type { Role, SetupPayload } from '../../../shared/types'
+import type { SetupPayload } from '../../../shared/types'
 
 export const setupRepo = {
   save(payload: SetupPayload): { userId: number } {
@@ -21,7 +21,7 @@ export const setupRepo = {
         currency: 'UGX',
       })
 
-      const manager = usersRepo.create(payload.managerName.trim(), 'manager' as Role, payload.managerPin)
+      const manager = usersRepo.create(payload.managerName.trim(), 'admin', payload.managerPin)
 
       const rawCat = categoriesRepo.upsert({ name: 'Raw Inputs', kind: 'priced', sort_order: 0, purchase_only: 1 })
       const rawByName = new Map<string, number>()

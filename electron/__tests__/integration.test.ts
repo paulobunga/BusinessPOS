@@ -328,6 +328,7 @@ describe('Setup wizard & system purge (fresh system)', () => {
     runPurchaseYieldsMigration(db)
     runSetupMigration(db)
     runRemovePaymentIdMigration(db)
+    runUserRolesMigration(db)
   })
 
   afterAll(() => {
@@ -380,7 +381,7 @@ describe('Setup wizard & system purge (fresh system)', () => {
     const users = getDb().prepare('SELECT * FROM users').all() as any[]
     expect(users).toHaveLength(1)
     expect(users[0].name).toBe('Boss')
-    expect(users[0].role).toBe('manager')
+    expect(users[0].role).toBe('admin')
     expect((usersRepo.findByPin('4321') as any).name).toBe('Boss')
 
     const cats = getDb().prepare('SELECT * FROM categories').all() as any[]
