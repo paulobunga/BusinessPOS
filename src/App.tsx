@@ -12,6 +12,8 @@ import { InventoryPage } from './pages/Inventory/InventoryPage'
 import { WastePage } from './pages/Waste/WastePage'
 import { ReportsPage } from './pages/Reports/ReportsPage'
 import { SettingsPage } from './pages/Settings/SettingsPage'
+import { RequireModule } from './components/RequireModule'
+import { UsersPage } from './pages/Users/UsersPage'
 
 export default function App() {
   return (
@@ -23,13 +25,14 @@ export default function App() {
           <Route element={<RequireAuth />}>
             <Route element={<AppLayout />}>
               <Route path="/sell" element={<SellPage />} />
-              <Route path="/expenses" element={<ExpensesPage />} />
-              <Route path="/debts" element={<DebtsPage />} />
-              <Route path="/reimbursements" element={<ReimbursementsPage />} />
-              <Route path="/inventory" element={<InventoryPage />} />
-              <Route path="/waste" element={<WastePage />} />
-              <Route path="/reports" element={<ReportsPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/expenses" element={<RequireModule module="expenses"><ExpensesPage /></RequireModule>} />
+              <Route path="/debts" element={<RequireModule module="debts"><DebtsPage /></RequireModule>} />
+              <Route path="/reimbursements" element={<RequireModule module="reimbursements"><ReimbursementsPage /></RequireModule>} />
+              <Route path="/inventory" element={<RequireModule module="inventory"><InventoryPage /></RequireModule>} />
+              <Route path="/waste" element={<RequireModule module="waste"><WastePage /></RequireModule>} />
+              <Route path="/reports" element={<RequireModule module="reports"><ReportsPage /></RequireModule>} />
+              <Route path="/settings" element={<RequireModule module="settings"><SettingsPage /></RequireModule>} />
+              <Route path="/users" element={<RequireModule module="users"><UsersPage /></RequireModule>} />
             </Route>
           </Route>
         </Routes>
