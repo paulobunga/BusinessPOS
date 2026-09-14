@@ -137,6 +137,61 @@ export interface PaymentAllocation {
   amount_cents: number
 }
 
+export interface OpenDebt {
+  sale_id: number
+  customer_name: string | null
+  debt_cents: number
+  total_cents: number
+  paid_cents: number
+  remaining_cents: number
+  created_at: string
+  days_open: number
+  last_payment_at: string | null
+}
+
+export interface CustomerBalance {
+  customer_name: string
+  total_owed_cents: number
+  total_paid_cents: number
+  unpaid_orders: number
+  oldest_open_date: string
+  newest_open_date: string
+  last_payment_at: string | null
+}
+
+export interface PaymentHistoryEntry {
+  id: number
+  sale_id: number
+  amount_cents: number
+  payment_method: string
+  till_session_id: number | null
+  created_by: number | null
+  created_at: string
+  sale_total_cents: number
+  sale_created_at: string
+}
+
+export interface CustomerDetail {
+  customer_name: string
+  total_owed_cents: number
+  open_debts: OpenDebt[]
+  payments: PaymentHistoryEntry[]
+}
+
+export interface PayOnAccountPayload {
+  customer_name: string
+  amount_cents: number
+  till_session_id: number | null
+  created_by: number
+  payment_method?: string
+}
+
+export interface PayOnAccountResult {
+  total_applied_cents: number
+  allocations: { sale_id: number; amount_cents: number }[]
+  settled_sale_ids: number[]
+}
+
 export interface Expense {
   id: number
   till_session_id: number | null
@@ -324,7 +379,11 @@ export interface CategoryBreakdown {
 export interface DebtSummaryItem {
   customer_name: string | null
   sale_id: number
+  debt_cents: number
+  paid_cents: number
   total_debt_cents: number
+  days_open: number
+  last_payment_at: string | null
   created_at: string
 }
 
@@ -413,11 +472,6 @@ export interface Api {
   'sales:get': (id: number) => Promise<SaleWithItems>
   'sales:listByDate': (date: string) => Promise<Sale[]>
   'sales:getById': (id: number) => Promise<Sale | null>
-  'customers:create': (name: string, phone?: string) => Promise<Customer>
-  'customers:list': () => Promise<CustomerWithBalance[]>
-  'customers:get': (id: number) => Promise<CustomerWithBalance & { orders: SaleWithItems[] }>
-  'payments:create': (payload: CreatePaymentPayload) => Promise<Payment>
-  'payments:list': (customerId: number) => Promise<Payment[]>
   'expenses:create': (payload: CreateExpensePayload) => Promise<Expense>
   'expenses:update': (id: number, payload: Partial<CreateExpensePayload>) => Promise<Expense>
   'expenses:delete': (id: number) => Promise<void>
@@ -469,10 +523,14 @@ export interface Api {
   'system:status': () => Promise<{ needsSetup: boolean }>
   'system:purge': () => Promise<void>
   'setup:save': (payload: SetupPayload) => Promise<{ userId: number }>
-  'debts:listOpen': () => Promise<any[]>
-  'debts:recordPayment': (payload: { sale_id: number; amount_cents: number; payment_method: string; till_session_id: number | null; created_by: number }) => Promise<void>
+  'debts:listOpen': () => Promise<OpenDebt[]>
+  'debts:recordPayment': (payload: { sale_id: number; amount_cents: number; payment_method: string; till_session_id: number | null; created_by: number }) => Promise<{ remaining_cents: number; sale_status: string }>
+  'debts:customerBalances': () => Promise<CustomerBalance[]>
+  'debts:customerDetail': (customer_name: string) => Promise<CustomerDetail>
+  'debts:balanceByName': (customer_name: string) => Promise<number>
+  'debts:payOnAccount': (payload: PayOnAccountPayload) => Promise<PayOnAccountResult>
   'debts:getTotalOwed': (sale_id: number) => Promise<number>
-  'debts:history': (sale_id: number) => Promise<any[]>
+  'debts:history': (sale_id: number) => Promise<PaymentHistoryEntry[]>
   'assets:list': () => Promise<AssetWithValue[]>
   'assets:get': (id: number) => Promise<AssetWithValue | null>
   'assets:create': (payload: CreateAssetPayload) => Promise<AssetWithValue>
