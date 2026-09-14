@@ -1,57 +1,59 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useDebts } from '../../hooks/useDebts'
 import { useAuth } from '../../context/AuthContext'
 import { useTill } from '../../context/TillContext'
 import { Button } from '../../components/ui/button'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog'
-import { Input } from '../../components/ui/input'
-import { Label } from '../../components/ui/label'
+import { PayOnAccountDialog } from '../../components/PayOnAccountDialog'
+import { DebtAgingBadge } from '../../components/DebtAgingBadge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
+import type { CustomerBalance } from '../../../shared/types'
 
-const fmt = new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 })
-
-interface OpenDebt {
-  sale_id: number
-  customer_name: string
-  debt_cents: number
-  total_cents: number
-  paid_cents: number
-  created_at: string
-}
+const fmt = (n: number) => new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 }).format(n)
 
 export function DebtsPage() {
-  const { debts, loading, recordPayment } = useDebts()
+  const { balances, loading, error, fetchBalances, payOnAccount } = useDebts()
   const { userId } = useAuth()
   const { currentTill } = useTill()
-  const [paying, setPaying] = useState<OpenDebt | null>(null)
-  const [amount, setAmount] = useState('')
-  const [processing, setProcessing] = useState(false)
+  const navigate = useNavigate()
 
-  const handlePay = async () => {
-    if (!paying || !amount || !userId) return
-    const cents = Math.round(parseFloat(amount))
-    if (isNaN(cents) || cents <= 0) return
-    const owed = paying.debt_cents - paying.paid_cents
-    const payCents = Math.min(cents, owed)
+  const [paying, setPaying] = useState<CustomerBalance | null>(null)
+  const [processing, setProcessing] = useState(false)
+  const [payError, setPayError] = useState<string | null>(null)
+
+  const totalOwed = balances.reduce((s, b) => s + b.total_owed_cents - b.total_paid_cents, 0)
+
+  const handlePay = async (amountCents: number) => {
+    if (!paying || !userId) return
     setProcessing(true)
-    await recordPayment(paying.sale_id, payCents, currentTill?.id ?? null, userId)
-    setProcessing(false)
-    setPaying(null)
-    setAmount('')
+    setPayError(null)
+    try {
+      await payOnAccount({
+        customer_name: paying.customer_name,
+        amount_cents: amountCents,
+        till_session_id: currentTill?.id ?? null,
+        created_by: userId,
+      })
+      setPaying(null)
+    } catch (err) {
+      setPayError((err as Error).message || 'Payment failed')
+    } finally {
+      setProcessing(false)
+    }
   }
 
   return (
     <div className="flex flex-col gap-4 p-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Customer Debts</h1>
-        <span className="text-[0.9375rem] font-bold">
-          Total Owed: {fmt.format(debts.reduce((s: number, d: OpenDebt) => s + (d.debt_cents - d.paid_cents), 0))}
-        </span>
+        <span className="text-[0.9375rem] font-bold">Total Owed: {fmt(totalOwed)}</span>
       </div>
 
       {loading ? (
         <p className="text-center text-muted-foreground">Loading...</p>
-      ) : debts.length === 0 ? (
+      ) : error ? (
+        <p className="text-center font-semibold text-destructive">{error}</p>
+      ) : balances.length === 0 ? (
         <p className="p-12 text-center text-lg text-muted-foreground">No open debts</p>
       ) : (
         <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
@@ -59,24 +61,29 @@ export function DebtsPage() {
             <TableHeader>
               <TableRow className="bg-card hover:bg-card">
                 <TableHead>Customer</TableHead>
-                <TableHead>Amount Owed</TableHead>
-                <TableHead>Paid</TableHead>
-                <TableHead>Remaining</TableHead>
-                <TableHead>Date</TableHead>
+                <TableHead>Total Owed</TableHead>
+                <TableHead>Unpaid Orders</TableHead>
+                <TableHead>Aging</TableHead>
+                <TableHead>Last Payment</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {debts.map((d: OpenDebt) => (
-                <TableRow key={d.sale_id}>
-                  <TableCell>{d.customer_name || 'Unknown'}</TableCell>
-                  <TableCell>{fmt.format(d.debt_cents)}</TableCell>
-                  <TableCell>{fmt.format(d.paid_cents)}</TableCell>
-                  <TableCell className="font-bold">{fmt.format(d.debt_cents - d.paid_cents)}</TableCell>
-                  <TableCell>{new Date(d.created_at).toLocaleDateString()}</TableCell>
-                  <TableCell className="text-right">
+              {balances.map((b) => (
+                <TableRow key={b.customer_name} className="cursor-pointer" onClick={() => navigate(`/debts/${encodeURIComponent(b.customer_name)}`)}>
+                  <TableCell className="font-semibold">{b.customer_name}</TableCell>
+                  <TableCell className="font-bold">{fmt(b.total_owed_cents - b.total_paid_cents)}</TableCell>
+                  <TableCell>{b.unpaid_orders}</TableCell>
+                  <TableCell>
+                    <DebtAgingBadge
+                      daysOpen={Math.floor((Date.now() - new Date(b.oldest_open_date).getTime()) / 86400000)}
+                      lastPaymentAt={b.last_payment_at}
+                    />
+                  </TableCell>
+                  <TableCell>{b.last_payment_at ? new Date(b.last_payment_at).toLocaleDateString() : '—'}</TableCell>
+                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     <Button
-                      onClick={() => { setPaying(d); setAmount(String(d.debt_cents - d.paid_cents)) }}
+                      onClick={() => { setPaying(b); setPayError(null) }}
                       className="bg-primary text-[0.8125rem] font-semibold"
                     >
                       Record Payment
@@ -89,44 +96,15 @@ export function DebtsPage() {
         </div>
       )}
 
-      <Dialog open={paying != null} onOpenChange={(o) => { if (!o) { setPaying(null); setAmount('') } }}>
-        <DialogContent className="max-w-[360px]">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold">Record Payment</DialogTitle>
-          </DialogHeader>
-          <div>
-            <p className="mb-1 font-semibold">
-              Customer: {paying?.customer_name || 'Unknown'}
-            </p>
-            <p className="mb-3 font-semibold">
-              Remaining: {paying ? fmt.format(paying.debt_cents - paying.paid_cents) : ''}
-            </p>
-            <div className="flex flex-col gap-1.5">
-              <Label className="font-semibold">Payment Amount (UGX)</Label>
-              <Input
-                type="number"
-                value={amount}
-                onChange={e => setAmount(e.target.value)}
-                placeholder="Enter amount"
-                className="bg-background text-base"
-                autoFocus
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={() => { setPaying(null); setAmount('') }} variant="outline" className="h-12 flex-1 font-semibold">
-              Cancel
-            </Button>
-            <Button
-              onClick={handlePay}
-              disabled={processing || !amount || parseFloat(amount) <= 0}
-              className="h-12 flex-1 font-bold"
-            >
-              {processing ? 'Saving...' : 'Confirm Payment'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <PayOnAccountDialog
+        open={paying != null}
+        customerName={paying?.customer_name ?? ''}
+        totalOwedCents={paying ? paying.total_owed_cents - paying.total_paid_cents : 0}
+        processing={processing}
+        error={payError}
+        onConfirm={handlePay}
+        onClose={() => { setPaying(null); setPayError(null) }}
+      />
     </div>
   )
 }
