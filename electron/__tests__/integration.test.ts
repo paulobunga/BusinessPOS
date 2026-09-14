@@ -11,7 +11,9 @@ import { runMoneyWholeUgxMigration } from '../db/migrations/008_money_whole_ugx'
 import { runMenuSeedMigration } from '../db/migrations/009_menu_seed'
 import { runPurchaseYieldMigration } from '../db/migrations/010_purchase_yield'
 import { runPurchaseYieldsMigration } from '../db/migrations/011_purchase_yields'
+import { runSetupMigration } from '../db/migrations/012_setup'
 import { runUserRolesMigration } from '../db/migrations/013_user_roles'
+import { runRemovePaymentIdMigration } from '../db/migrations/014_debt_allocations_cleanup'
 
 let db: Database.Database
 
@@ -27,6 +29,10 @@ import { salesRepo } from '../db/repositories/salesRepo'
 import { expensesRepo } from '../db/repositories/expensesRepo'
 import { purchasesRepo } from '../db/repositories/purchasesRepo'
 import { reportsRepo } from '../db/repositories/reportsRepo'
+import { settingsRepo } from '../db/repositories/settingsRepo'
+import { systemRepo } from '../db/repositories/systemRepo'
+import { setupRepo } from '../db/repositories/setupRepo'
+import { getDb } from '../db/index'
 
 describe('Full day at the restaurant (integration)', () => {
   const today = new Date().toISOString().slice(0, 10)
@@ -54,6 +60,7 @@ describe('Full day at the restaurant (integration)', () => {
     runMenuSeedMigration(db)
     runPurchaseYieldMigration(db)
     runPurchaseYieldsMigration(db)
+    runRemovePaymentIdMigration(db)
     runUserRolesMigration(db)
 
     const user = usersRepo.create('Test Manager', 'admin', '1234')
@@ -298,5 +305,118 @@ describe('Full day at the restaurant (integration)', () => {
     expect(cashSale.items).toHaveLength(3)
     expect(cashSale.items[0].free_item_id).toBe(bananaId)
     expect(cashSale.created_at.slice(11, 16)).toBe('12:00')
+  })
+})
+
+describe('Setup wizard & system purge (fresh system)', () => {
+  const realDb = db
+
+  beforeAll(() => {
+    db = new Database(':memory:')
+    db.pragma('journal_mode = WAL')
+    db.pragma('foreign_keys = ON')
+    runMigrations(db)
+    runSalesExtrasMigration(db)
+    runExpensesMigration(db)
+    runDebtsMigration(db)
+    runReimbursementsMigration(db)
+    runWasteMigration(db)
+    runCategoriesMigration(db)
+    runMoneyWholeUgxMigration(db)
+    runMenuSeedMigration(db)
+    runPurchaseYieldMigration(db)
+    runPurchaseYieldsMigration(db)
+    runSetupMigration(db)
+    runRemovePaymentIdMigration(db)
+  })
+
+  afterAll(() => {
+    db.close()
+    db = realDb
+  })
+
+  test('14. A fresh database has no setup flag and needs the wizard', () => {
+    expect(settingsRepo.get('setup_complete')).toBeNull()
+    expect(systemRepo.needsSetup()).toBe(true)
+  })
+
+  test('15. Purge wipes the migration seed data, keeping the schema', () => {
+    expect(systemRepo.count('categories')).toBeGreaterThan(0)
+    expect(systemRepo.count('menu_items')).toBeGreaterThan(0)
+    systemRepo.purge()
+    expect(systemRepo.count('categories')).toBe(0)
+    expect(systemRepo.count('menu_items')).toBe(0)
+    expect(systemRepo.count('users')).toBe(0)
+    expect(systemRepo.count('settings')).toBe(0)
+    expect(systemRepo.needsSetup()).toBe(true)
+    const tables = getDb().prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as { name: string }[]
+    expect(tables.some(t => t.name === 'menu_items')).toBe(true)
+    expect(tables.some(t => t.name === 'schema_migrations')).toBe(true)
+  })
+
+  test('16. Setup wizard builds the full system in one call', () => {
+    const res = setupRepo.save({
+      businessName: 'Kafunda Kitchen',
+      phone: '0700 000 000',
+      address: 'Kampala',
+      managerName: 'Boss',
+      managerPin: '4321',
+      rawInputs: [
+        { name: 'Whole Chicken', unit: 'piece', costPerUnit: 17000 },
+        { name: 'Rice', unit: 'kg', costPerUnit: 6000 },
+      ],
+      meals: [
+        { name: 'Roast Chicken', category: 'Grills', sellingPrice: 25000, costPerServing: 3400, yields: [{ rawInputName: 'Whole Chicken', portions: 5 }] },
+        { name: 'Rice & Beef', category: 'Plates', sellingPrice: 12000, costPerServing: 4000, yields: [{ rawInputName: 'Rice', portions: 20 }] },
+      ],
+    })
+    expect(res.userId).toBeGreaterThan(0)
+
+    expect(settingsRepo.get('setup_complete')).toBe('1')
+    expect(settingsRepo.get('business_name')).toBe('Kafunda Kitchen')
+    expect(settingsRepo.get('phone')).toBe('0700 000 000')
+    expect(settingsRepo.get('currency')).toBe('UGX')
+
+    const users = getDb().prepare('SELECT * FROM users').all() as any[]
+    expect(users).toHaveLength(1)
+    expect(users[0].name).toBe('Boss')
+    expect(users[0].role).toBe('manager')
+    expect((usersRepo.findByPin('4321') as any).name).toBe('Boss')
+
+    const cats = getDb().prepare('SELECT * FROM categories').all() as any[]
+    expect(cats.find((c: any) => c.name === 'Raw Inputs' && c.purchase_only === 1)).toBeDefined()
+    expect(cats.find((c: any) => c.name === 'Grills')).toBeDefined()
+    expect(cats.find((c: any) => c.name === 'Plates')).toBeDefined()
+
+    const rawInputs = getDb().prepare("SELECT * FROM menu_items WHERE category_id = (SELECT id FROM categories WHERE name = 'Raw Inputs')").all() as any[]
+    expect(rawInputs).toHaveLength(2)
+    const chicken = rawInputs.find((r: any) => r.name === 'Whole Chicken')!
+    expect(chicken.cost_price_cents).toBe(17000)
+    expect(chicken.purchase_unit).toBe('piece')
+
+    const meals = getDb().prepare("SELECT * FROM menu_items WHERE category_id != (SELECT id FROM categories WHERE name = 'Raw Inputs')").all() as any[]
+    expect(meals).toHaveLength(2)
+    const roast = meals.find((m: any) => m.name === 'Roast Chicken')!
+    expect(roast.selling_price_cents).toBe(25000)
+    expect(roast.cost_price_cents).toBe(3400)
+
+    const yields = getDb().prepare('SELECT * FROM item_yield_defaults ORDER BY id').all() as any[]
+    expect(yields).toHaveLength(2)
+    expect(yields[0].raw_input_id).toBe(chicken.id)
+    expect(yields[0].meal_id).toBe(roast.id)
+    expect(yields[0].portions).toBe(5)
+
+    expect(systemRepo.needsSetup()).toBe(false)
+  })
+
+  test('17. Purging a set-up system returns it to setup state', () => {
+    expect(systemRepo.count('users')).toBe(1)
+    systemRepo.purge()
+    expect(systemRepo.count('users')).toBe(0)
+    expect(systemRepo.count('settings')).toBe(0)
+    expect(systemRepo.count('menu_items')).toBe(0)
+    expect(systemRepo.count('item_yield_defaults')).toBe(0)
+    expect(systemRepo.count('categories')).toBe(0)
+    expect(systemRepo.needsSetup()).toBe(true)
   })
 })

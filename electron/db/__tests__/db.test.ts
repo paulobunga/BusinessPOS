@@ -10,6 +10,7 @@ import { runReimbursementsMigration } from '../migrations/005_reimbursements_add
 import { runWasteMigration } from '../migrations/006_waste_table'
 import { runCategoriesMigration } from '../migrations/007_categories'
 import { runUserRolesMigration } from '../migrations/013_user_roles'
+import { runRemovePaymentIdMigration } from '../migrations/014_debt_allocations_cleanup'
 import { itemsRepo } from '../repositories/itemsRepo'
 
 const TEST_DB_PATH = path.join(__dirname, '..', '__test.sqlite')
@@ -30,6 +31,7 @@ describe('Database initialization', () => {
     runWasteMigration(db)
     runCategoriesMigration(db)
     runUserRolesMigration(db)
+    runRemovePaymentIdMigration(db)
   })
 
   afterAll(() => {
@@ -53,6 +55,9 @@ describe('Database initialization', () => {
     expect(tableNames).toContain('sale_items')
     expect(tableNames).toContain('payments')
     expect(tableNames).toContain('payment_allocations')
+
+    const allocationCols = db.prepare('PRAGMA table_info(payment_allocations)').all() as { name: string }[]
+    expect(allocationCols.map(c => c.name)).not.toContain('payment_id')
     expect(tableNames).toContain('expenses')
     expect(tableNames).toContain('reimbursements')
     expect(tableNames).toContain('item_purchases')

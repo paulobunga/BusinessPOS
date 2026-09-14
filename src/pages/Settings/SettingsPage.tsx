@@ -61,7 +61,7 @@ type AttrModal = { mode: 'add' } | { mode: 'edit'; attr: AttributeDef }
 type ItemModal = { mode: 'add' } | { mode: 'edit'; item: MenuItemWithCategory }
 
 export function SettingsPage() {
-  const { userId } = useAuth()
+  const { userId, role } = useAuth()
 
   // Business info
   const [businessName, setBusinessName] = useState('My Restaurant')
@@ -97,6 +97,9 @@ export function SettingsPage() {
   // Backup
   const [backupStatus, setBackupStatus] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null)
   const [backupBusy, setBackupBusy] = useState(false)
+
+  // Danger Zone
+  const [purgeStatus, setPurgeStatus] = useState<{ type: 'error' | 'info'; text: string } | null>(null)
 
   // Confirmations
   const [confirmState, setConfirmState] = useState<null | { title: string; description?: string; destructive: boolean; confirmText?: string; action: () => void }>(null)
@@ -328,6 +331,16 @@ export function SettingsPage() {
     setConfirmState({ title: c.title, description: c.description, destructive: c.destructive ?? true, confirmText: c.confirmText, action: c.action })
   }
 
+  const purgeSystem = async () => {
+    setPurgeStatus({ type: 'info', text: 'Erasing all data...' })
+    try {
+      await window.api['system:purge']()
+      window.location.reload()
+    } catch (e: any) {
+      setPurgeStatus({ type: 'error', text: e?.message ?? 'Failed to erase data' })
+    }
+  }
+
   return (
     <div className="flex max-w-900 flex-col gap-5 p-6">
       <div>
@@ -490,6 +503,24 @@ export function SettingsPage() {
         {backupBusy && <StatusLine type="info" text="Working..." />}
         {backupStatus && <StatusLine type={backupStatus.type} text={backupStatus.text} />}
       </Section>
+
+      {/* Danger Zone */}
+      {role === 'admin' && (
+        <Section title="Danger Zone" subtitle="Erase every sale, inventory item, user, category and setting, then restart the first-time setup wizard.">
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              className="h-11 min-w-[140px] bg-destructive font-semibold text-white hover:bg-destructive/80"
+              onClick={() => askConfirm({
+                title: 'Erase everything?',
+                description: 'This permanently deletes ALL sales, purchases, inventory, users, categories and settings. There is no undo. Consider exporting a backup first. You will land on the setup wizard after restart.',
+                confirmText: 'Erase everything',
+                action: purgeSystem,
+              })}
+            >Erase Everything</Button>
+          </div>
+          {purgeStatus && <StatusLine type={purgeStatus.type} text={purgeStatus.text} />}
+        </Section>
+      )}
 
       {/* Category modal */}
       <Dialog open={categoryModal != null} onOpenChange={o => { if (!o) setCategoryModal(null) }}>

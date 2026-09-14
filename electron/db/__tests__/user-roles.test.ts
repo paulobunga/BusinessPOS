@@ -8,6 +8,7 @@ import { runReimbursementsMigration } from '../migrations/005_reimbursements_add
 import { runWasteMigration } from '../migrations/006_waste_table'
 import { runCategoriesMigration } from '../migrations/007_categories'
 import { runUserRolesMigration } from '../migrations/013_user_roles'
+import { runRemovePaymentIdMigration } from '../migrations/014_debt_allocations_cleanup'
 
 let db: Database.Database
 
@@ -26,9 +27,10 @@ function runChain(d: Database.Database, withRolesMigration = true) {
   runDebtsMigration(d)
   runReimbursementsMigration(d)
   runWasteMigration(d)
-  runCategoriesMigration(d)
-  if (withRolesMigration) runUserRolesMigration(d)
-}
+    runCategoriesMigration(d)
+    if (withRolesMigration) runUserRolesMigration(d)
+    runRemovePaymentIdMigration(d)
+  }
 
 describe('usersRepo CRUD + guards', () => {
   let adminId: number

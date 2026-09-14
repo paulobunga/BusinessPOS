@@ -12,6 +12,7 @@ import { registerInventoryHandlers } from './ipc/inventoryHandlers.js'
 import { registerWasteHandlers } from './ipc/wasteHandlers.js'
 import { registerReportsHandlers } from './ipc/reportsHandlers.js'
 import { registerSettingsHandlers } from './ipc/settingsHandlers.js'
+import { registerSystemHandlers } from './ipc/systemHandlers.js'
 import { registerUsersHandlers } from './ipc/usersHandlers.js'
 
 let mainWindow: BrowserWindow | null = null
@@ -70,6 +71,7 @@ registerInventoryHandlers()
 registerWasteHandlers()
 registerReportsHandlers()
 registerSettingsHandlers()
+registerSystemHandlers()
 registerUsersHandlers()
 ipcMain.handle('ping', () => 'pong')
 ipcMain.handle('customers:create', () => { throw new Error('Not implemented') })

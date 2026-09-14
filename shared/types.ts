@@ -311,6 +311,35 @@ export interface CreatePaymentPayload {
   allocations: { sale_id: number; amount_cents: number }[]
 }
 
+export interface RawInputDraft {
+  name: string
+  unit: string
+  costPerUnit: number
+}
+
+export interface MealYieldDraft {
+  rawInputName: string
+  portions: number
+}
+
+export interface MealDraft {
+  name: string
+  category: string
+  sellingPrice: number
+  costPerServing: number
+  yields: MealYieldDraft[]
+}
+
+export interface SetupPayload {
+  businessName: string
+  phone: string
+  address: string
+  managerName: string
+  managerPin: string
+  rawInputs: RawInputDraft[]
+  meals: MealDraft[]
+}
+
 // === API Shape ===
 export interface Api {
   ping: () => Promise<string>
@@ -374,6 +403,9 @@ export interface Api {
   'users:resetPin': (payload: { id: number; newPin: string }) => Promise<boolean>
   'backup:export': () => Promise<string | null>
   'backup:import': () => Promise<{ ok: boolean; message: string }>
+  'system:status': () => Promise<{ needsSetup: boolean }>
+  'system:purge': () => Promise<void>
+  'setup:save': (payload: SetupPayload) => Promise<{ userId: number }>
   'debts:listOpen': () => Promise<any[]>
   'debts:recordPayment': (payload: { sale_id: number; amount_cents: number; payment_method: string; till_session_id: number | null; created_by: number }) => Promise<void>
   'debts:getTotalOwed': (sale_id: number) => Promise<number>

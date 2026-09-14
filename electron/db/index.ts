@@ -13,12 +13,45 @@ import { runMenuSeedMigration } from './migrations/009_menu_seed.js'
 import { runPurchaseYieldMigration } from './migrations/010_purchase_yield.js'
 import { runPurchaseYieldsMigration } from './migrations/011_purchase_yields.js'
 import { runUserRolesMigration } from './migrations/013_user_roles.js'
+import { runRemovePaymentIdMigration } from './migrations/014_debt_allocations_cleanup.js'
+import { runSetupMigration } from './migrations/012_setup.js'
 import { usersRepo } from './repositories/usersRepo.js'
 import { settingsRepo } from './repositories/settingsRepo.js'
 import { itemsRepo } from './repositories/itemsRepo.js'
 import { categoriesRepo } from './repositories/categoriesRepo.js'
 
 let db: Database.Database | null = null
+
+const DATA_TABLES = [
+  'item_purchase_yields',
+  'item_yield_defaults',
+  'item_purchases',
+  'sale_items',
+  'sales',
+  'item_attribute_values',
+  'attribute_defs',
+  'menu_items',
+  'categories',
+  'waste',
+  'cook_events',
+  'payments',
+  'payment_allocations',
+  'till_sessions',
+  'customers',
+  'reimbursements',
+  'expenses',
+  'users',
+  'settings',
+]
+
+function clearAllData(database: Database.Database) {
+  const tables = DATA_TABLES.filter(t => database.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(t))
+  database.pragma('foreign_keys = OFF')
+  database.transaction(() => {
+    for (const t of tables) database.prepare(`DELETE FROM ${t}`).run()
+  })()
+  database.pragma('foreign_keys = ON')
+}
 
 export function getDbPath(): string {
   return path.join(app.getPath('userData'), 'businesspos.sqlite')
@@ -41,11 +74,22 @@ export function getDb(): Database.Database {
     runMenuSeedMigration(db)
     runPurchaseYieldMigration(db)
     runPurchaseYieldsMigration(db)
+    runSetupMigration(db)
+    runRemovePaymentIdMigration(db)
     runUserRolesMigration(db)
-    usersRepo.seed()
-    settingsRepo.seed()
-    itemsRepo.seed()
-    categoriesRepo.seedIfEmpty()
+
+    const setupComplete = db.prepare("SELECT value FROM settings WHERE key = 'setup_complete'").get() as { value: string } | undefined
+    const userCount = (db.prepare('SELECT COUNT(*) as c FROM users').get() as { c: number }).c
+
+    if (userCount === 0 && !setupComplete) {
+      clearAllData(db)
+    } else {
+      if (!setupComplete) settingsRepo.set('setup_complete', '1')
+      usersRepo.seed()
+      settingsRepo.seed()
+      itemsRepo.seed()
+      categoriesRepo.seedIfEmpty()
+    }
   }
   return db
 }
