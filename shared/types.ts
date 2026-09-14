@@ -132,7 +132,6 @@ export interface Payment {
 
 export interface PaymentAllocation {
   id: number
-  payment_id: number
   sale_id: number
   amount_cents: number
 }

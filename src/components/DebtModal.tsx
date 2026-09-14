@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
@@ -17,16 +17,19 @@ export function DebtModal({ total, onConfirm, onClose }: DebtModalProps) {
   const [name, setName] = useState('')
   const [paidNow, setPaidNow] = useState('')
   const [owed, setOwed] = useState(0)
+  const balanceTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const fmt = (n: number) => new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 }).format(n)
+
+  useEffect(() => () => { if (balanceTimer.current) clearTimeout(balanceTimer.current) }, [])
 
   const paidNowCents = Math.min(total, Math.max(0, Math.round(parseFloat(paidNow) || 0)))
   const carried = Math.max(total - paidNowCents, 0)
 
   const handleNameBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const value = e.target.value.trim()
-    if (balanceTimer) clearTimeout(balanceTimer)
+    if (balanceTimer.current) clearTimeout(balanceTimer.current)
     if (!value) { setOwed(0); return }
-    balanceTimer = setTimeout(() => {
+    balanceTimer.current = setTimeout(() => {
       window.api['debts:balanceByName'](value)
         .then(setOwed)
         .catch(() => setOwed(0))

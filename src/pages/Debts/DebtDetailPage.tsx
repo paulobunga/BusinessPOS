@@ -15,9 +15,17 @@ import type { CustomerDetail, OpenDebt } from '../../../shared/types'
 
 const fmt = (n: number) => new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 }).format(n)
 
+const safeDecode = (s: string) => {
+  try {
+    return decodeURIComponent(s)
+  } catch {
+    return ''
+  }
+}
+
 export function DebtDetailPage() {
   const { customerName = '' } = useParams()
-  const name = decodeURIComponent(customerName)
+  const name = safeDecode(customerName)
   const { customerDetail, recordPayment, payOnAccount } = useDebts()
   const { userId } = useAuth()
   const { currentTill } = useTill()

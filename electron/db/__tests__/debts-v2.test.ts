@@ -13,6 +13,8 @@ vi.mock('../index', () => ({
 
 import { debtsRepo } from '../repositories/debtsRepo'
 import { reportsRepo } from '../repositories/reportsRepo'
+import { tillRepo } from '../repositories/tillRepo'
+import { salesRepo } from '../repositories/salesRepo'
 
 function insertSale(opts: { customer?: string; debtCents: number; totalCents?: number; status?: string; createdAt?: string }): number {
   const res = db.prepare(`
@@ -173,5 +175,45 @@ describe('debts v2', () => {
 
     const settled = rows.find(r => r.customer_name === 'Bob')
     expect(settled).toBeUndefined()
+  })
+
+  test('mixed checkout stays unpaid and credits till only the cash portion', () => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE);
+      CREATE TABLE IF NOT EXISTS menu_items (id INTEGER PRIMARY KEY AUTOINCREMENT, category_id INTEGER NOT NULL REFERENCES categories(id), name TEXT NOT NULL, selling_price_cents INTEGER NOT NULL DEFAULT 0);
+    `)
+    const itemCols = (db.prepare('PRAGMA table_info(sale_items)').all() as { name: string }[]).map(c => c.name)
+    if (!itemCols.includes('item_id')) db.exec('ALTER TABLE sale_items ADD COLUMN item_id INTEGER REFERENCES menu_items(id)')
+    if (!itemCols.includes('free_item_id')) db.exec('ALTER TABLE sale_items ADD COLUMN free_item_id INTEGER REFERENCES menu_items(id)')
+    const reimCols = (db.prepare('PRAGMA table_info(reimbursements)').all() as { name: string }[]).map(c => c.name)
+    if (!reimCols.includes('till_session_id')) db.exec('ALTER TABLE reimbursements ADD COLUMN till_session_id INTEGER REFERENCES till_sessions(id)')
+
+    const catId = Number(db.prepare(`INSERT INTO categories (name) VALUES ('Mixed')`).run().lastInsertRowid)
+    const itemId = Number(
+      db.prepare(`INSERT INTO menu_items (category_id, name, selling_price_cents) VALUES (?, 'Mixed Plate', 10000)`).run(catId).lastInsertRowid
+    )
+
+    const tillId = Number(tillRepo.open(0))
+    const saleId = salesRepo.create({
+      customer_name: 'Eve',
+      subtotal_cents: 10000,
+      discount_cents: 0,
+      total_cents: 10000,
+      debt_cents: 3000,
+      payment_method: 'mixed',
+      till_session_id: tillId,
+      created_by: 1,
+      items: [{ item_id: itemId, price_cents: 10000, quantity: 1 }],
+    })
+
+    const sale = db.prepare('SELECT status, payment_method, debt_cents FROM sales WHERE id = ?').get(saleId) as { status: string; payment_method: string; debt_cents: number }
+    expect(sale.status).toBe('unpaid')
+    expect(sale.payment_method).toBe('mixed')
+    expect(sale.debt_cents).toBe(3000)
+
+    const cash = tillRepo.countCash()
+    expect(cash?.cashSalesCents).toBe(7000)
+    expect(cash?.expectedClosingCents).toBe(7000)
+    expect(reportsRepo.getTillSummary(tillId)?.cash_sales_cents).toBe(7000)
   })
 })
