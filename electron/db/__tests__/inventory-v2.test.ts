@@ -4,6 +4,7 @@ import path from 'path'
 import fs from 'fs'
 import { runMigrations } from '../migrations/001_initial'
 import { runInventoryV2Migration } from '../migrations/018_inventory_v2'
+import { runInventoryV2SeedMigration } from '../migrations/019_inventory_v2_seed'
 
 const TEST_DB_PATH = path.join(__dirname, '..', '__test_inv_v2.sqlite')
 
@@ -17,6 +18,7 @@ describe('v2 inventory schema', () => {
     db.pragma('foreign_keys = ON')
     runMigrations(db)
     runInventoryV2Migration(db)
+    runInventoryV2SeedMigration(db)
   })
 
   afterAll(() => {
@@ -50,5 +52,17 @@ describe('v2 inventory schema', () => {
     ).run(ing.id)
     const after = db.prepare('SELECT current_stock FROM ingredients WHERE id = ?').get(ing.id) as { current_stock: number }
     expect(after.current_stock).toBe(2.0)
+  })
+
+  test('seeds units', () => {
+    const names = db.prepare('SELECT name FROM units ORDER BY id').all() as { name: string }[]
+    expect(names.map(r => r.name)).toEqual(['Litre', 'Kg', 'Bag', 'Piece', 'Finger', 'Gram'])
+  })
+
+  test('seeds ingredients with base units', () => {
+    const row = db.prepare(`
+      SELECT i.name, u.name as unit FROM ingredients i JOIN units u ON u.id = i.base_unit_id WHERE i.name = ?
+    `).get('Cooking Oil') as { name: string; unit: string } | undefined
+    expect(row?.unit).toBe('Litre')
   })
 })

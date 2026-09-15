@@ -17,6 +17,7 @@ import { runAssetsMigration } from './migrations/015_assets.js'
 import { runPinUniquenessMigration } from './migrations/016_pin_uniqueness.js'
 import { runDebtWriteOffsMigration } from './migrations/017_debt_write_offs.js'
 import { runInventoryV2Migration } from './migrations/018_inventory_v2.js'
+import { runInventoryV2SeedMigration } from './migrations/019_inventory_v2_seed.js'
 import { runRemovePaymentIdMigration } from './migrations/014_debt_allocations_cleanup.js'
 import { runSetupMigration } from './migrations/012_setup.js'
 import { usersRepo } from './repositories/usersRepo.js'
@@ -94,6 +95,7 @@ export function getDb(): Database.Database {
     runPinUniquenessMigration(db)
     runDebtWriteOffsMigration(db)
     runInventoryV2Migration(db)
+    runInventoryV2SeedMigration(db)
 
     const setupComplete = db.prepare("SELECT value FROM settings WHERE key = 'setup_complete'").get() as { value: string } | undefined
     const userCount = (db.prepare('SELECT COUNT(*) as c FROM users').get() as { c: number }).c
