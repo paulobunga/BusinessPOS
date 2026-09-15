@@ -4,7 +4,7 @@
 
 **Goal:** Add the v2 raw-inventory and procurement layer (units, ingredients, suppliers, market purchases, stock ledger, stock counts) via a purely additive migration, with repositories and passing tests — without touching any legacy tables or breaking the existing app.
 
-**Architecture:** Two new self-guarded migrations (`016` schema + `017` seed) create the tables that have **no name collision** with the existing schema. New repos (`staffRepo`, `ingredientsRepo`, `stockRepo`, `procurementRepo`) sit next to the existing legacy repos and use the same `getDb()` singleton. The `stock_movements` ledger is the single source of truth; `ingredients.current_stock` is a trigger-maintained cache; purchases update `avg_unit_cost_ugx` as an integer weighted average. Existing tables/repos/pages are untouched this plan.
+**Architecture:** Two new self-guarded migrations (`017` schema + `018` seed) create the tables that have **no name collision** with the existing schema. New repos (`staffRepo`, `ingredientsRepo`, `stockRepo`, `procurementRepo`) sit next to the existing legacy repos and use the same `getDb()` singleton. The `stock_movements` ledger is the single source of truth; `ingredients.current_stock` is a trigger-maintained cache; purchases update `avg_unit_cost_ugx` as an integer weighted average. Existing tables/repos/pages are untouched this plan.
 
 **Tech Stack:** Electron main process, better-sqlite3, TypeScript, Vitest (per repo convention `electron/**/*.test.ts`).
 
@@ -27,10 +27,12 @@
 
 ---
 
-### Task 1: v2 base schema migration (016)
+### Task 1: v2 base schema migration (017)
+
+> **Renumbered from 016:** version 16 is already taken by `016_pin_uniqueness.ts` (unique PIN index, committed at HEAD) — the v2 schema migration is version 017 and the seed migration is version 018.
 
 **Files:**
-- Create: `electron/db/migrations/016_inventory_v2.ts`
+- Create: `electron/db/migrations/017_inventory_v2.ts`
 - Modify: `electron/db/index.ts` (import + call + `DATA_TABLES`)
 - Test: `electron/db/__tests__/inventory-v2.test.ts`
 
@@ -48,7 +50,7 @@ import Database from 'better-sqlite3'
 import path from 'path'
 import fs from 'fs'
 import { runMigrations } from '../migrations/001_initial'
-import { runInventoryV2Migration } from '../migrations/016_inventory_v2'
+import { runInventoryV2Migration } from '../migrations/017_inventory_v2'
 
 const TEST_DB_PATH = path.join(__dirname, '..', '__test_inv_v2.sqlite')
 
@@ -79,8 +81,8 @@ describe('v2 inventory schema', () => {
   })
 
   test('registers migration as version 16', () => {
-    const row = db.prepare("SELECT version FROM schema_migrations WHERE version = 16").get() as { version: number } | undefined
-    expect(row?.version).toBe(16)
+    const row = db.prepare("SELECT version FROM schema_migrations WHERE version = 17").get() as { version: number } | undefined
+    expect(row?.version).toBe(17)
   })
 
   test('trg_stock_cache keeps ingredients.current_stock in sync', () => {
@@ -101,11 +103,11 @@ describe('v2 inventory schema', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run electron/db/__tests__/inventory-v2.test.ts`
-Expected: FAIL — "Cannot find module '../migrations/016_inventory_v2'".
+Expected: FAIL — "Cannot find module '../migrations/017_inventory_v2'".
 
 - [ ] **Step 3: Write the migration**
 
-Create `electron/db/migrations/016_inventory_v2.ts`:
+Create `electron/db/migrations/017_inventory_v2.ts`:
 
 ```ts
 import Database from 'better-sqlite3'
@@ -114,7 +116,7 @@ export function runInventoryV2Migration(db: Database.Database) {
   const applied = db.prepare('SELECT version FROM schema_migrations ORDER BY version').all() as { version: number }[]
   const appliedVersions = new Set(applied.map(r => r.version))
 
-  if (!appliedVersions.has(16)) {
+  if (!appliedVersions.has(17)) {
     db.transaction(() => {
       db.exec(`
         CREATE TABLE units (
@@ -212,7 +214,7 @@ export function runInventoryV2Migration(db: Database.Database) {
         INSERT INTO staff (name, role)
         SELECT 'Admin', 'admin' WHERE NOT EXISTS (SELECT 1 FROM staff);
 
-        INSERT INTO schema_migrations (version) VALUES (16);
+        INSERT INTO schema_migrations (version) VALUES (17);
       `)
     })()
   }
@@ -223,9 +225,9 @@ export function runInventoryV2Migration(db: Database.Database) {
 
 Add import:
 ```ts
-import { runInventoryV2Migration } from './migrations/016_inventory_v2.js'
+import { runInventoryV2Migration } from './migrations/017_inventory_v2.js'
 ```
-Add call after `runAssetsMigration(db)`:
+Add call after `runPinUniquenessMigration(db)` (keep call order ascending by version):
 ```ts
     runInventoryV2Migration(db)
 ```
@@ -254,16 +256,16 @@ Expected: all existing tests still PASS.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add electron/db/migrations/016_inventory_v2.ts electron/db/index.ts electron/db/__tests__/inventory-v2.test.ts
-git commit -m "db: v2 inventory schema migration 016 (units, ingredients, procurement, stock ledger)"
+git add electron/db/migrations/017_inventory_v2.ts electron/db/index.ts electron/db/__tests__/inventory-v2.test.ts
+git commit -m "db: v2 inventory schema migration 017 (units, ingredients, procurement, stock ledger)"
 ```
 
 ---
 
-### Task 2: v2 seed migration (017)
+### Task 2: v2 seed migration (018)
 
 **Files:**
-- Create: `electron/db/migrations/017_inventory_v2_seed.ts`
+- Create: `electron/db/migrations/018_inventory_v2_seed.ts`
 - Modify: `electron/db/index.ts` (import + call)
 - Test: `electron/db/__tests__/inventory-v2.test.ts` (extend)
 
@@ -292,11 +294,11 @@ Append to `electron/db/__tests__/inventory-v2.test.ts` — import `runInventoryV
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run electron/db/__tests__/inventory-v2.test.ts`
-Expected: FAIL — "Cannot find module '../migrations/017_inventory_v2_seed'".
+Expected: FAIL — "Cannot find module '../migrations/018_inventory_v2_seed'".
 
 - [ ] **Step 3: Write the seed migration**
 
-Create `electron/db/migrations/017_inventory_v2_seed.ts`:
+Create `electron/db/migrations/018_inventory_v2_seed.ts`:
 
 ```ts
 import Database from 'better-sqlite3'
@@ -305,7 +307,7 @@ export function runInventoryV2SeedMigration(db: Database.Database) {
   const applied = db.prepare('SELECT version FROM schema_migrations ORDER BY version').all() as { version: number }[]
   const appliedVersions = new Set(applied.map(r => r.version))
 
-  if (!appliedVersions.has(17)) {
+  if (!appliedVersions.has(18)) {
     db.transaction(() => {
       db.exec(`
         INSERT INTO units (name, unit_type) VALUES
@@ -323,7 +325,7 @@ export function runInventoryV2SeedMigration(db: Database.Database) {
         ('Beef',           (SELECT id FROM units WHERE name='Kg'),     3),
         ('Sugar',          (SELECT id FROM units WHERE name='Kg'),     2);
 
-        INSERT INTO schema_migrations (version) VALUES (17);
+        INSERT INTO schema_migrations (version) VALUES (18);
       `)
     })()
   }
@@ -345,8 +347,8 @@ Expected: PASS (5 tests).
 - [ ] **Step 6: Commit**
 
 ```bash
-git add electron/db/migrations/017_inventory_v2_seed.ts electron/db/index.ts electron/db/__tests__/inventory-v2.test.ts
-git commit -m "db: v2 inventory seed migration 017 (units + ingredients)"
+git add electron/db/migrations/018_inventory_v2_seed.ts electron/db/index.ts electron/db/__tests__/inventory-v2.test.ts
+git commit -m "db: v2 inventory seed migration 018 (units + ingredients)"
 ```
 
 ---
@@ -488,8 +490,8 @@ import Database from 'better-sqlite3'
 import path from 'path'
 import fs from 'fs'
 import { runMigrations } from '../migrations/001_initial'
-import { runInventoryV2Migration } from '../migrations/016_inventory_v2'
-import { runInventoryV2SeedMigration } from '../migrations/017_inventory_v2_seed'
+import { runInventoryV2Migration } from '../migrations/017_inventory_v2'
+import { runInventoryV2SeedMigration } from '../migrations/018_inventory_v2_seed'
 
 const TEST_DB_PATH = path.join(__dirname, '..', '__test_staff.sqlite')
 
@@ -719,8 +721,8 @@ import Database from 'better-sqlite3'
 import path from 'path'
 import fs from 'fs'
 import { runMigrations } from '../migrations/001_initial'
-import { runInventoryV2Migration } from '../migrations/016_inventory_v2'
-import { runInventoryV2SeedMigration } from '../migrations/017_inventory_v2_seed'
+import { runInventoryV2Migration } from '../migrations/017_inventory_v2'
+import { runInventoryV2SeedMigration } from '../migrations/018_inventory_v2_seed'
 
 const TEST_DB_PATH = path.join(__dirname, '..', '__test_stock.sqlite')
 
@@ -947,8 +949,8 @@ import Database from 'better-sqlite3'
 import path from 'path'
 import fs from 'fs'
 import { runMigrations } from '../migrations/001_initial'
-import { runInventoryV2Migration } from '../migrations/016_inventory_v2'
-import { runInventoryV2SeedMigration } from '../migrations/017_inventory_v2_seed'
+import { runInventoryV2Migration } from '../migrations/017_inventory_v2'
+import { runInventoryV2SeedMigration } from '../migrations/018_inventory_v2_seed'
 
 const TEST_DB_PATH = path.join(__dirname, '..', '__test_proc.sqlite')
 
