@@ -20,8 +20,12 @@ export function useAssistantChat() {
   const requestIdRef = useRef<string | null>(null)
 
   const loadSessions = useCallback(async () => {
-    const list = await window.api['ai:sessions:list']()
-    setSessions(list)
+    try {
+      const list = await window.api['ai:sessions:list']()
+      setSessions(list)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
   }, [])
 
   useEffect(() => { void loadSessions() }, [loadSessions])
@@ -67,56 +71,86 @@ export function useAssistantChat() {
     setError(null)
     setStreamingMessage('')
 
-    let targetSessionId = sessionId
-    if (targetSessionId === 0) {
-      const session = await window.api['ai:sessions:create']()
-      setSessionId(session.id)
-      targetSessionId = session.id
-    }
+    try {
+      let targetSessionId = sessionId
+      if (targetSessionId === 0) {
+        const session = await window.api['ai:sessions:create']()
+        setSessionId(session.id)
+        targetSessionId = session.id
+      }
 
-    setMessages((prev) => [...prev, {
-      id: -Date.now(), session_id: targetSessionId, role: 'user', content: text, created_at: new Date().toISOString(),
-    }])
-    const { requestId } = await window.api['ai:chat:start']({ sessionId: targetSessionId, content: text, userId, role })
-    requestIdRef.current = requestId
+      setMessages((prev) => [...prev, {
+        id: -Date.now(), session_id: targetSessionId, role: 'user', content: text, created_at: new Date().toISOString(),
+      }])
+      const { requestId } = await window.api['ai:chat:start']({ sessionId: targetSessionId, content: text, userId, role })
+      requestIdRef.current = requestId
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+      setIsLoading(false)
+      requestIdRef.current = null
+    }
   }, [sessionId, input, isLoading, userId, role])
 
   const loadSession = useCallback(async (id: number) => {
-    const msgs = await window.api['ai:chat:messages'](id)
-    setSessionId(id)
-    setMessages(msgs)
-    setStreamingMessage('')
-    setError(null)
+    try {
+      const msgs = await window.api['ai:chat:messages'](id)
+      setSessionId(id)
+      setMessages(msgs)
+      setStreamingMessage('')
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
   }, [])
 
   const newSession = useCallback(async () => {
-    const session = await window.api['ai:sessions:create']()
-    setSessionId(session.id)
-    setMessages([])
-    setStreamingMessage('')
-    setError(null)
-    await loadSessions()
+    try {
+      const session = await window.api['ai:sessions:create']()
+      setSessionId(session.id)
+      setMessages([])
+      setStreamingMessage('')
+      setError(null)
+      await loadSessions()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
   }, [loadSessions])
 
   const renameSession = useCallback(async (id: number, title: string) => {
-    await window.api['ai:sessions:rename'](id, title)
-    await loadSessions()
+    try {
+      await window.api['ai:sessions:rename'](id, title)
+      await loadSessions()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
   }, [loadSessions])
 
   const deleteSession = useCallback(async (id: number) => {
-    await window.api['ai:sessions:delete'](id)
-    if (id === sessionId) { setSessionId(0); setMessages([]) }
-    await loadSessions()
+    try {
+      await window.api['ai:sessions:delete'](id)
+      if (id === sessionId) { setSessionId(0); setMessages([]) }
+      await loadSessions()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
   }, [sessionId, loadSessions])
 
   const approve = useCallback(async (requestId: string, callId: string) => {
-    await window.api['ai:toolApproval']({ requestId, callId, approved: true })
-    setApprovalQueue((q) => q.filter((a) => !(a.requestId === requestId && a.call.id === callId)))
+    try {
+      await window.api['ai:toolApproval']({ requestId, callId, approved: true })
+      setApprovalQueue((q) => q.filter((a) => !(a.requestId === requestId && a.call.id === callId)))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
   }, [])
 
   const reject = useCallback(async (requestId: string, callId: string) => {
-    await window.api['ai:toolApproval']({ requestId, callId, approved: false })
-    setApprovalQueue((q) => q.filter((a) => !(a.requestId === requestId && a.call.id === callId)))
+    try {
+      await window.api['ai:toolApproval']({ requestId, callId, approved: false })
+      setApprovalQueue((q) => q.filter((a) => !(a.requestId === requestId && a.call.id === callId)))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
   }, [])
 
   const clearError = useCallback(() => setError(null), [])

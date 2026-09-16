@@ -60,6 +60,19 @@ export function AssistantPage() {
               <ChatMessageView key={m.id} message={m} />
             ))}
 
+            {chat.error && !chat.isLoading && (
+              <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                <span className="flex-1">{chat.error}</span>
+                <button
+                  type="button"
+                  onClick={chat.clearError}
+                  className="text-xs font-semibold text-destructive underline-offset-2 hover:underline"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
+
             {chat.streamingMessage && (
               <Message>
                 <MessageAvatar src="" alt="Assistant" fallback="AI" />

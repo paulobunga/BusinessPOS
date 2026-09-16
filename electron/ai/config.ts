@@ -1,8 +1,13 @@
 import { safeStorage } from 'electron'
+import { existsSync } from 'fs'
+import path from 'path'
 import { settingsRepo } from '../db/repositories/settingsRepo.js'
 import type { AiConfig } from '../../shared/types.js'
 
-export const DEFAULT_MODEL = 'openai/gpt-4o-mini'
+const envPath = path.join(process.cwd(), '.env')
+if (existsSync(envPath)) process.loadEnvFile(envPath)
+
+export const DEFAULT_MODEL = 'poolside/laguna-s-2.1:free'
 const KEY_SETTING = 'ai.api_key'
 const MODEL_SETTING = 'ai.model'
 
@@ -12,6 +17,11 @@ function encode(value: string): string {
 
 function decode(value: string): string {
   return safeStorage.decryptString(Buffer.from(value, 'base64')).toString()
+}
+
+function envApiKey(): string | null {
+  const v = process.env.OPENROUTER_API_KEY
+  return v && v.trim() ? v.trim() : null
 }
 
 export function getAiConfig(): AiConfig {
@@ -24,7 +34,7 @@ export function getAiConfig(): AiConfig {
       apiKey = null
     }
   }
-  return { apiKey, model: settingsRepo.get(MODEL_SETTING) ?? DEFAULT_MODEL }
+  return { apiKey: apiKey || envApiKey(), model: settingsRepo.get(MODEL_SETTING) ?? DEFAULT_MODEL }
 }
 
 export function saveAiConfig(cfg: { apiKey?: string; model: string }) {

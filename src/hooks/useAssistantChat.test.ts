@@ -84,4 +84,46 @@ describe('useAssistantChat', () => {
     expect(api['ai:sessions:create']).toHaveBeenCalled()
     expect(result.current.messages).toEqual([])
   })
+
+  test('submit() clears isLoading + sets error when ai:chat:start rejects', async () => {
+    api['ai:sessions:create'] = vi.fn(async () => ({ id: 1, title: 'Chat', created_at: 'now' }))
+    api['ai:chat:start'] = vi.fn(async () => { throw new Error('no such table: chat_sessions') })
+    const { useAssistantChat } = await import('./useAssistantChat')
+    const { result } = renderHook(() => useAssistantChat())
+
+    await act(async () => { await result.current.submit('hello') })
+
+    expect(result.current.isLoading).toBe(false)
+    expect(result.current.streamingMessage).toBe('')
+    expect(result.current.error).toContain('chat_sessions')
+    expect(result.current.messages).toHaveLength(1)
+  })
+
+  test('submit() clears isLoading when ai:sessions:create rejects before chat starts', async () => {
+    api['ai:sessions:create'] = vi.fn(async () => { throw new Error('no such table: chat_sessions') })
+    api['ai:chat:start'] = vi.fn(async () => ({ requestId: 'req_1' }))
+    const { useAssistantChat } = await import('./useAssistantChat')
+    const { result } = renderHook(() => useAssistantChat())
+
+    await act(async () => { await result.current.submit('hello') })
+
+    expect(result.current.isLoading).toBe(false)
+    expect(result.current.error).toContain('chat_sessions')
+    expect(api['ai:chat:start']).not.toHaveBeenCalled()
+  })
+
+  test('emit error event appends message + clears loading', async () => {
+    const { useAssistantChat } = await import('./useAssistantChat')
+    const { result } = renderHook(() => useAssistantChat())
+    await act(async () => { await result.current.submit('hello') })
+
+    await emit({
+      type: 'error', requestId: 'req_1',
+      message: { id: 2, session_id: 1, role: 'assistant', content: '', error: 'boom', created_at: 'now' },
+    })
+
+    expect(result.current.isLoading).toBe(false)
+    expect(result.current.error).toBe('boom')
+    expect(result.current.messages).toHaveLength(2)
+  })
 })

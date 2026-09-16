@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach } from 'vitest'
+import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { getAiConfig, saveAiConfig, clearApiKey } from '../config'
 
 const { store, fakeSafeStorage, fakeSettingsRepo } = vi.hoisted(() => {
@@ -21,10 +21,26 @@ vi.mock('electron', () => ({ safeStorage: fakeSafeStorage }))
 vi.mock('../../db/repositories/settingsRepo.js', () => ({ settingsRepo: fakeSettingsRepo }))
 
 describe('ai config', () => {
-  beforeEach(() => store.clear())
+  beforeEach(() => {
+    store.clear()
+    vi.stubEnv('OPENROUTER_API_KEY', '')
+  })
+
+  afterEach(() => vi.unstubAllEnvs())
 
   test('getAiConfig returns null key + default model when unset', () => {
-    expect(getAiConfig()).toEqual({ apiKey: null, model: 'openai/gpt-4o-mini' })
+    expect(getAiConfig()).toEqual({ apiKey: null, model: 'poolside/laguna-s-2.1:free' })
+  })
+
+  test('falls back to OPENROUTER_API_KEY env when not stored', () => {
+    vi.stubEnv('OPENROUTER_API_KEY', 'sk-from-env')
+    expect(getAiConfig()).toEqual({ apiKey: 'sk-from-env', model: 'poolside/laguna-s-2.1:free' })
+  })
+
+  test('saved key takes precedence over env', () => {
+    vi.stubEnv('OPENROUTER_API_KEY', 'sk-from-env')
+    saveAiConfig({ apiKey: 'sk-stored-123', model: 'anthropic/claude-3.5-sonnet' })
+    expect(getAiConfig()).toEqual({ apiKey: 'sk-stored-123', model: 'anthropic/claude-3.5-sonnet' })
   })
 
   test('saveAiConfig encrypts key and getAiConfig decrypts it', () => {
@@ -36,14 +52,14 @@ describe('ai config', () => {
   })
 
   test('clearApiKey removes the stored key', () => {
-    saveAiConfig({ apiKey: 'sk-x', model: 'openai/gpt-4o-mini' })
+    saveAiConfig({ apiKey: 'sk-x', model: 'poolside/laguna-s-2.1:free' })
     clearApiKey()
     expect(getAiConfig().apiKey).toBeNull()
   })
 
   test('saveAiConfig throws when encryption unavailable', () => {
     fakeSafeStorage.isEncryptionAvailable = () => false
-    expect(() => saveAiConfig({ apiKey: 'sk-x', model: 'openai/gpt-4o-mini' })).toThrow()
+    expect(() => saveAiConfig({ apiKey: 'sk-x', model: 'poolside/laguna-s-2.1:free' })).toThrow()
     fakeSafeStorage.isEncryptionAvailable = () => true
   })
 })

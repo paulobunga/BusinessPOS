@@ -8,12 +8,8 @@ import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 
 const MODEL_OPTIONS = [
-  'openai/gpt-4o-mini',
-  'openai/gpt-4o',
-  'anthropic/claude-3.5-sonnet',
-  'anthropic/claude-3.7-sonnet',
-  'google/gemini-2.0-flash-001',
-  'meta-llama/llama-3.3-70b-instruct',
+  'z-ai/glm-5.2:free',
+  'poolside/laguna-s-2.1:free',
 ]
 
 export function AssistantSettingsDialog({ onClose }: { onClose: () => void }) {
