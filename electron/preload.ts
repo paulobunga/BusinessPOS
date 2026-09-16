@@ -1,10 +1,12 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { Api } from '../shared/types'
+import type { AiEvent } from '../shared/types'
 
 const api: Api = {
   ping: () => ipcRenderer.invoke('ping'),
   'auth:login': (pin) => ipcRenderer.invoke('auth:login', pin),
   'sales:create': (payload) => ipcRenderer.invoke('sales:create', payload),
+  'sales:createCaptainOrder': (payload) => ipcRenderer.invoke('sales:createCaptainOrder', payload),
   'sales:void': (id, reason) => ipcRenderer.invoke('sales:void', id, reason),
   'sales:list': (filters) => ipcRenderer.invoke('sales:list', filters),
   'sales:get': (id) => ipcRenderer.invoke('sales:get', id),
@@ -63,6 +65,8 @@ const api: Api = {
   'setup:save': (payload) => ipcRenderer.invoke('setup:save', payload),
   'debts:listOpen': () => ipcRenderer.invoke('debts:listOpen'),
   'debts:recordPayment': (payload) => ipcRenderer.invoke('debts:recordPayment', payload),
+  'debts:writeOff': (payload) => ipcRenderer.invoke('debts:writeOff', payload),
+  'debts:writeOffs': (sale_id) => ipcRenderer.invoke('debts:writeOffs', sale_id),
   'debts:customerBalances': () => ipcRenderer.invoke('debts:customerBalances'),
   'debts:customerDetail': (customerName) => ipcRenderer.invoke('debts:customerDetail', customerName),
   'debts:balanceByName': (customerName) => ipcRenderer.invoke('debts:balanceByName', customerName),
@@ -75,6 +79,20 @@ const api: Api = {
   'assets:update': (id, payload) => ipcRenderer.invoke('assets:update', id, payload),
   'assets:dispose': (id, payload) => ipcRenderer.invoke('assets:dispose', id, payload),
   'assets:summary': () => ipcRenderer.invoke('assets:summary'),
+  'ai:chat:start': (payload) => ipcRenderer.invoke('ai:chat:start', payload),
+  'ai:chat:messages': (sessionId) => ipcRenderer.invoke('ai:chat:messages', sessionId),
+  'ai:toolApproval': (payload) => ipcRenderer.invoke('ai:toolApproval', payload),
+  'ai:config:get': () => ipcRenderer.invoke('ai:config:get'),
+  'ai:config:save': (payload) => ipcRenderer.invoke('ai:config:save', payload),
+  'ai:sessions:list': () => ipcRenderer.invoke('ai:sessions:list'),
+  'ai:sessions:create': (title) => ipcRenderer.invoke('ai:sessions:create', title),
+  'ai:sessions:rename': (id, title) => ipcRenderer.invoke('ai:sessions:rename', id, title),
+  'ai:sessions:delete': (id) => ipcRenderer.invoke('ai:sessions:delete', id),
+  onAiEvent: (cb) => {
+    const listener = (_e: Electron.IpcRendererEvent, event: AiEvent) => cb(event)
+    ipcRenderer.on('ai:event', listener)
+    return () => ipcRenderer.removeListener('ai:event', listener)
+  },
 }
 
 contextBridge.exposeInMainWorld('api', api)

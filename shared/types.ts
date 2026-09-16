@@ -579,6 +579,16 @@ export interface Api {
   'assets:update': (id: number, payload: Partial<CreateAssetPayload>) => Promise<AssetWithValue>
   'assets:dispose': (id: number, payload: DisposeAssetPayload) => Promise<AssetWithValue>
   'assets:summary': () => Promise<AssetSummary>
+  'ai:chat:start': (payload: { sessionId: number; content: string; userId: number; role: Role }) => Promise<{ requestId: string }>
+  'ai:chat:messages': (sessionId: number) => Promise<AiChatMessage[]>
+  'ai:toolApproval': (payload: { requestId: string; callId: string; approved: boolean }) => Promise<void>
+  'ai:config:get': () => Promise<AiConfig>
+  'ai:config:save': (payload: { apiKey?: string; model: string }) => Promise<void>
+  'ai:sessions:list': () => Promise<AiSessionSummary[]>
+  'ai:sessions:create': (title?: string) => Promise<AiSession>
+  'ai:sessions:rename': (id: number, title: string) => Promise<void>
+  'ai:sessions:delete': (id: number) => Promise<void>
+  onAiEvent: (cb: (event: AiEvent) => void) => () => void
 }
 
 // === AI Assistant ===
