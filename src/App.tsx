@@ -14,6 +14,7 @@ import { ReimbursementsPage } from './pages/Reimbursements/ReimbursementsPage'
 import { InventoryPage } from './pages/Inventory/InventoryPage'
 import { WastePage } from './pages/Waste/WastePage'
 import { ReportsPage } from './pages/Reports/ReportsPage'
+import { AssistantPage } from './pages/Assistant/AssistantPage'
 import { SettingsPage } from './pages/Settings/SettingsPage'
 import { RequireModule } from './components/RequireModule'
 import { UsersPage } from './pages/Users/UsersPage'
@@ -57,6 +58,7 @@ function Root() {
             <Route path="/waste" element={<RequireModule module="waste"><WastePage /></RequireModule>} />
             <Route path="/assets" element={<RequireModule module="assets"><AssetsPage /></RequireModule>} />
             <Route path="/reports" element={<RequireModule module="reports"><ReportsPage /></RequireModule>} />
+            <Route path="/assistant" element={<RequireModule module="reports"><AssistantPage /></RequireModule>} />
             <Route path="/settings" element={<RequireModule module="settings"><SettingsPage /></RequireModule>} />
             <Route path="/users" element={<RequireModule module="users"><UsersPage /></RequireModule>} />
           </Route>
