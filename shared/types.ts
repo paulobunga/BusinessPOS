@@ -103,6 +103,8 @@ export interface Sale {
   debt_cents?: number
   payment_method?: 'cash' | 'debt' | 'mixed'
   customer_name?: string | null
+  sale_kind?: 'sale' | 'captain'
+  service_description?: string | null
 }
 
 export interface SaleItem {
@@ -142,6 +144,7 @@ export interface OpenDebt {
   debt_cents: number
   total_cents: number
   paid_cents: number
+  written_off_cents: number
   remaining_cents: number
   created_at: string
   days_open: number
@@ -152,6 +155,7 @@ export interface CustomerBalance {
   customer_name: string
   total_owed_cents: number
   total_paid_cents: number
+  total_written_off_cents: number
   unpaid_orders: number
   oldest_open_date: string
   newest_open_date: string
@@ -175,6 +179,25 @@ export interface CustomerDetail {
   total_owed_cents: number
   open_debts: OpenDebt[]
   payments: PaymentHistoryEntry[]
+  write_offs: DebtWriteOff[]
+}
+
+export interface DebtWriteOff {
+  id: number
+  sale_id: number
+  amount_cents: number
+  reason: string
+  written_by: number | null
+  created_at: string
+  sale_total_cents: number
+  sale_created_at: string
+}
+
+export interface WriteOffPayload {
+  sale_id: number
+  amount_cents: number
+  reason: string
+  created_by: number
 }
 
 export interface PayOnAccountPayload {
@@ -352,6 +375,8 @@ export interface DailyReport {
   date: string
   sales_revenue_cents: number
   debt_sales_cents: number
+  barter_cents: number
+  bad_debt_cents: number
   food_purchase_cents: number
   waste_cents: number
   expense_cents: number
@@ -363,6 +388,8 @@ export interface MonthlyReport {
   month: string
   sales_revenue_cents: number
   debt_sales_cents: number
+  barter_cents: number
+  bad_debt_cents: number
   food_purchase_cents: number
   waste_cents: number
   expense_cents: number
@@ -380,6 +407,7 @@ export interface DebtSummaryItem {
   sale_id: number
   debt_cents: number
   paid_cents: number
+  written_off_cents: number
   total_debt_cents: number
   days_open: number
   last_payment_at: string | null
@@ -412,6 +440,18 @@ export interface CreateSalePayload {
   total_cents: number
   debt_cents: number
   payment_method: 'cash' | 'debt' | 'mixed'
+  till_session_id?: number | null
+  created_by: number
+  items: SaleItemInput[]
+}
+
+export interface CreateCaptainOrderPayload {
+  customer_name?: string
+  service_description: string
+  subtotal_cents: number
+  discount_cents: number
+  discount_reason?: string
+  total_cents: number
   till_session_id?: number | null
   created_by: number
   items: SaleItemInput[]
@@ -466,6 +506,7 @@ export interface Api {
   ping: () => Promise<string>
   'auth:login': (pin: string) => Promise<{ userId: number; role: Role; name: string } | null>
   'sales:create': (payload: CreateSalePayload) => Promise<Sale>
+  'sales:createCaptainOrder': (payload: CreateCaptainOrderPayload) => Promise<Sale>
   'sales:void': (id: number, reason: string) => Promise<void>
   'sales:list': (filters?: { status?: string; date_from?: string; date_to?: string }) => Promise<SaleWithItems[]>
   'sales:get': (id: number) => Promise<SaleWithItems>
@@ -524,6 +565,8 @@ export interface Api {
   'setup:save': (payload: SetupPayload) => Promise<{ userId: number }>
   'debts:listOpen': () => Promise<OpenDebt[]>
   'debts:recordPayment': (payload: { sale_id: number; amount_cents: number; payment_method: string; till_session_id: number | null; created_by: number }) => Promise<{ remaining_cents: number; sale_status: string }>
+  'debts:writeOff': (payload: WriteOffPayload) => Promise<{ written_off_cents: number; remaining_cents: number }>
+  'debts:writeOffs': (sale_id: number) => Promise<DebtWriteOff[]>
   'debts:customerBalances': () => Promise<CustomerBalance[]>
   'debts:customerDetail': (customer_name: string) => Promise<CustomerDetail>
   'debts:balanceByName': (customer_name: string) => Promise<number>
@@ -537,3 +580,50 @@ export interface Api {
   'assets:dispose': (id: number, payload: DisposeAssetPayload) => Promise<AssetWithValue>
   'assets:summary': () => Promise<AssetSummary>
 }
+
+// === AI Assistant ===
+export type AiToolStatus = 'pending' | 'running' | 'approved' | 'rejected' | 'done' | 'error'
+
+export interface AiToolCall {
+  id: string
+  name: string
+  args: Record<string, unknown>
+  status: AiToolStatus
+  result?: unknown
+  error?: string
+}
+
+export interface AiChatMessage {
+  id: number
+  session_id: number
+  role: 'user' | 'assistant'
+  content: string
+  tool_calls?: AiToolCall[] | null
+  error?: string | null
+  created_at: string
+}
+
+export interface AiSession {
+  id: number
+  title: string
+  created_at?: string
+  updated_at?: string
+}
+
+export interface AiSessionSummary extends AiSession {
+  message_count: number
+  last_message: string | null
+}
+
+export interface AiConfig {
+  apiKey: string | null
+  model: string
+}
+
+export type AiEvent =
+  | { type: 'delta'; requestId: string; delta: string }
+  | { type: 'tool-call'; requestId: string; call: AiToolCall }
+  | { type: 'tool-result'; requestId: string; call: AiToolCall }
+  | { type: 'approval-request'; requestId: string; call: AiToolCall }
+  | { type: 'done'; requestId: string; message: AiChatMessage }
+  | { type: 'error'; requestId: string; message: AiChatMessage }
