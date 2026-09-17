@@ -9,6 +9,7 @@ import { assetsRepo } from '../db/repositories/assetsRepo.js'
 import { purchasesRepo } from '../db/repositories/purchasesRepo.js'
 import { tillRepo } from '../db/repositories/tillRepo.js'
 import { categoriesRepo } from '../db/repositories/categoriesRepo.js'
+import { recipesRepo } from '../db/repositories/recipesRepo.js'
 import { getDb } from '../db/index.js'
 import { computeDepreciation } from '../../shared/depreciation.js'
 import type { OpenDebt } from '../../shared/types.js'
@@ -31,7 +32,7 @@ interface ToolDef {
 export const WRITE_TOOLS: string[] = [
   'log_expense', 'record_waste', 'record_debt_payment', 'log_reimbursement',
   'update_menu_item', 'add_menu_item', 'toggle_item_stock',
-  'record_purchase',
+  'record_purchase', 'create_recipe', 'update_recipe', 'delete_recipe',
   'open_till', 'close_till',
   'create_asset', 'update_asset', 'dispose_asset', 'post_depreciation',
 ]
@@ -326,8 +327,9 @@ export const TOOL_DEFINITIONS: Record<string, ToolDef> = {
         cost_cents: { type: 'integer', description: 'Total cost in whole UGX' },
         purchase_date: { type: 'string', description: 'YYYY-MM-DD, defaults to today' },
         unit: { type: 'string', description: 'Unit of measure: kg, g, whole, etc.' },
+        total_yield: { type: 'integer', description: 'Total servings/yield from this purchase' },
       },
-      required: ['item_id', 'quantity', 'cost_cents'], additionalProperties: false,
+      required: ['item_id', 'quantity', 'cost_cents', 'total_yield'], additionalProperties: false,
     },
   },
   open_till: {
@@ -348,6 +350,83 @@ export const TOOL_DEFINITIONS: Record<string, ToolDef> = {
         counted_cents: { type: 'integer', description: 'Physical cash counted in whole UGX' },
       },
       required: ['counted_cents'], additionalProperties: false,
+    },
+  },
+  get_recipes: {
+    description: 'List all stored recipes with their ingredient counts.',
+    parameters: { type: 'object', properties: {}, additionalProperties: false },
+  },
+  get_recipe: {
+    description: 'Get a specific recipe by ID with full description and ingredients.',
+    parameters: {
+      type: 'object',
+      properties: { id: { type: 'integer', description: 'Recipe ID' } },
+      required: ['id'], additionalProperties: false,
+    },
+  },
+  create_recipe: {
+    description: 'Create a new recipe with name, servings, and ingredients. Requires admin.',
+    parameters: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Recipe name' },
+        description: { type: 'string', description: 'Full recipe description (markdown supported)' },
+        servings: { type: 'integer', description: 'Number of servings' },
+        ingredients: {
+          type: 'array',
+          description: 'List of ingredients',
+          items: {
+            type: 'object',
+            properties: {
+              item_id: { type: 'integer', description: 'Menu item ID if available, null for spices/condiments' },
+              item_name: { type: 'string', description: 'Ingredient name' },
+              quantity: { type: 'number', description: 'Quantity' },
+              unit: { type: 'string', description: 'Unit (pcs, kg, g, l, ml, cup, tablespoon, teaspoon, bunch, as needed)' },
+            },
+            required: ['item_name', 'quantity', 'unit'],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ['name', 'ingredients'], additionalProperties: false,
+    },
+  },
+  update_recipe: {
+    description: 'Update an existing recipe. Requires admin.',
+    parameters: {
+      type: 'object',
+      properties: {
+        id: { type: 'integer', description: 'Recipe ID' },
+        name: { type: 'string', description: 'New name' },
+        description: { type: 'string', description: 'New description (markdown supported)' },
+        servings: { type: 'integer', description: 'New servings count' },
+        active: { type: 'integer', description: 'Set to 0 to deactivate, 1 to activate' },
+        ingredients: {
+          type: 'array',
+          description: 'New ingredient list (replaces existing)',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'integer', description: 'Ingredient row ID to update' },
+              item_id: { type: 'integer', description: 'Menu item ID if available' },
+              item_name: { type: 'string', description: 'Ingredient name' },
+              quantity: { type: 'number', description: 'Quantity' },
+              unit: { type: 'string', description: 'Unit' },
+            },
+            required: ['item_name', 'quantity', 'unit'],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ['id'], additionalProperties: false,
+    },
+  },
+  delete_recipe: {
+    description: 'Delete a recipe by ID. Requires admin.',
+    parameters: {
+      type: 'object',
+      properties: { id: { type: 'integer', description: 'Recipe ID' } },
+      required: ['id'], additionalProperties: false,
     },
   },
 
@@ -534,6 +613,7 @@ export async function executeTool(name: string, args: Record<string, unknown>, c
         Number(args.cost_cents),
         args.purchase_date ? String(args.purchase_date) : new Date().toISOString().slice(0, 10),
         ctx.userId,
+        Number(args.total_yield),
         { unit: args.unit ? String(args.unit) : 'kg' }
       )
     case 'create_asset':
@@ -596,6 +676,42 @@ export async function executeTool(name: string, args: Record<string, unknown>, c
       return tillRepo.open(Number(args.float_cents))
     case 'close_till':
       return tillRepo.close(tillRepo.current()?.id ?? 0, Number(args.counted_cents))
+    case 'get_recipes':
+      return recipesRepo.list()
+    case 'get_recipe': {
+      const id = Number(args.id)
+      if (!id) throw new Error('id is required')
+      const recipe = recipesRepo.getById(id)
+      if (!recipe) throw new Error(`Recipe ${id} not found`)
+      return recipe
+    }
+    case 'create_recipe':
+      return recipesRepo.create({
+        name: String(args.name),
+        description: args.description != null ? String(args.description) : undefined,
+        servings: args.servings != null ? Number(args.servings) : 1,
+        ingredients: (args.ingredients as Array<{ item_id?: number | null; item_name: string; quantity: number; unit: string }>) ?? [],
+      })
+    case 'update_recipe': {
+      const id = Number(args.id)
+      const existing = recipesRepo.getById(id)
+      if (!existing) throw new Error(`Recipe ${id} not found`)
+      return recipesRepo.update(id, {
+        name: args.name != null ? String(args.name) : undefined,
+        description: args.description != null ? String(args.description) : undefined,
+        servings: args.servings != null ? Number(args.servings) : undefined,
+        active: args.active != null ? Number(args.active) : undefined,
+        ingredients: args.ingredients != null
+          ? (args.ingredients as Array<{ id?: number; item_id: number | null; item_name: string; quantity: number; unit: string }>)
+          : undefined,
+      })
+    }
+    case 'delete_recipe': {
+      const id = Number(args.id)
+      if (!id) throw new Error('id is required')
+      recipesRepo.del(id)
+      return null
+    }
     default:
       throw new Error(`Unknown tool: ${name}`)
   }
