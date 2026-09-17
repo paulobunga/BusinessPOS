@@ -14,6 +14,7 @@ import { runPurchaseYieldsMigration } from '../db/migrations/011_purchase_yields
 import { runSetupMigration } from '../db/migrations/012_setup'
 import { runUserRolesMigration } from '../db/migrations/013_user_roles'
 import { runRemovePaymentIdMigration } from '../db/migrations/014_debt_allocations_cleanup'
+import { runDebtWriteOffsMigration } from '../db/migrations/017_debt_write_offs'
 
 let db: Database.Database
 
@@ -62,6 +63,7 @@ describe('Full day at the restaurant (integration)', () => {
     runPurchaseYieldsMigration(db)
     runRemovePaymentIdMigration(db)
     runUserRolesMigration(db)
+    runDebtWriteOffsMigration(db)
 
     const user = usersRepo.create('Test Manager', 'admin', '1234')
     userId = user.id as number
@@ -149,7 +151,7 @@ describe('Full day at the restaurant (integration)', () => {
   })
 
   test('7. Daily report matches all figures', () => {
-    const reports = reportsRepo.getDaily(today, today)
+    const reports = reportsRepo.getDaily(reportDate, reportDate)
     expect(reports).toHaveLength(1)
     const r = reports[0]
     expect(r.sales_revenue_cents).toBe(28000)
@@ -329,6 +331,7 @@ describe('Setup wizard & system purge (fresh system)', () => {
     runSetupMigration(db)
     runRemovePaymentIdMigration(db)
     runUserRolesMigration(db)
+    runDebtWriteOffsMigration(db)
   })
 
   afterAll(() => {

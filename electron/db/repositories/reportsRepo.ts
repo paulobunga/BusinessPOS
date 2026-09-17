@@ -5,6 +5,8 @@ export interface DailyReport {
   date: string
   sales_revenue_cents: number
   debt_sales_cents: number
+  barter_cents: number
+  bad_debt_cents: number
   food_purchase_cents: number
   waste_cents: number
   expense_cents: number
@@ -16,6 +18,8 @@ export interface MonthlyReport {
   month: string
   sales_revenue_cents: number
   debt_sales_cents: number
+  barter_cents: number
+  bad_debt_cents: number
   food_purchase_cents: number
   waste_cents: number
   expense_cents: number
@@ -44,10 +48,26 @@ function getDailyRow(date: string): DailyReport {
   const salesRow = db.prepare(`
     SELECT
       COALESCE(SUM(CASE WHEN status IN ('completed','unpaid') THEN total_cents ELSE 0 END), 0) AS sales_revenue_cents,
-      COALESCE(SUM(CASE WHEN payment_method IN ('debt','mixed') AND status IN ('completed','unpaid') THEN debt_cents ELSE 0 END), 0) AS debt_sales_cents
-    FROM sales
+      COALESCE(SUM(CASE WHEN status IN ('completed','unpaid') AND sale_kind = 'captain' THEN total_cents ELSE 0 END), 0) AS barter_cents,
+      COALESCE(SUM(
+        CASE WHEN status IN ('completed','unpaid') AND payment_method IN ('debt','mixed')
+          AND s.debt_cents - (SELECT COALESCE(SUM(amount_cents), 0) FROM payment_allocations WHERE sale_id = s.id) - (SELECT COALESCE(SUM(amount_cents), 0) FROM debt_write_offs WHERE sale_id = s.id) > 0
+          THEN s.debt_cents - (SELECT COALESCE(SUM(amount_cents), 0) FROM payment_allocations WHERE sale_id = s.id) - (SELECT COALESCE(SUM(amount_cents), 0) FROM debt_write_offs WHERE sale_id = s.id)
+        ELSE 0 END
+      ), 0) AS debt_sales_cents
+    FROM sales s
+    WHERE DATE(s.created_at) = ?
+  `).all(date) as { sales_revenue_cents: number; barter_cents: number; debt_sales_cents: number }[]
+
+  const revenue = salesRow.reduce((sum, r) => sum + r.sales_revenue_cents, 0)
+  const barter = salesRow.reduce((sum, r) => sum + r.barter_cents, 0)
+  const outstandingDebt = salesRow.reduce((sum, r) => sum + r.debt_sales_cents, 0)
+
+  const badDebtRow = db.prepare(`
+    SELECT COALESCE(SUM(amount_cents), 0) AS bad_debt_cents
+    FROM debt_write_offs
     WHERE DATE(created_at) = ?
-  `).get(date) as { sales_revenue_cents: number; debt_sales_cents: number }
+  `).get(date) as { bad_debt_cents: number }
 
   const purchaseRow = db.prepare(`
     SELECT COALESCE(SUM(cost_cents), 0) AS food_purchase_cents
@@ -73,20 +93,22 @@ function getDailyRow(date: string): DailyReport {
     WHERE date = ?
   `).get(date) as { reimbursement_cents: number }
 
-  const revenue = salesRow.sales_revenue_cents
   const foodCost = purchaseRow.food_purchase_cents
   const waste = wasteRow.waste_cents
   const expenses = expenseRow.expense_cents
+  const badDebt = badDebtRow.bad_debt_cents
 
   return {
     date,
     sales_revenue_cents: revenue,
-    debt_sales_cents: salesRow.debt_sales_cents,
+    debt_sales_cents: outstandingDebt,
+    barter_cents: barter,
+    bad_debt_cents: badDebt,
     food_purchase_cents: foodCost,
     waste_cents: waste,
     expense_cents: expenses,
     reimbursement_cents: reimbursementRow.reimbursement_cents,
-    net_profit_cents: revenue - foodCost - waste - expenses,
+    net_profit_cents: revenue - foodCost - waste - expenses - badDebt,
   }
 }
 
@@ -94,14 +116,27 @@ function getMonthlyAggregated(year: number): MonthlyReport[] {
   const db = getDb()
 
   const salesRows = db.prepare(`
-    SELECT
-      strftime('%Y-%m', created_at) AS month,
-      COALESCE(SUM(CASE WHEN status IN ('completed','unpaid') THEN total_cents ELSE 0 END), 0) AS sales_revenue_cents,
-      COALESCE(SUM(CASE WHEN payment_method IN ('debt','mixed') AND status IN ('completed','unpaid') THEN debt_cents ELSE 0 END), 0) AS debt_sales_cents
-    FROM sales
-    WHERE strftime('%Y', created_at) = ?
+    SELECT month,
+      SUM(sales_revenue_cents) as sales_revenue_cents,
+      SUM(barter_cents) as barter_cents,
+      SUM(debt_sales_cents) as debt_sales_cents
+    FROM (
+      SELECT
+        strftime('%Y-%m', s.created_at) AS month,
+        COALESCE(SUM(CASE WHEN s.status IN ('completed','unpaid') THEN s.total_cents ELSE 0 END), 0) AS sales_revenue_cents,
+        COALESCE(SUM(CASE WHEN s.status IN ('completed','unpaid') AND s.sale_kind = 'captain' THEN s.total_cents ELSE 0 END), 0) AS barter_cents,
+        COALESCE(SUM(
+          CASE WHEN s.status IN ('completed','unpaid') AND s.payment_method IN ('debt','mixed')
+            AND s.debt_cents - (SELECT COALESCE(SUM(amount_cents), 0) FROM payment_allocations WHERE sale_id = s.id) - (SELECT COALESCE(SUM(amount_cents), 0) FROM debt_write_offs WHERE sale_id = s.id) > 0
+            THEN s.debt_cents - (SELECT COALESCE(SUM(amount_cents), 0) FROM payment_allocations WHERE sale_id = s.id) - (SELECT COALESCE(SUM(amount_cents), 0) FROM debt_write_offs WHERE sale_id = s.id)
+          ELSE 0 END
+        ), 0) AS debt_sales_cents
+      FROM sales s
+      WHERE strftime('%Y', s.created_at) = ?
+      GROUP BY month
+    )
     GROUP BY month
-  `).all(String(year)) as { month: string; sales_revenue_cents: number; debt_sales_cents: number }[]
+  `).all(String(year)) as { month: string; sales_revenue_cents: number; barter_cents: number; debt_sales_cents: number }[]
 
   const purchaseRows = db.prepare(`
     SELECT
@@ -139,6 +174,15 @@ function getMonthlyAggregated(year: number): MonthlyReport[] {
     GROUP BY month
   `).all(String(year)) as { month: string; reimbursement_cents: number }[]
 
+  const badDebtRows = db.prepare(`
+    SELECT
+      strftime('%Y-%m', created_at) AS month,
+      COALESCE(SUM(amount_cents), 0) AS bad_debt_cents
+    FROM debt_write_offs
+    WHERE strftime('%Y', created_at) = ?
+    GROUP BY month
+  `).all(String(year)) as { month: string; bad_debt_cents: number }[]
+
   const map = new Map<string, MonthlyReport>()
   const months = [
     ...salesRows.map(r => r.month),
@@ -146,6 +190,7 @@ function getMonthlyAggregated(year: number): MonthlyReport[] {
     ...wasteRows.map(r => r.month),
     ...expenseRows.map(r => r.month),
     ...reimbursementRows.map(r => r.month),
+    ...badDebtRows.map(r => r.month),
   ]
   for (const m of months) {
     if (!m) continue
@@ -154,6 +199,8 @@ function getMonthlyAggregated(year: number): MonthlyReport[] {
         month: m,
         sales_revenue_cents: 0,
         debt_sales_cents: 0,
+        barter_cents: 0,
+        bad_debt_cents: 0,
         food_purchase_cents: 0,
         waste_cents: 0,
         expense_cents: 0,
@@ -168,6 +215,7 @@ function getMonthlyAggregated(year: number): MonthlyReport[] {
     if (row) {
       row.sales_revenue_cents = r.sales_revenue_cents
       row.debt_sales_cents = r.debt_sales_cents
+      row.barter_cents = r.barter_cents
     }
   }
   for (const r of purchaseRows) {
@@ -186,10 +234,14 @@ function getMonthlyAggregated(year: number): MonthlyReport[] {
     const row = map.get(r.month!)
     if (row) row.reimbursement_cents = r.reimbursement_cents
   }
+  for (const r of badDebtRows) {
+    const row = map.get(r.month!)
+    if (row) row.bad_debt_cents = r.bad_debt_cents
+  }
 
   const result = Array.from(map.values())
   for (const row of result) {
-    row.net_profit_cents = row.sales_revenue_cents - row.food_purchase_cents - row.waste_cents - row.expense_cents
+    row.net_profit_cents = row.sales_revenue_cents - row.food_purchase_cents - row.waste_cents - row.expense_cents - row.bad_debt_cents
   }
   result.sort((a, b) => a.month.localeCompare(b.month))
   return result
@@ -201,7 +253,8 @@ export const reportsRepo = {
     const current = new Date(start + 'T00:00:00')
     const endDate = new Date(end + 'T00:00:00')
     while (current <= endDate) {
-      const dateStr = current.toISOString().slice(0, 10)
+      const dateStr =
+        `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`
       days.push(getDailyRow(dateStr))
       current.setDate(current.getDate() + 1)
     }
@@ -254,7 +307,7 @@ export const reportsRepo = {
         id, till_session_id, created_at, status, subtotal_cents, discount_cents,
         tax_cents, total_cents, payment_source, customer_id, customer_name,
         created_by, voided_at, voided_by, void_reason, discount_reason,
-        debt_cents, payment_method
+        debt_cents, payment_method, sale_kind, service_description
       FROM sales
       WHERE status IN ('completed','unpaid')
         AND DATE(created_at) >= ? AND DATE(created_at) <= ?
@@ -289,7 +342,8 @@ export const reportsRepo = {
         s.id AS sale_id,
         s.debt_cents,
         COALESCE(SUM(pa.amount_cents), 0) AS paid_cents,
-        s.debt_cents - COALESCE(SUM(pa.amount_cents), 0) AS total_debt_cents,
+        COALESCE((SELECT COALESCE(SUM(amount_cents), 0) FROM debt_write_offs WHERE sale_id = s.id), 0) AS written_off_cents,
+        s.debt_cents - COALESCE(SUM(pa.amount_cents), 0) - COALESCE((SELECT COALESCE(SUM(amount_cents), 0) FROM debt_write_offs WHERE sale_id = s.id), 0) AS total_debt_cents,
         CAST(julianday('now') - julianday(s.created_at) AS INTEGER) AS days_open,
         MAX(pa.created_at) AS last_payment_at,
         s.created_at

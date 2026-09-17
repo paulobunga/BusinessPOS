@@ -24,7 +24,11 @@ import {
 } from '../../components/ui/select'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
+import { PaginationFooter } from '../../components/PaginationFooter'
+import { usePagination } from '../../hooks/usePagination'
 import { DatePicker } from '../../components/ui/date-picker'
+import { DateRangeFilter } from '../../components/DateRangeFilter'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover'
 import { Check, ChevronsUpDown, Package, Plus, Search, X } from 'lucide-react'
 import type { ItemPurchaseWithName } from '../../../shared/types'
@@ -37,19 +41,23 @@ type Tab = 'raw' | 'meals'
 export function InventoryPage() {
   const today = new Date().toISOString().slice(0, 10)
   const [tab, setTab] = useState<Tab>('raw')
-  const [date, setDate] = useState(today)
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const { items, retry: retryItems } = useItems({ kind: 'priced', activeOnly: true })
   const { categories, retry: retryCategories } = useCategories()
   const purchaseOnlyCatIds = useMemo(
     () => new Set(categories.filter(c => c.purchase_only === 1).map(c => c.id)),
     [categories]
   )
-  const { purchases, dailyTotal, loading, record } = useInventory(date)
+  const { purchases, dailyTotal, loading, record } = useInventory(dateFrom || today)
   const { userId } = useAuth()
+
+  const purchasesPager = usePagination(purchases)
 
   const rawItems = items.filter(p => purchaseOnlyCatIds.has(p.category_id))
   const meals = items.filter(p => !purchaseOnlyCatIds.has(p.category_id))
   const mealCats = categories.filter(c => c.kind === 'priced' && c.purchase_only !== 1)
+  const mealsPager = usePagination(meals)
 
   // Record purchase dialog
   const [open, setOpen] = useState(false)
@@ -324,13 +332,16 @@ export function InventoryPage() {
             <CardContent className="flex flex-col gap-4">
               {/* Date filter for the list */}
           <div className="flex flex-wrap items-end gap-4">
-            <Label className="flex w-44 flex-col gap-1.5 text-[0.875rem] font-semibold">
-              Viewing date
-              <DatePicker value={date} onValueChange={setDate} />
-            </Label>
-            <span className="ml-auto pb-1 text-base font-bold">
-              Food Cost ({date}): {fmt.format(dailyTotal)}
+            <span className="pb-1 text-base font-bold">
+              Food Cost: {fmt.format(dailyTotal)}
             </span>
+            <DateRangeFilter
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+              onDateFromChange={setDateFrom}
+              onDateToChange={setDateTo}
+              onReset={() => { setDateFrom(''); setDateTo('') }}
+            />
           </div>
 
           {/* Actions */}
@@ -351,28 +362,44 @@ export function InventoryPage() {
               No purchases recorded for this date.
             </p>
           ) : (
-            <div className="flex flex-col gap-2">
-              {purchases.map((p: ItemPurchaseWithName) => (
-                <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-md)] border border-border bg-card px-4 py-3">
-                  <div className="flex flex-col gap-1">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <p className="m-0 text-[0.9375rem] font-bold">{p.item_name ?? `Item #${p.item_id}`}</p>
-                      <div className="flex flex-wrap items-center gap-2">
-                        {(p.yields ?? []).map(y => (
-                          <span key={y.id} className="rounded-full border border-border bg-background px-2 py-0.5 text-[0.8125rem] text-muted-foreground">
-                            → {y.portions} × {y.name}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span className="text-[0.875rem] text-muted-foreground">{p.quantity_kg} {p.unit ?? 'kg'}</span>
-                    <span className="text-[0.8125rem] text-muted-foreground">@{fmt.format(p.unit_cost_cents ?? p.cost_cents)}/{p.unit ?? 'kg'}</span>
-                    <span className="w-[100px] text-right text-[0.9375rem] font-bold">{fmt.format(p.cost_cents)}</span>
-                  </div>
-                </div>
-              ))}
+            <div className="flex flex-col gap-3">
+              <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
+                <Table className="table-zebra">
+                  <TableHeader>
+                    <TableRow className="bg-card hover:bg-card">
+                      <TableHead>Item</TableHead>
+                      <TableHead>Yields</TableHead>
+                      <TableHead className="text-right">Qty</TableHead>
+                      <TableHead className="text-right">Unit Cost</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {purchasesPager.slice.map((p: ItemPurchaseWithName) => (
+                      <TableRow key={p.id}>
+                        <TableCell className="font-semibold">{p.item_name ?? `Item #${p.item_id}`}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap items-center gap-2">
+                            {(p.yields ?? []).map(y => (
+                              <span key={y.id} className="rounded-full border border-border bg-background px-2 py-0.5 text-[0.8125rem] text-muted-foreground">
+                                → {y.portions} × {y.name}
+                              </span>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right text-muted-foreground">
+                          {p.quantity_kg} {p.unit ?? 'kg'}
+                        </TableCell>
+                        <TableCell className="text-right text-muted-foreground">
+                          {fmt.format(p.unit_cost_cents ?? p.cost_cents)}/{p.unit ?? 'kg'}
+                        </TableCell>
+                        <TableCell className="text-right font-bold">{fmt.format(p.cost_cents)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <PaginationFooter pager={purchasesPager} />
             </div>
           )}
             </CardContent>
@@ -399,36 +426,49 @@ export function InventoryPage() {
               No meals yet. Add the dishes you sell on the POS.
             </p>
           ) : (
-            <div className="flex flex-col gap-2">
-              {meals.map(m => (
-                <div key={m.id} className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-md)] border border-border bg-card px-4 py-3">
-                  <div className="flex flex-col gap-0.5">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="m-0 text-[0.9375rem] font-bold">{m.name}</p>
-                      {m.out_of_stock === 1 && (
-                        <span className="rounded-full border border-warning/40 bg-warning/10 px-2 py-0.5 text-[0.75rem] font-bold text-warning">
-                          OUT OF STOCK
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-[0.8125rem] text-muted-foreground">{m.category_name}</span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="flex flex-col items-end gap-0.5">
-                      <span className="text-[0.9375rem] font-bold">{fmt.format(m.selling_price_cents)}</span>
-                      <span className="text-[0.8125rem] text-muted-foreground">cost {fmt.format(m.cost_price_cents)}</span>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="h-9 border-border bg-background px-3 text-[0.8125rem] font-semibold"
-                      onClick={() => toggleOutOfStock(m)}
-                    >
-                      {m.out_of_stock === 1 ? 'Mark in stock' : 'Mark out of stock'}
-                    </Button>
-                  </div>
-                </div>
-              ))}
+            <div className="flex flex-col gap-3">
+              <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
+                <Table className="table-zebra">
+                  <TableHeader>
+                    <TableRow className="bg-card hover:bg-card">
+                      <TableHead>Meal</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead className="text-right">Selling Price</TableHead>
+                      <TableHead className="text-right">Cost / serving</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {mealsPager.slice.map(m => (
+                      <TableRow key={m.id}>
+                        <TableCell className="font-semibold">{m.name}</TableCell>
+                        <TableCell className="text-muted-foreground">{m.category_name}</TableCell>
+                        <TableCell className="text-right font-bold">{fmt.format(m.selling_price_cents)}</TableCell>
+                        <TableCell className="text-right text-muted-foreground">{fmt.format(m.cost_price_cents)}</TableCell>
+                        <TableCell>
+                          {m.out_of_stock === 1 && (
+                            <span className="rounded-full border border-warning/40 bg-warning/10 px-2 py-0.5 text-[0.75rem] font-bold text-warning">
+                              OUT OF STOCK
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="h-9 border-border bg-background px-3 text-[0.8125rem] font-semibold"
+                            onClick={() => toggleOutOfStock(m)}
+                          >
+                            {m.out_of_stock === 1 ? 'Mark in stock' : 'Mark out of stock'}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <PaginationFooter pager={mealsPager} />
             </div>
           )}
             </CardContent>

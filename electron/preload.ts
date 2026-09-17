@@ -73,6 +73,7 @@ const api: Api = {
   'debts:payOnAccount': (payload) => ipcRenderer.invoke('debts:payOnAccount', payload),
   'debts:getTotalOwed': (sale_id) => ipcRenderer.invoke('debts:getTotalOwed', sale_id),
   'debts:history': (sale_id) => ipcRenderer.invoke('debts:history', sale_id),
+  'debts:recordFromList': (entries) => ipcRenderer.invoke('debts:recordFromList', entries),
   'assets:list': () => ipcRenderer.invoke('assets:list'),
   'assets:get': (id) => ipcRenderer.invoke('assets:get', id),
   'assets:create': (payload) => ipcRenderer.invoke('assets:create', payload),
@@ -87,6 +88,8 @@ const api: Api = {
   'ai:sessions:list': () => ipcRenderer.invoke('ai:sessions:list'),
   'ai:sessions:create': (title) => ipcRenderer.invoke('ai:sessions:create', title),
   'ai:sessions:rename': (id, title) => ipcRenderer.invoke('ai:sessions:rename', id, title),
+  'ai:sessions:archive': (id) => ipcRenderer.invoke('ai:sessions:archive', id),
+  'ai:sessions:export': (id) => ipcRenderer.invoke('ai:sessions:export', id),
   'ai:sessions:delete': (id) => ipcRenderer.invoke('ai:sessions:delete', id),
   onAiEvent: (cb) => {
     const listener = (_e: Electron.IpcRendererEvent, event: AiEvent) => cb(event)

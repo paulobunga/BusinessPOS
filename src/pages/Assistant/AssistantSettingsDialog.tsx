@@ -8,8 +8,8 @@ import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 
 const MODEL_OPTIONS = [
-  'z-ai/glm-5.2:free',
-  'poolside/laguna-s-2.1:free',
+  'deepseek-flash',
+  'deepseek-v4-pro',
 ]
 
 export function AssistantSettingsDialog({ onClose }: { onClose: () => void }) {
@@ -44,22 +44,22 @@ export function AssistantSettingsDialog({ onClose }: { onClose: () => void }) {
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="or-key">OpenRouter API key</Label>
+            <Label htmlFor="ds-key">DeepSeek API key</Label>
             <Input
-              id="or-key"
+              id="ds-key"
               type="password"
-              placeholder="sk-or-…"
+              placeholder="sk-…"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
             />
             <p className="text-xs text-muted-foreground">
-              Stored encrypted on this device. Get a key at openrouter.ai.
+              Stored encrypted on this device. Get a key at platform.openai.com.
             </p>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="or-model">Model</Label>
+            <Label htmlFor="ds-model">Model</Label>
             <select
-              id="or-model"
+              id="ds-model"
               value={model}
               onChange={(e) => setModel(e.target.value)}
               className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"

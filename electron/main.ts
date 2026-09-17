@@ -45,7 +45,7 @@ async function loadDevtoolsExtension() {
     'C:\\Users\\PAULOBUNGA\\AppData\\Local\\Google\\Chrome\\User Data\\Profile 8\\Extensions\\fmkadmapgofadopljbjfkapdkoienihi\\8.0.0_0'
   if (!process.env.VITE_DEV_SERVER_URL) return
   try {
-    const ext = await session.defaultSession.loadExtension(devPath)
+    const ext = await session.defaultSession.extensions.loadExtension(devPath)
     console.log(`[devtools] React DevTools loaded: ${ext.id}`)
   } catch (err) {
     console.warn(
@@ -76,6 +76,6 @@ registerSettingsHandlers()
 registerSystemHandlers()
 registerUsersHandlers()
 registerAssetsHandlers()
-  registerAiHandlers()
+registerAiHandlers()
 ipcMain.handle('ping', () => 'pong')
 ipcMain.handle('reports:exportCsv', () => '')

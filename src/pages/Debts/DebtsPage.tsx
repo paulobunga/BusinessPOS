@@ -3,11 +3,15 @@ import { useNavigate } from 'react-router-dom'
 import { useDebts } from '../../hooks/useDebts'
 import { useAuth } from '../../context/AuthContext'
 import { useTill } from '../../context/TillContext'
+import { DateRangeFilter } from '../../components/DateRangeFilter'
 import { Button } from '../../components/ui/button'
 import { PayOnAccountDialog } from '../../components/PayOnAccountDialog'
 import { DebtAgingBadge } from '../../components/DebtAgingBadge'
+import { PaginationFooter } from '../../components/PaginationFooter'
+import { usePagination } from '../../hooks/usePagination'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
 import type { CustomerBalance } from '../../../shared/types'
+import { Link } from 'react-router-dom'
 
 const fmt = (n: number) => new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 }).format(n)
 
@@ -17,11 +21,15 @@ export function DebtsPage() {
   const { currentTill } = useTill()
   const navigate = useNavigate()
 
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+
   const [paying, setPaying] = useState<CustomerBalance | null>(null)
   const [processing, setProcessing] = useState(false)
   const [payError, setPayError] = useState<string | null>(null)
 
-  const totalOwed = balances.reduce((s, b) => s + b.total_owed_cents - b.total_paid_cents, 0)
+  const totalOwed = balances.reduce((s, b) => s + b.total_owed_cents - b.total_paid_cents - b.total_written_off_cents, 0)
+  const pager = usePagination(balances)
 
   const handlePay = async (amountCents: number) => {
     if (!paying || !userId) return
@@ -47,7 +55,18 @@ export function DebtsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Customer Debts</h1>
         <span className="text-[0.9375rem] font-bold">Total Owed: {fmt(totalOwed)}</span>
+        <Link to="/debts/record">
+          <Button variant="outline" size="sm">Record Debts</Button>
+        </Link>
       </div>
+
+      <DateRangeFilter
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onDateFromChange={setDateFrom}
+        onDateToChange={setDateTo}
+        onReset={() => { setDateFrom(''); setDateTo('') }}
+      />
 
       {loading ? (
         <p className="text-center text-muted-foreground">Loading...</p>
@@ -56,12 +75,14 @@ export function DebtsPage() {
       ) : balances.length === 0 ? (
         <p className="p-12 text-center text-lg text-muted-foreground">No open debts</p>
       ) : (
+        <div className="flex flex-col gap-3">
         <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
           <Table className="table-zebra">
             <TableHeader>
               <TableRow className="bg-card hover:bg-card">
                 <TableHead>Customer</TableHead>
                 <TableHead>Total Owed</TableHead>
+                <TableHead>Written Off</TableHead>
                 <TableHead>Unpaid Orders</TableHead>
                 <TableHead>Aging</TableHead>
                 <TableHead>Last Payment</TableHead>
@@ -69,10 +90,11 @@ export function DebtsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {balances.map((b) => (
+              {pager.slice.map((b) => (
                 <TableRow key={b.customer_name} className="cursor-pointer" onClick={() => navigate(`/debts/${encodeURIComponent(b.customer_name)}`)}>
                   <TableCell className="font-semibold">{b.customer_name}</TableCell>
-                  <TableCell className="font-bold">{fmt(b.total_owed_cents - b.total_paid_cents)}</TableCell>
+                  <TableCell className="font-bold">{fmt(b.total_owed_cents - b.total_paid_cents - b.total_written_off_cents)}</TableCell>
+                  <TableCell>{b.total_written_off_cents > 0 ? <span className="font-semibold text-destructive">{fmt(b.total_written_off_cents)}</span> : <span className="text-muted-foreground">—</span>}</TableCell>
                   <TableCell>{b.unpaid_orders}</TableCell>
                   <TableCell>
                     <DebtAgingBadge
@@ -93,6 +115,8 @@ export function DebtsPage() {
               ))}
             </TableBody>
           </Table>
+        </div>
+        <PaginationFooter pager={pager} />
         </div>
       )}
 

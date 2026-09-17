@@ -5,6 +5,9 @@ import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Badge } from '../../components/ui/badge'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
+import { PaginationFooter } from '../../components/PaginationFooter'
+import { usePagination } from '../../hooks/usePagination'
 import {
   Dialog,
   DialogContent,
@@ -55,6 +58,9 @@ export function WastePage() {
   useEffect(() => {
     byItem(date, date)
   }, [date, byItem])
+
+  const recordsPager = usePagination(records)
+  const byItemPager = usePagination(byItemData)
 
   const selectedItem = items.find(p => String(p.id) === itemId)
   const unitCostCents = selectedItem?.cost_price_cents ?? 0
@@ -217,42 +223,66 @@ export function WastePage() {
           No waste recorded for this date.
         </p>
       ) : (
-        <div className="flex flex-col gap-2">
-          {records.map((w: WasteRecord) => (
-            <div key={w.id} className="flex items-center justify-between rounded-[var(--radius-md)] border border-border bg-card px-4 py-3">
-              <div className="flex flex-1 flex-col gap-1">
-                <div className="flex items-center gap-2">
-                  <p className="m-0 text-[0.9375rem] font-bold">{w.item_name ?? `Item #${w.item_id}`}</p>
-                  <Badge className={REASON_COLORS[w.reason] ?? 'bg-muted text-foreground'}>
-                    {REASONS.find(r => r.value === w.reason)?.label ?? w.reason}
-                  </Badge>
-                </div>
-                {w.notes && <p className="m-0 text-[0.8125rem] text-muted-foreground">{w.notes}</p>}
-              </div>
-              <div className="flex items-center gap-4">
-                <span className="text-[0.875rem] text-muted-foreground">{w.quantity} kg</span>
-                <span className="w-[100px] text-right text-[0.9375rem] font-bold">{fmt.format(w.estimated_value_cents)}</span>
-              </div>
-            </div>
-          ))}
+        <div>
+          <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
+            <Table className="table-zebra">
+              <TableHeader>
+                <TableRow className="bg-card hover:bg-card">
+                  <TableHead>Item</TableHead>
+                  <TableHead>Reason</TableHead>
+                  <TableHead>Notes</TableHead>
+                  <TableHead className="text-right">Qty</TableHead>
+                  <TableHead className="text-right">Estimated Value</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recordsPager.slice.map((w: WasteRecord) => (
+                  <TableRow key={w.id}>
+                    <TableCell className="font-semibold">{w.item_name ?? `Item #${w.item_id}`}</TableCell>
+                    <TableCell>
+                      <Badge className={REASON_COLORS[w.reason] ?? 'bg-muted text-foreground'}>
+                        {REASONS.find(r => r.value === w.reason)?.label ?? w.reason}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="max-w-[280px] truncate text-muted-foreground">{w.notes ?? '—'}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{w.quantity} kg</TableCell>
+                    <TableCell className="text-right font-bold">{fmt.format(w.estimated_value_cents)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <PaginationFooter pager={recordsPager} />
         </div>
       )}
 
       {/* Aggregate by item */}
       {byItemData.length > 0 && (
-        <div className="rounded-[var(--radius-lg)] border border-border bg-card p-4">
-          <h3 className="m-0 mb-3 text-[0.9375rem] font-bold text-foreground">Waste by Item</h3>
-          <div className="flex flex-col gap-2">
-            {byItemData.map(row => (
-              <div key={row.item_name} className="flex items-center justify-between border-b border-border py-1.5">
-                <span className="text-[0.875rem] font-semibold">{row.item_name}</span>
-                <div className="flex items-center gap-4">
-                  <span className="text-[0.8125rem] text-muted-foreground">{row.total_quantity} kg</span>
-                  <span className="w-[100px] text-right text-[0.875rem] font-bold">{fmt.format(row.total_value_cents)}</span>
-                </div>
-              </div>
-            ))}
+        <div className="flex flex-col gap-2">
+          <h3 className="m-0 text-[0.9375rem] font-bold text-foreground">Waste by Item</h3>
+          <div>
+            <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
+            <Table className="table-zebra">
+              <TableHeader>
+                <TableRow className="bg-card hover:bg-card">
+                  <TableHead>Item</TableHead>
+                  <TableHead className="text-right">Total Qty</TableHead>
+                  <TableHead className="text-right">Total Value</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {byItemPager.slice.map(row => (
+                  <TableRow key={row.item_name}>
+                    <TableCell className="font-semibold">{row.item_name}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{row.total_quantity} kg</TableCell>
+                    <TableCell className="text-right font-bold">{fmt.format(row.total_value_cents)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
+          <PaginationFooter pager={byItemPager} />
+        </div>
         </div>
       )}
     </div>

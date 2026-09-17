@@ -1,4 +1,4 @@
-import { BadgePercent, HandCoins } from 'lucide-react'
+import { BadgePercent, HandCoins, Handshake } from 'lucide-react'
 import { Button } from './ui/button'
 import {
   Dialog,
@@ -14,10 +14,11 @@ interface CartOptionsModalProps {
   hasItems: boolean
   onDiscount: () => void
   onDebt: () => void
+  onCaptain: () => void
   onClose: () => void
 }
 
-export function CartOptionsModal({ open, hasItems, onDiscount, onDebt, onClose }: CartOptionsModalProps) {
+export function CartOptionsModal({ open, hasItems, onDiscount, onDebt, onCaptain, onClose }: CartOptionsModalProps) {
   return (
     <Dialog open={open} onOpenChange={o => { if (!o) onClose() }}>
       <DialogContent className="sm:max-w-md">
@@ -43,6 +44,15 @@ export function CartOptionsModal({ open, hasItems, onDiscount, onDebt, onClose }
           >
             <HandCoins className="mr-2 h-5 w-5" />
             Debt Sale
+          </Button>
+          <Button
+            onClick={onCaptain}
+            disabled={!hasItems}
+            variant="outline"
+            className="h-14 border-primary bg-card font-bold text-primary"
+          >
+            <Handshake className="mr-2 h-5 w-5" />
+            Captain Order (service)
           </Button>
         </div>
         <DialogFooter>

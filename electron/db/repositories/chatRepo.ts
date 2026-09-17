@@ -25,6 +25,16 @@ export const chatRepo = {
     getDb().prepare('UPDATE chat_sessions SET title = ?, updated_at = datetime(\'now\') WHERE id = ?').run(title, id)
   },
 
+  archiveSession(id: number) {
+    getDb().prepare('UPDATE chat_sessions SET archived = 1, updated_at = datetime(\'now\') WHERE id = ?').run(id)
+  },
+
+  exportSession(id: number) {
+    const session = getDb().prepare('SELECT * FROM chat_sessions WHERE id = ?').get(id) as AiSession
+    const messages = this.listMessages(id)
+    return { session, messages }
+  },
+
   deleteSession(id: number) {
     getDb().prepare('DELETE FROM chat_sessions WHERE id = ?').run(id)
   },
@@ -35,6 +45,7 @@ export const chatRepo = {
         (SELECT COUNT(*) FROM chat_messages cm WHERE cm.session_id = cs.id) AS message_count,
         (SELECT cm.content FROM chat_messages cm WHERE cm.session_id = cs.id AND cm.role = 'assistant' ORDER BY cm.id DESC LIMIT 1) AS last_message
       FROM chat_sessions cs
+      WHERE cs.archived = 0
       ORDER BY cs.updated_at DESC, cs.id DESC
     `).all() as AiSessionSummary[]
   },

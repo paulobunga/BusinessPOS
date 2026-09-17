@@ -10,12 +10,13 @@ import { Cart } from '../../components/Cart'
 import { CartOptionsModal } from '../../components/CartOptionsModal'
 import { DiscountModal } from '../../components/DiscountModal'
 import { DebtModal } from '../../components/DebtModal'
+import { CaptainOrderModal } from '../../components/CaptainOrderModal'
 import { Button } from '../../components/ui/button'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useAuth } from '../../context/AuthContext'
 import { useTill } from '../../context/TillContext'
 import type { Category, MenuItemWithCategory } from '../../../shared/types'
-import type { CreateSalePayload } from '../../../shared/types'
+import type { CreateSalePayload, CreateCaptainOrderPayload } from '../../../shared/types'
 
 export function SellPage() {
   const { categories, loading: categoriesLoading, error: categoriesError, retry: retryCategories } = useCategories(false)
@@ -27,11 +28,13 @@ export function SellPage() {
   const [selectedItem, setSelectedItem] = useState<MenuItemWithCategory | null>(null)
   const [showDiscount, setShowDiscount] = useState(false)
   const [showDebt, setShowDebt] = useState(false)
+  const [showCaptain, setShowCaptain] = useState(false)
   const [showOptions, setShowOptions] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [pendingSale, setPendingSale] = useState<{ paymentMethod: 'cash' | 'debt'; customerName?: string; paidNowCents: number } | null>(null)
+  const [pendingCaptain, setPendingCaptain] = useState<{ serviceDescription: string; customerName?: string } | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
@@ -42,7 +45,7 @@ export function SellPage() {
       return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable
     }
     const onKeyDown = (e: KeyboardEvent) => {
-      if (showOptions || showDiscount || showDebt || pendingSale) return
+      if (showOptions || showDiscount || showDebt || showCaptain || pendingSale || pendingCaptain) return
       if (isEditableTarget(e.target)) return
       if (e.metaKey || e.ctrlKey || e.altKey) return
       if (e.key === 'Backspace') {
@@ -60,7 +63,7 @@ export function SellPage() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [showOptions, showDiscount, showDebt, pendingSale])
+  }, [showOptions, showDiscount, showDebt, showCaptain, pendingSale, pendingCaptain])
 
   const activeCategories = categories.filter(c => c.active && c.purchase_only !== 1)
   const pricedCategories = activeCategories.filter(c => c.kind === 'priced')
@@ -163,6 +166,40 @@ export function SellPage() {
       setTimeout(() => setSuccess(false), 2000)
     } catch (err) {
       setMessage('Sale failed: ' + (err as Error).message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const completeCaptainOrder = async (serviceDescription: string, customerName?: string) => {
+    if (!currentTill || userId == null || cart.items.length === 0) return
+    setSaving(true)
+    setMessage(null)
+    try {
+      const payload: CreateCaptainOrderPayload = {
+        customer_name: customerName || undefined,
+        service_description: serviceDescription,
+        subtotal_cents: cart.subtotal,
+        discount_cents: cart.discountCents,
+        discount_reason: cart.discountReason || undefined,
+        total_cents: cart.total,
+        till_session_id: currentTill.id,
+        created_by: userId,
+        items: cart.items.map(item => ({
+          item_id: item.itemId,
+          free_item_id: item.addOnId ?? null,
+          price_cents: item.itemPrice,
+          quantity: item.quantity,
+        })),
+      }
+      await window.api['sales:createCaptainOrder'](payload)
+      cart.clearCart()
+      setSelectedItem(null)
+      setSearchQuery('')
+      setSuccess(true)
+      setTimeout(() => setSuccess(false), 2000)
+    } catch (err) {
+      setMessage('Captain order failed: ' + (err as Error).message)
     } finally {
       setSaving(false)
     }
@@ -296,6 +333,10 @@ export function SellPage() {
             setShowOptions(false)
             setShowDebt(true)
           }}
+          onCaptain={() => {
+            setShowOptions(false)
+            setShowCaptain(true)
+          }}
           onClose={() => setShowOptions(false)}
         />
       )}
@@ -321,6 +362,18 @@ export function SellPage() {
         />
       )}
 
+      {showCaptain && (
+        <CaptainOrderModal
+          total={cart.total}
+          onConfirm={(serviceDescription, customerName) => {
+            setShowCaptain(false)
+            if (!currentTill || userId == null || cart.items.length === 0) return
+            setPendingCaptain({ serviceDescription, customerName })
+          }}
+          onClose={() => setShowCaptain(false)}
+        />
+      )}
+
       <ConfirmDialog
         open={pendingSale != null}
         onOpenChange={o => { if (!o) setPendingSale(null) }}
@@ -331,6 +384,19 @@ export function SellPage() {
           const p = pendingSale
           setPendingSale(null)
           if (p) completeSale(p.paymentMethod, p.customerName, p.paidNowCents)
+        }}
+      />
+
+      <ConfirmDialog
+        open={pendingCaptain != null}
+        onOpenChange={o => { if (!o) setPendingCaptain(null) }}
+        title="Confirm Captain Order?"
+        destructive={false}
+        confirmText="Confirm Order"
+        onConfirm={() => {
+          const p = pendingCaptain
+          setPendingCaptain(null)
+          if (p) completeCaptainOrder(p.serviceDescription, p.customerName)
         }}
       />
 

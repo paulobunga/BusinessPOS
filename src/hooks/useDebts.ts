@@ -27,6 +27,12 @@ export function useDebts() {
     return res
   }, [fetchBalances])
 
+  const writeOff = useCallback(async (sale_id: number, amount_cents: number, reason: string, created_by: number) => {
+    const res = await window.api['debts:writeOff']({ sale_id, amount_cents, reason, created_by })
+    await fetchBalances()
+    return res
+  }, [fetchBalances])
+
   const payOnAccount = useCallback(async (payload: PayOnAccountPayload): Promise<PayOnAccountResult> => {
     const res = await window.api['debts:payOnAccount'](payload)
     await fetchBalances()
@@ -39,5 +45,5 @@ export function useDebts() {
   const balanceByName = useCallback((customerName: string): Promise<number> =>
     window.api['debts:balanceByName'](customerName), [])
 
-  return { balances, loading, error, fetchBalances, recordPayment, payOnAccount, customerDetail, balanceByName }
+  return { balances, loading, error, fetchBalances, recordPayment, writeOff, payOnAccount, customerDetail, balanceByName }
 }

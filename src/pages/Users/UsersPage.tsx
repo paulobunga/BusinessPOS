@@ -6,6 +6,9 @@ import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Badge } from '../../components/ui/badge'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
+import { PaginationFooter } from '../../components/PaginationFooter'
+import { usePagination } from '../../hooks/usePagination'
 import {
   Dialog,
   DialogContent,
@@ -62,6 +65,8 @@ export function UsersPage() {
   const [newPin, setNewPin] = useState('')
   const [confirmPin, setConfirmPin] = useState('')
   const [pinStatus, setPinStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  const usersPager = usePagination(users)
 
   if (!hasAccess('users.manage')) {
     return (
@@ -162,27 +167,54 @@ export function UsersPage() {
             <Button variant="outline" className="h-11 border-border bg-card font-semibold" onClick={retry}>Retry</Button>
           </div>
         )}
-        <div className="flex flex-col gap-2">
-          {users.map(u => (
-            <div key={u.id} className={`flex items-center justify-between gap-3 rounded-[var(--radius-md)] border border-border bg-card px-4 py-3 ${u.active ? '' : 'opacity-55'}`}>
-              <div className="flex min-w-0 flex-wrap items-center gap-3">
-                <p className="m-0 text-[0.9375rem] font-bold text-foreground">{u.name}</p>
-                <Badge variant="outline">{ROLE_LABELS[u.role]}</Badge>
-                <span className="text-[0.8125rem] font-semibold text-muted-foreground">{u.active === 1 ? 'Active' : 'Deactivated'}</span>
-                {u.created_at && <span className="text-[0.8125rem] text-muted-foreground">{new Date(u.created_at).toLocaleDateString()}</span>}
+        <div className="flex flex-col gap-3">
+          {loading ? (
+            <p className="text-[0.9375rem] text-muted-foreground">Loading users...</p>
+          ) : users.length === 0 ? (
+            <p className="text-[0.9375rem] font-semibold text-muted-foreground">No users yet.</p>
+          ) : (
+            <>
+              <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
+                <Table className="table-zebra">
+                  <TableHeader>
+                    <TableRow className="bg-card hover:bg-card">
+                      <TableHead>Name</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {usersPager.slice.map(u => (
+                      <TableRow key={u.id} className={u.active ? '' : 'opacity-55'}>
+                        <TableCell className="font-semibold">{u.name}</TableCell>
+                        <TableCell><Badge variant="outline">{ROLE_LABELS[u.role]}</Badge></TableCell>
+                        <TableCell>
+                          <span className="text-[0.875rem] font-semibold text-muted-foreground">{u.active === 1 ? 'Active' : 'Deactivated'}</span>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button className="h-9 bg-primary px-3 font-semibold" onClick={() => openEdit(u)}>Edit</Button>
+                            {u.id !== userId && (
+                              <Button variant="outline" className="h-9 border-border bg-card px-3 font-semibold" onClick={() => toggleActive(u)}>
+                                {u.active ? 'Deactivate' : 'Activate'}
+                              </Button>
+                            )}
+                            <Button variant="outline" className="h-9 border-border bg-card px-3 font-semibold" onClick={() => openResetPin(u)}>Reset PIN</Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
-              <div className="flex items-center gap-2">
-                <Button className="h-11 bg-primary font-semibold" onClick={() => openEdit(u)}>Edit</Button>
-                {u.id !== userId && (
-                  <Button variant="outline" className="h-11 border-border bg-card font-semibold" onClick={() => toggleActive(u)}>
-                    {u.active ? 'Deactivate' : 'Activate'}
-                  </Button>
-                )}
-                <Button variant="outline" className="h-11 border-border bg-card font-semibold" onClick={() => openResetPin(u)}>Reset PIN</Button>
-              </div>
-            </div>
-          ))}
-          {!loading && users.length === 0 && <p className="text-[0.9375rem] font-semibold text-muted-foreground">No users yet.</p>}
+              <PaginationFooter pager={usersPager} />
+            </>
+          )}
         </div>
 
         <div className="flex flex-col gap-3 border-t border-border pt-4">

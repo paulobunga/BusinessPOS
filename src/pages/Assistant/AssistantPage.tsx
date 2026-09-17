@@ -3,6 +3,7 @@ import {
   ChatContainerRoot,
   ChatContainerContent,
   ChatContainerScrollAnchor,
+  ChatAutoScroll,
 } from '@/components/ui/chat-container'
 import { ScrollButton } from '@/components/ui/scroll-button'
 import { PromptInput, PromptInputActions, PromptInputAction, PromptInputTextarea } from '@/components/ui/prompt-input'
@@ -42,7 +43,7 @@ export function AssistantPage() {
       />
       <div className="relative flex-1 overflow-hidden">
         <ChatContainerRoot className="h-full">
-          <ChatContainerContent className="mx-auto w-full max-w-3xl space-y-4 px-4 py-6">
+          <ChatContainerContent className="mx-auto w-full max-w-3xl space-y-4 px-4 py-6 pb-28">
             {chat.messages.length === 0 && !chat.streamingMessage && (
               <div className="flex flex-col items-center gap-4 pt-16 text-center">
                 <Bot className="h-12 w-12 text-primary" />
@@ -57,8 +58,9 @@ export function AssistantPage() {
             )}
 
             {chat.messages.map((m) => (
-              <ChatMessageView key={m.id} message={m} />
+              <ChatMessageView key={m.id} message={m} isStreaming={chat.isLoading && m === chat.messages[chat.messages.length - 1]} />
             ))}
+            <div className="h-[96px] shrink-0" />
 
             {chat.error && !chat.isLoading && (
               <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -91,6 +93,7 @@ export function AssistantPage() {
               </div>
             )}
             <ChatContainerScrollAnchor />
+            <ChatAutoScroll dependencies={[chat.messages.length, chat.streamingMessage.length, chat.isLoading]} />
           </ChatContainerContent>
 
           <div className="absolute right-4 bottom-28">

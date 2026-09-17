@@ -7,6 +7,8 @@ import { Card, CardContent } from '../../components/ui/card'
 import { EmptyState } from '../../components/ui/empty-state'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
+import { PaginationFooter } from '../../components/PaginationFooter'
+import { usePagination } from '../../hooks/usePagination'
 import { ASSET_CATEGORIES } from '../../../shared/types'
 import type { AssetWithValue } from '../../../shared/types'
 import { AssetFormDialog } from './AssetFormDialog'
@@ -30,6 +32,7 @@ export function AssetsPage() {
     ),
     [assets, status, cat]
   )
+  const pager = usePagination(filtered)
 
   const openCreate = () => { setEditing(null); setShowForm(true) }
   const openEdit = (a: AssetWithValue) => { setEditing(a); setShowForm(true) }
@@ -104,10 +107,11 @@ export function AssetsPage() {
           action={assets.length === 0 ? <Button onClick={openCreate} className="bg-primary font-semibold">+ Register Asset</Button> : undefined}
         />
       ) : (
-        <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-card">
-          <Table>
+        <div className="flex flex-col gap-3">
+        <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
+          <Table className="table-zebra">
             <TableHeader>
-              <TableRow>
+              <TableRow className="bg-card hover:bg-card">
                 <TableHead>Name</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Qty</TableHead>
@@ -120,7 +124,7 @@ export function AssetsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map(a => (
+              {pager.slice.map(a => (
                 <TableRow key={a.id}>
                   <TableCell className="font-semibold">{a.name}</TableCell>
                   <TableCell className="text-muted-foreground">{a.category}</TableCell>
@@ -148,6 +152,8 @@ export function AssetsPage() {
               ))}
             </TableBody>
           </Table>
+        </div>
+        <PaginationFooter pager={pager} />
         </div>
       )}
 

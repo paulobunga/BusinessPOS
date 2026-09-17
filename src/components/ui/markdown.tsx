@@ -13,7 +13,15 @@ export type MarkdownProps = {
   components?: Partial<Components>
 }
 
-function parseMarkdownIntoBlocks(markdown: string): string[] {
+function parseMarkdownIntoBlocks(markdown: unknown): string[] {
+  if (typeof markdown !== "string") {
+    console.warn(
+      "[Markdown] expected a string but received",
+      typeof markdown,
+      markdown
+    )
+    return [""]
+  }
   const tokens = marked.lexer(markdown)
   return tokens.map((token) => token.raw)
 }
@@ -54,6 +62,28 @@ const INITIAL_COMPONENTS: Partial<Components> = {
   },
   pre: function PreComponent({ children }) {
     return <>{children}</>
+  },
+  table: function TableComponent({ children }) {
+    return (
+      <div className="my-2 w-full overflow-x-auto rounded-lg border border-border">
+        <table className="w-full border-collapse text-sm">{children}</table>
+      </div>
+    )
+  },
+  thead: function TheadComponent({ children }) {
+    return <thead className="bg-muted text-left">{children}</thead>
+  },
+  tbody: function TbodyComponent({ children }) {
+    return <tbody>{children}</tbody>
+  },
+  tr: function TrComponent({ children }) {
+    return <tr className="border-b border-border">{children}</tr>
+  },
+  th: function ThComponent({ children }) {
+    return <th className="px-3 py-2 text-xs font-semibold">{children}</th>
+  },
+  td: function TdComponent({ children }) {
+    return <td className="px-3 py-2 text-sm">{children}</td>
   },
 }
 

@@ -6,6 +6,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/ta
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
 import { DatePicker } from '../../components/ui/date-picker'
+import { DateRangeFilter } from '../../components/DateRangeFilter'
+import { PaginationFooter } from '../../components/PaginationFooter'
+import { usePagination } from '../../hooks/usePagination'
 import type { DailyReport, MonthlyReport, ItemPerformance, DebtSummaryItem, SaleWithItems } from '../../../shared/types'
 
 function formatUGX(cents: number): string {
@@ -31,33 +34,14 @@ function StatCard({ label, value, muted }: { label: string; value: string; muted
 }
 
 function PagedList<T>({ rows, renderRow, pageSize = 50 }: { rows: T[]; renderRow: (row: T) => ReactNode; pageSize?: number }) {
-  const [page, setPage] = useState(0)
-  const total = rows.length
-  const totalPages = Math.max(1, Math.ceil(total / pageSize))
-  const current = Math.min(page, totalPages - 1)
-  const start = current * pageSize
-  const slice = rows.slice(start, start + pageSize)
+  const pager = usePagination(rows, pageSize)
 
   return (
     <div>
       <div className="flex flex-col">
-        {slice.map(row => renderRow(row))}
+        {pager.slice.map(row => renderRow(row))}
       </div>
-      {total > pageSize && (
-        <div className="mt-3 flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">
-            Showing {start + 1}–{Math.min(start + pageSize, total)} of {total}
-          </span>
-          <div className="flex items-center gap-2">
-            <Button onClick={() => setPage(current - 1)} disabled={current === 0} variant="outline" className="h-11 bg-card text-[0.875rem]">
-              ◀ Prev
-            </Button>
-            <Button onClick={() => setPage(current + 1)} disabled={current >= totalPages - 1} variant="outline" className="h-11 bg-card text-[0.875rem]">
-              Next ▶
-            </Button>
-          </div>
-        </div>
-      )}
+      <PaginationFooter pager={pager} />
     </div>
   )
 }
@@ -166,15 +150,20 @@ function SalesView({ sales }: { sales: SaleWithItems[] }) {
                       <span className="text-[0.875rem] font-bold">Sale #{s.id}</span>
                       <span
                         className={`rounded-full px-2 py-0.5 text-[0.6875rem] font-bold uppercase ${
-                          s.payment_method === 'debt'
-                            ? 'border border-warning/40 bg-warning/10 text-warning'
-                            : s.payment_method === 'mixed'
-                              ? 'border border-primary/40 bg-primary/10 text-primary'
-                              : 'border border-border bg-background text-muted-foreground'
+                          s.sale_kind === 'captain'
+                            ? 'border border-success/40 bg-success/10 text-success'
+                            : s.payment_method === 'debt'
+                              ? 'border border-warning/40 bg-warning/10 text-warning'
+                              : s.payment_method === 'mixed'
+                                ? 'border border-primary/40 bg-primary/10 text-primary'
+                                : 'border border-border bg-background text-muted-foreground'
                         }`}
                       >
-                        {s.payment_method ?? 'cash'}
+                        {s.sale_kind === 'captain' ? 'service (captain)' : s.payment_method ?? 'cash'}
                       </span>
+                      {s.sale_kind === 'captain' && s.service_description && (
+                        <span className="text-[0.8125rem] text-muted-foreground italic">“{s.service_description}”</span>
+                      )}
                       {s.customer_name && (
                         <span className="text-[0.8125rem] text-muted-foreground">{s.customer_name}</span>
                       )}
@@ -198,7 +187,7 @@ function SalesView({ sales }: { sales: SaleWithItems[] }) {
                         <span>-{formatUGX(s.discount_cents)}</span>
                       </div>
                     )}
-                    {(s.debt_cents ?? 0) > 0 && (
+                    {(s.debt_cents ?? 0) > 0 && s.sale_kind !== 'captain' && (
                       <div className="flex items-center justify-between font-semibold text-warning">
                         <span>Debt owed</span>
                         <span>{formatUGX(s.debt_cents!)}</span>
@@ -256,6 +245,8 @@ function DayView({ data, categories }: { data: DailyReport[]; categories: { cate
         <StatCard label="Waste" value={formatUGX(day.waste_cents)} muted />
         <StatCard label="Expenses" value={formatUGX(day.expense_cents)} muted />
         <StatCard label="Reimbursements" value={formatUGX(day.reimbursement_cents)} muted />
+        {day.barter_cents > 0 && <StatCard label="Barter (Captains)" value={formatUGX(day.barter_cents)} />}
+        {day.bad_debt_cents > 0 && <StatCard label="Bad Debt" value={formatUGX(day.bad_debt_cents)} muted />}
       </div>
 
       <div className="rounded-[var(--radius-lg)] border border-border bg-card p-6 text-center">
@@ -263,9 +254,23 @@ function DayView({ data, categories }: { data: DailyReport[]; categories: { cate
         <div className="mt-2"><ProfitText cents={day.net_profit_cents} /></div>
       </div>
 
-      {day.debt_sales_cents > 0 && (
-        <div className="rounded-[var(--radius-md)] border border-border bg-muted px-4 py-2.5 text-[0.875rem] text-muted-foreground">
-          Accounts Receivable today: <strong className="text-warning">{formatUGX(day.debt_sales_cents)}</strong>
+      {(day.debt_sales_cents > 0 || day.barter_cents > 0 || day.bad_debt_cents > 0) && (
+        <div className="flex flex-col gap-1 rounded-[var(--radius-md)] border border-border bg-muted px-4 py-2.5 text-[0.875rem] text-muted-foreground">
+          {day.debt_sales_cents > 0 && (
+            <p className="m-0">
+              Still owed by customers: <strong className="text-warning">{formatUGX(day.debt_sales_cents)}</strong>
+            </p>
+          )}
+          {day.barter_cents > 0 && (
+            <p className="m-0">
+              Barter (Captain Orders): <strong>{formatUGX(day.barter_cents)}</strong> — already counted in revenue above.
+            </p>
+          )}
+          {day.bad_debt_cents > 0 && (
+            <p className="m-0">
+              Bad debt written off: <strong className="text-destructive">{formatUGX(day.bad_debt_cents)}</strong> — deducted from profit above.
+            </p>
+          )}
         </div>
       )}
 
@@ -289,9 +294,12 @@ function DayView({ data, categories }: { data: DailyReport[]; categories: { cate
 function TableView({ data, label }: { data: (DailyReport | MonthlyReport)[]; label: string }) {
   const getKey = (row: DailyReport | MonthlyReport) => 'date' in row ? row.date : row.month
   const getRevenue = (row: DailyReport | MonthlyReport) => row.sales_revenue_cents
+  const getBarter = (row: DailyReport | MonthlyReport) => row.barter_cents
+  const getBadDebt = (row: DailyReport | MonthlyReport) => row.bad_debt_cents
   const getFood = (row: DailyReport | MonthlyReport) => row.food_purchase_cents
   const getWaste = (row: DailyReport | MonthlyReport) => row.waste_cents
   const getExpenses = (row: DailyReport | MonthlyReport) => row.expense_cents
+  const getDebt = (row: DailyReport | MonthlyReport) => row.debt_sales_cents
   const getProfit = (row: DailyReport | MonthlyReport) => row.net_profit_cents
 
   if (data.length === 0) return <p className="p-12 text-center text-muted-foreground">No data available.</p>
@@ -307,6 +315,9 @@ function TableView({ data, label }: { data: (DailyReport | MonthlyReport)[]; lab
               <TableHead>Food Cost</TableHead>
               <TableHead>Waste</TableHead>
               <TableHead>Expenses</TableHead>
+              <TableHead>Still Owed</TableHead>
+              <TableHead>Barter</TableHead>
+              <TableHead>Bad Debt</TableHead>
               <TableHead className="text-right">Net Profit</TableHead>
             </TableRow>
           </TableHeader>
@@ -318,6 +329,9 @@ function TableView({ data, label }: { data: (DailyReport | MonthlyReport)[]; lab
                 <TableCell>{formatUGX(getFood(row))}</TableCell>
                 <TableCell>{formatUGX(getWaste(row))}</TableCell>
                 <TableCell>{formatUGX(getExpenses(row))}</TableCell>
+                <TableCell>{getDebt(row) > 0 ? <span className="font-semibold text-warning">{formatUGX(getDebt(row))}</span> : '—'}</TableCell>
+                <TableCell>{getBarter(row) > 0 ? formatUGX(getBarter(row)) : '—'}</TableCell>
+                <TableCell>{getBadDebt(row) > 0 ? <span className="font-semibold text-destructive">{formatUGX(getBadDebt(row))}</span> : '—'}</TableCell>
                 <TableCell className={`text-right font-semibold ${getProfit(row) >= 0 ? 'text-success' : 'text-destructive'}`}>
                   {getProfit(row) >= 0 ? '+' : ''}{formatUGX(getProfit(row))}
                 </TableCell>
@@ -385,15 +399,18 @@ export function ReportsPage() {
               <CardTitle>Custom range</CardTitle>
               <CardDescription>Compare P&amp;L and item performance between two dates.</CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-wrap items-end gap-4">
-              <label className="flex w-44 flex-col gap-1.5 text-[0.875rem] font-semibold">
-                From
-                <DatePicker value={startDate} onValueChange={setStartDate} />
-              </label>
-              <label className="flex w-44 flex-col gap-1.5 text-[0.875rem] font-semibold">
-                To
-                <DatePicker value={endDate} onValueChange={setEndDate} />
-              </label>
+            <CardContent>
+              <DateRangeFilter
+                dateFrom={startDate}
+                dateTo={endDate}
+                onDateFromChange={setStartDate}
+                onDateToChange={setEndDate}
+                onReset={() => {
+                  const t = new Date().toISOString().slice(0, 10)
+                  setStartDate(t)
+                  setEndDate(t)
+                }}
+              />
             </CardContent>
           </Card>
         </TabsContent>

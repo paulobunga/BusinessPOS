@@ -7,6 +7,10 @@ export function registerSalesHandlers() {
     const id = salesRepo.create(payload)
     return salesRepo.getById(id)
   })
+  ipcMain.handle('sales:createCaptainOrder', (_e, payload) => {
+    const id = salesRepo.createCaptainOrder(payload)
+    return salesRepo.getById(id)
+  })
   ipcMain.handle('sales:listByDate', (_e, date) => {
     return salesRepo.listByDate(date)
   })

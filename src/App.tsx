@@ -5,10 +5,12 @@ import { TillProvider } from './context/TillContext'
 import { PinPadPage } from './pages/Login/PinPadPage'
 import { RequireAuth } from './components/RequireAuth'
 import { AppLayout } from './components/AppLayout'
+import { RecordDebtsPage } from './pages/Debts/RecordDebtsPage'
 import { SetupPage } from './pages/Setup/SetupPage'
 import { SellPage } from './pages/Sell/SellPage'
 import { ExpensesPage } from './pages/Expenses/ExpensesPage'
 import { DebtsPage } from './pages/Debts/DebtsPage'
+import { SalesReportPage } from './pages/Sales/SalesReportPage'
 import { DebtDetailPage } from './pages/Debts/DebtDetailPage'
 import { ReimbursementsPage } from './pages/Reimbursements/ReimbursementsPage'
 import { InventoryPage } from './pages/Inventory/InventoryPage'
@@ -52,7 +54,9 @@ function Root() {
             <Route path="/sell" element={<SellPage />} />
             <Route path="/expenses" element={<RequireModule module="expenses"><ExpensesPage /></RequireModule>} />
             <Route path="/debts" element={<RequireModule module="debts"><DebtsPage /></RequireModule>} />
+            <Route path="/sales/report" element={<RequireModule module="reports"><SalesReportPage /></RequireModule>} />
             <Route path="/debts/:customerName" element={<RequireModule module="debts"><DebtDetailPage /></RequireModule>} />
+            <Route path="/debts/record" element={<RequireModule module="debts"><RecordDebtsPage /></RequireModule>} />
             <Route path="/reimbursements" element={<RequireModule module="reimbursements"><ReimbursementsPage /></RequireModule>} />
             <Route path="/inventory" element={<RequireModule module="inventory"><InventoryPage /></RequireModule>} />
             <Route path="/waste" element={<RequireModule module="waste"><WastePage /></RequireModule>} />

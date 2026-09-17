@@ -23,43 +23,43 @@ vi.mock('../../db/repositories/settingsRepo.js', () => ({ settingsRepo: fakeSett
 describe('ai config', () => {
   beforeEach(() => {
     store.clear()
-    vi.stubEnv('OPENROUTER_API_KEY', '')
+    vi.stubEnv('DEEPSEEK_API_KEY', '')
   })
 
   afterEach(() => vi.unstubAllEnvs())
 
   test('getAiConfig returns null key + default model when unset', () => {
-    expect(getAiConfig()).toEqual({ apiKey: null, model: 'poolside/laguna-s-2.1:free' })
+    expect(getAiConfig()).toEqual({ apiKey: null, model: 'deepseek-flash' })
   })
 
-  test('falls back to OPENROUTER_API_KEY env when not stored', () => {
-    vi.stubEnv('OPENROUTER_API_KEY', 'sk-from-env')
-    expect(getAiConfig()).toEqual({ apiKey: 'sk-from-env', model: 'poolside/laguna-s-2.1:free' })
+  test('falls back to DEEPSEEK_API_KEY env when not stored', () => {
+    vi.stubEnv('DEEPSEEK_API_KEY', 'sk-from-env')
+    expect(getAiConfig()).toEqual({ apiKey: 'sk-from-env', model: 'deepseek-flash' })
   })
 
   test('saved key takes precedence over env', () => {
-    vi.stubEnv('OPENROUTER_API_KEY', 'sk-from-env')
-    saveAiConfig({ apiKey: 'sk-stored-123', model: 'anthropic/claude-3.5-sonnet' })
-    expect(getAiConfig()).toEqual({ apiKey: 'sk-stored-123', model: 'anthropic/claude-3.5-sonnet' })
+    vi.stubEnv('DEEPSEEK_API_KEY', 'sk-from-env')
+    saveAiConfig({ apiKey: 'sk-stored-123', model: 'deepseek-flash' })
+    expect(getAiConfig()).toEqual({ apiKey: 'sk-stored-123', model: 'deepseek-flash' })
   })
 
   test('saveAiConfig encrypts key and getAiConfig decrypts it', () => {
-    saveAiConfig({ apiKey: 'sk-openrouter-123', model: 'anthropic/claude-3.5-sonnet' })
+    saveAiConfig({ apiKey: 'sk-deepseek-123', model: 'deepseek-flash' })
     const stored = store.get('ai.api_key')!
     expect(Buffer.from(stored, 'base64').toString()).toContain('ENC:')
-    expect(stored).not.toContain('sk-openrouter-123')
-    expect(getAiConfig()).toEqual({ apiKey: 'sk-openrouter-123', model: 'anthropic/claude-3.5-sonnet' })
+    expect(stored).not.toContain('sk-deepseek-123')
+    expect(getAiConfig()).toEqual({ apiKey: 'sk-deepseek-123', model: 'deepseek-flash' })
   })
 
   test('clearApiKey removes the stored key', () => {
-    saveAiConfig({ apiKey: 'sk-x', model: 'poolside/laguna-s-2.1:free' })
+    saveAiConfig({ apiKey: 'sk-x', model: 'deepseek-flash' })
     clearApiKey()
     expect(getAiConfig().apiKey).toBeNull()
   })
 
   test('saveAiConfig throws when encryption unavailable', () => {
     fakeSafeStorage.isEncryptionAvailable = () => false
-    expect(() => saveAiConfig({ apiKey: 'sk-x', model: 'poolside/laguna-s-2.1:free' })).toThrow()
+    expect(() => saveAiConfig({ apiKey: 'sk-x', model: 'deepseek-flash' })).toThrow()
     fakeSafeStorage.isEncryptionAvailable = () => true
   })
 })

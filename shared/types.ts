@@ -149,6 +149,7 @@ export interface OpenDebt {
   created_at: string
   days_open: number
   last_payment_at: string | null
+  item_names: string | null
 }
 
 export interface CustomerBalance {
@@ -523,7 +524,7 @@ export interface Api {
   'till:close': (countedCents: number) => Promise<{ expected: number; variance: number }>
   'till:current': () => Promise<TillSession | null>
   'till:countCash': () => Promise<TillCountData | null>
-  'inventory:recordPurchase': (payload: { item_id: number; quantity: number; cost_cents: number; date: string; created_by: number | null; unit?: string; yield_item_id?: number | null; expected_yield?: number; yields?: { itemId: number; portions: number }[] }) => Promise<ItemPurchaseWithName>
+  'inventory:recordPurchase': (payload: { item_id: number; quantity: number; cost_cents: number; date: string; created_by: number | null; unit?: string; total_yield: number }) => Promise<ItemPurchaseWithName>
   'inventory:byDate': (date: string) => Promise<ItemPurchaseWithName[]>
   'inventory:byDateRange': (start: string, end: string) => Promise<ItemPurchaseWithName[]>
   'inventory:dailyTotal': (date: string) => Promise<number>
@@ -573,6 +574,7 @@ export interface Api {
   'debts:payOnAccount': (payload: PayOnAccountPayload) => Promise<PayOnAccountResult>
   'debts:getTotalOwed': (sale_id: number) => Promise<number>
   'debts:history': (sale_id: number) => Promise<PaymentHistoryEntry[]>
+  'debts:recordFromList': (entries: Array<{ customer_name: string; date: string; items: Array<{ name_snapshot: string; unit_price_cents: number; quantity: number }>; paid_cents?: number; created_by: number }>) => Promise<Array<{ saleId: number; customer: string; debtCents: number; subtotal: number }>>
   'assets:list': () => Promise<AssetWithValue[]>
   'assets:get': (id: number) => Promise<AssetWithValue | null>
   'assets:create': (payload: CreateAssetPayload) => Promise<AssetWithValue>
@@ -587,6 +589,8 @@ export interface Api {
   'ai:sessions:list': () => Promise<AiSessionSummary[]>
   'ai:sessions:create': (title?: string) => Promise<AiSession>
   'ai:sessions:rename': (id: number, title: string) => Promise<void>
+  'ai:sessions:archive': (id: number) => Promise<void>
+  'ai:sessions:export': (id: number) => Promise<ExportedSession>
   'ai:sessions:delete': (id: number) => Promise<void>
   onAiEvent: (cb: (event: AiEvent) => void) => () => void
 }
@@ -616,6 +620,7 @@ export interface AiChatMessage {
 export interface AiSession {
   id: number
   title: string
+  archived?: boolean
   created_at?: string
   updated_at?: string
 }
@@ -623,6 +628,11 @@ export interface AiSession {
 export interface AiSessionSummary extends AiSession {
   message_count: number
   last_message: string | null
+}
+
+export interface ExportedSession {
+  session: AiSession
+  messages: AiChatMessage[]
 }
 
 export interface AiConfig {

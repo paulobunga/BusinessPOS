@@ -4,6 +4,7 @@ import { runMigrations } from '../migrations/001_initial'
 import { runSalesExtrasMigration } from '../migrations/002_sales_extras'
 import { runDebtsMigration } from '../migrations/004_debts_payment_allocations'
 import { runRemovePaymentIdMigration } from '../migrations/014_debt_allocations_cleanup'
+import { runDebtWriteOffsMigration } from '../migrations/017_debt_write_offs'
 
 let db: Database.Database
 
@@ -54,6 +55,7 @@ describe('debts v2', () => {
     runSalesExtrasMigration(db)
     runDebtsMigration(db)
     runRemovePaymentIdMigration(db)
+    runDebtWriteOffsMigration(db)
   })
 
   afterAll(() => db.close())
@@ -215,5 +217,125 @@ describe('debts v2', () => {
     expect(cash?.cashSalesCents).toBe(7000)
     expect(cash?.expectedClosingCents).toBe(7000)
     expect(reportsRepo.getTillSummary(tillId)?.cash_sales_cents).toBe(7000)
+  })
+
+  test('writeOff validates, reduces remaining, and drops fully-written sales from open lists', () => {
+    const c = 'Fiona'
+    const sale = insertSale({ customer: c, debtCents: 1000 })
+    const ghost = insertSale({ customer: c, debtCents: 2000 })
+
+    expect(() => debtsRepo.writeOff({ sale_id: sale, amount_cents: 0, reason: 'x', created_by: 1 })).toThrow()
+    expect(() => debtsRepo.writeOff({ sale_id: sale, amount_cents: -5, reason: 'x', created_by: 1 })).toThrow()
+    expect(() => debtsRepo.writeOff({ sale_id: sale, amount_cents: 100, reason: '   ', created_by: 1 })).toThrow()
+    expect(() => debtsRepo.writeOff({ sale_id: sale, amount_cents: 1001, reason: 'x', created_by: 1 })).toThrow()
+    expect(() => debtsRepo.writeOff({ sale_id: 99999, amount_cents: 100, reason: 'x', created_by: 1 })).toThrow()
+
+    const r1 = debtsRepo.writeOff({ sale_id: sale, amount_cents: 400, reason: 'Spoiled produce', created_by: 1 })
+    expect(r1).toEqual({ written_off_cents: 400, remaining_cents: 600 })
+    expect(debtsRepo.balanceByName(c)).toBe(2600)
+
+    const openRow = debtsRepo.listOpen().find(r => r.sale_id === sale)!
+    expect(openRow.remaining_cents).toBe(600)
+    expect(openRow.written_off_cents).toBe(400)
+
+    const r2 = debtsRepo.writeOff({ sale_id: sale, amount_cents: 600, reason: 'Complete loss', created_by: 1 })
+    expect(r2).toEqual({ written_off_cents: 600, remaining_cents: 0 })
+    expect(debtsRepo.listOpen().some(r => r.sale_id === sale)).toBe(false)
+    expect(debtsRepo.getTotalOwed(sale)).toBe(0)
+    expect(debtsRepo.balanceByName(c)).toBe(2000)
+
+    const history = debtsRepo.writeOffs(sale)
+    expect(history).toHaveLength(2)
+    expect(history.map(h => h.amount_cents).sort()).toEqual([400, 600])
+    expect(history.every(h => h.sale_total_cents === 1000)).toBe(true)
+
+    const fiona = debtsRepo.customerBalances().find(b => b.customer_name === c)!
+    expect(fiona.total_owed_cents).toBe(3000)
+    expect(fiona.total_paid_cents).toBe(0)
+    expect(fiona.total_written_off_cents).toBe(1000)
+    expect(fiona.total_owed_cents - fiona.total_paid_cents - fiona.total_written_off_cents).toBe(2000)
+    expect(fiona.unpaid_orders).toBe(2)
+  })
+
+  test('createCaptainOrder settles fully, never opens debt, and reports as barter', () => {
+    const catId = Number(db.prepare(`INSERT INTO categories (name) VALUES ('Captain Cat')`).run().lastInsertRowid)
+    const itemId = Number(
+      db.prepare(`INSERT INTO menu_items (category_id, name, selling_price_cents) VALUES (?, 'Chef Special', 15000)`).run(catId).lastInsertRowid
+    )
+    const note = 'Cleaned the dining hall and washed windows'
+
+    expect(() =>
+      salesRepo.createCaptainOrder({
+        customer_name: 'Board',
+        service_description: '   ',
+        subtotal_cents: 15000,
+        discount_cents: 0,
+        total_cents: 15000,
+        till_session_id: null,
+        created_by: 1,
+        items: [{ item_id: itemId, price_cents: 15000, quantity: 1 }],
+      })
+    ).toThrow()
+
+    const saleId = salesRepo.createCaptainOrder({
+      customer_name: 'Board',
+      service_description: note,
+      subtotal_cents: 15000,
+      discount_cents: 0,
+      total_cents: 15000,
+      till_session_id: null,
+      created_by: 1,
+      items: [{ item_id: itemId, price_cents: 15000, quantity: 1 }],
+    })
+
+    const sale = db.prepare('SELECT * FROM sales WHERE id = ?').get(saleId) as {
+      sale_kind: string
+      status: string
+      payment_method: string
+      debt_cents: number
+      service_description: string
+    }
+    expect(sale.sale_kind).toBe('captain')
+    expect(sale.status).toBe('completed')
+    expect(sale.payment_method).toBe('debt')
+    expect(sale.debt_cents).toBe(15000)
+    expect(sale.service_description).toBe(note)
+
+    const allocations = db.prepare('SELECT * FROM payment_allocations WHERE sale_id = ?').all(saleId) as {
+      payment_method: string
+      note: string | null
+      till_session_id: number | null
+      amount_cents: number
+    }[]
+    expect(allocations).toHaveLength(1)
+    expect(allocations[0].payment_method).toBe('service')
+    expect(allocations[0].note).toBe(note)
+    expect(allocations[0].till_session_id).toBeNull()
+    expect(allocations[0].amount_cents).toBe(15000)
+
+    expect(debtsRepo.listOpen().some(r => r.sale_id === saleId)).toBe(false)
+    expect(debtsRepo.getTotalOwed(saleId)).toBe(0)
+    expect(debtsRepo.balanceByName('Board')).toBe(0)
+    expect(debtsRepo.customerBalances().some(b => b.customer_name === 'Board')).toBe(false)
+
+    const now = new Date()
+    const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS item_purchases (id INTEGER PRIMARY KEY, item_id INTEGER, cost_cents INTEGER, purchase_date TEXT);
+      CREATE TABLE IF NOT EXISTS waste (id INTEGER PRIMARY KEY, item_id INTEGER, estimated_value_cents INTEGER, waste_date TEXT, quantity REAL);
+    `)
+    const expCols = (db.prepare('PRAGMA table_info(expenses)').all() as { name: string }[]).map(c => c.name)
+    if (!expCols.includes('date')) db.exec('ALTER TABLE expenses ADD COLUMN date TEXT')
+    const reimCols = (db.prepare('PRAGMA table_info(reimbursements)').all() as { name: string }[]).map(c => c.name)
+    if (!reimCols.includes('date')) db.exec('ALTER TABLE reimbursements ADD COLUMN date TEXT')
+    const daily = reportsRepo.getDaily(localDate, localDate)
+    const row = daily[0]
+    expect(row.barter_cents).toBe(15000)
+    expect(row.sales_revenue_cents).toBeGreaterThanOrEqual(15000)
+
+    const salesRows = reportsRepo.getSales(localDate, localDate)
+    const cap = salesRows.find(r => (r as any).id === saleId)!
+    expect((cap as any).sale_kind).toBe('captain')
+    expect((cap as any).service_description).toBe(note)
   })
 })

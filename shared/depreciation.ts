@@ -23,6 +23,7 @@ export function computeDepreciation(asset: DepreciableAsset, asOfDate: string): 
   const life = asset.useful_life_months > 0 ? asset.useful_life_months : 0
   const months = toYM(effective) - toYM(asset.purchase_date)
   const elapsed = Math.max(0, Math.min(months, life))
+  
   if (life === 0) {
     return {
       months_elapsed: 0,
@@ -31,6 +32,7 @@ export function computeDepreciation(asset: DepreciableAsset, asOfDate: string): 
       monthly_depreciation_cents: 0,
     }
   }
+
   const base = Math.max(asset.purchase_cost_cents - asset.salvage_cents, 0)
   const accumulated = Math.floor((base * elapsed) / life)
   const monthly = Math.floor(base / life)

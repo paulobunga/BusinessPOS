@@ -11,13 +11,12 @@ export function useAssistantChat() {
   const { userId, role } = useAuth()
   const [messages, setMessages] = useState<AiChatMessage[]>([])
   const [streamingMessage, setStreamingMessage] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [sessionId, setSessionId] = useState<number>(0)
   const [sessions, setSessions] = useState<AiSessionSummary[]>([])
   const [approvalQueue, setApprovalQueue] = useState<ApprovalItem[]>([])
   const [input, setInput] = useState('')
-  const requestIdRef = useRef<string | null>(null)
+  const [loadingSessionId, setLoadingSessionId] = useState<number | null>(null)
 
   const loadSessions = useCallback(async () => {
     try {
@@ -31,7 +30,6 @@ export function useAssistantChat() {
   useEffect(() => { void loadSessions() }, [loadSessions])
 
   const onEvent = useCallback((e: AiEvent) => {
-    if (requestIdRef.current && e.requestId !== requestIdRef.current) return
     switch (e.type) {
       case 'delta':
         setStreamingMessage((prev) => prev + e.delta)
@@ -43,21 +41,23 @@ export function useAssistantChat() {
         setApprovalQueue((q) => [...q, { requestId: e.requestId, call: e.call }])
         break
       case 'done':
-        setMessages((prev) => [...prev, e.message])
-        setStreamingMessage('')
-        setIsLoading(false)
-        requestIdRef.current = null
+        if (e.message.session_id === sessionId) {
+          setMessages((prev) => [...prev, e.message])
+          setStreamingMessage('')
+        }
+        setLoadingSessionId((prev) => prev === e.message.session_id ? null : prev)
         void loadSessions()
         break
       case 'error':
-        setError(e.message.error ?? 'Something went wrong')
-        setMessages((prev) => [...prev, e.message])
-        setStreamingMessage('')
-        setIsLoading(false)
-        requestIdRef.current = null
+        if (e.message.session_id === sessionId) {
+          setError(e.message.error ?? 'Something went wrong')
+          setMessages((prev) => [...prev, e.message])
+          setStreamingMessage('')
+        }
+        setLoadingSessionId((prev) => prev === e.message.session_id ? null : prev)
         break
     }
-  }, [loadSessions])
+  }, [sessionId, loadSessions])
 
   useEffect(() => {
     return window.api.onAiEvent(onEvent)
@@ -65,9 +65,8 @@ export function useAssistantChat() {
 
   const submit = useCallback(async (content?: string) => {
     const text = (content ?? input).trim()
-    if (!text || isLoading || !userId || !role) return
+    if (!text || loadingSessionId !== null || !userId || !role) return
     setInput('')
-    setIsLoading(true)
     setError(null)
     setStreamingMessage('')
 
@@ -82,14 +81,13 @@ export function useAssistantChat() {
       setMessages((prev) => [...prev, {
         id: -Date.now(), session_id: targetSessionId, role: 'user', content: text, created_at: new Date().toISOString(),
       }])
-      const { requestId } = await window.api['ai:chat:start']({ sessionId: targetSessionId, content: text, userId, role })
-      requestIdRef.current = requestId
+      setLoadingSessionId(targetSessionId)
+      await window.api['ai:chat:start']({ sessionId: targetSessionId, content: text, userId, role })
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
-      setIsLoading(false)
-      requestIdRef.current = null
+      setLoadingSessionId(null)
     }
-  }, [sessionId, input, isLoading, userId, role])
+  }, [sessionId, input, loadingSessionId, userId, role])
 
   const loadSession = useCallback(async (id: number) => {
     try {
@@ -125,6 +123,25 @@ export function useAssistantChat() {
     }
   }, [loadSessions])
 
+  const archiveSession = useCallback(async (id: number) => {
+    try {
+      await window.api['ai:sessions:archive'](id)
+      if (id === sessionId) { setSessionId(0); setMessages([]) }
+      await loadSessions()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }, [sessionId, loadSessions])
+
+  const exportSession = useCallback(async (id: number) => {
+    try {
+      const result = await window.api['ai:sessions:export'](id)
+      if (!result) throw new Error('Export failed')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }, [])
+
   const deleteSession = useCallback(async (id: number) => {
     try {
       await window.api['ai:sessions:delete'](id)
@@ -155,9 +172,11 @@ export function useAssistantChat() {
 
   const clearError = useCallback(() => setError(null), [])
 
+  const isLoading = loadingSessionId === sessionId
+
   return {
     messages, input, setInput, submit, isLoading, streamingMessage, error,
-    sessionId, sessions, loadSession, newSession, renameSession, deleteSession,
+    sessionId, sessions, loadSession, newSession, renameSession, archiveSession, exportSession, deleteSession,
     approvalQueue, approve, reject, clearError,
   }
 }

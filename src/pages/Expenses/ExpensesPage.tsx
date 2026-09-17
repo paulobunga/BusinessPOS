@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../../components/ui/select'
-import { DatePicker } from '../../components/ui/date-picker'
+import { DateRangeFilter } from '../../components/DateRangeFilter'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import type { Expense } from '../../../shared/types'
 
@@ -44,22 +44,29 @@ export function ExpensesPage() {
   return (
     <div className="flex flex-col gap-4 p-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Expenses</h1>
-        <Button onClick={() => { setEditing(null); setShowForm(true) }} className="bg-primary font-semibold">
-          + New Expense
-        </Button>
+        <div>
+          <h1 className="text-2xl font-bold">Expenses</h1>
+          <p className="m-0 text-[0.875rem] text-muted-foreground">
+            Business spend. Food purchases live under Inventory — record those there.
+          </p>
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="text-[0.9375rem] font-bold">Total: {totalCents.toLocaleString()} UGX</span>
+          <Button onClick={() => { setEditing(null); setShowForm(true) }} className="bg-primary font-semibold">
+            + New Expense
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
       <div className="flex flex-wrap items-end gap-4">
-        <label className="flex w-44 flex-col gap-1.5 text-[0.875rem] font-semibold">
-          From
-          <DatePicker value={filters.date_from ?? ''} onValueChange={v => setFilters(f => ({ ...f, date_from: v || undefined }))} />
-        </label>
-        <label className="flex w-44 flex-col gap-1.5 text-[0.875rem] font-semibold">
-          To
-          <DatePicker value={filters.date_to ?? ''} onValueChange={v => setFilters(f => ({ ...f, date_to: v || undefined }))} />
-        </label>
+        <DateRangeFilter
+          dateFrom={filters.date_from ?? ''}
+          dateTo={filters.date_to ?? ''}
+          onDateFromChange={v => setFilters(f => ({ ...f, date_from: v || undefined }))}
+          onDateToChange={v => setFilters(f => ({ ...f, date_to: v || undefined }))}
+          onReset={() => setFilters({})}
+        />
         <label className="flex w-44 flex-col gap-1.5 text-[0.875rem] font-semibold">
           Source
           <Select value={filters.payment_source ?? 'all'} onValueChange={v => setFilters(f => ({ ...f, payment_source: v === 'all' ? undefined : v }))}>
@@ -74,9 +81,6 @@ export function ExpensesPage() {
             </SelectContent>
           </Select>
         </label>
-        <span className="ml-auto pb-1 text-[0.9375rem] font-bold">
-          Total: UGX {totalCents.toLocaleString()}
-        </span>
       </div>
 
       {/* Form modal */}

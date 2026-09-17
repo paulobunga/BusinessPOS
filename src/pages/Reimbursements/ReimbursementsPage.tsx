@@ -7,6 +7,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../componen
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Badge } from '../../components/ui/badge'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
+import { PaginationFooter } from '../../components/PaginationFooter'
+import { usePagination } from '../../hooks/usePagination'
 import {
   Select,
   SelectContent,
@@ -71,6 +74,7 @@ export function ReimbursementsPage() {
   }
 
   const totalCents = reimbursements.reduce((sum, r) => sum + r.amount_cents, 0)
+const pager = usePagination(reimbursements)
 
   const selectClass = 'h-11 w-full rounded-[var(--radius-md)]'
   const inputClass = 'h-11 rounded-[var(--radius-md)] bg-background text-[0.875rem]'
@@ -179,30 +183,45 @@ export function ReimbursementsPage() {
       ) : reimbursements.length === 0 ? (
         <p className="p-12 text-center text-lg text-muted-foreground">No reimbursements recorded.</p>
       ) : (
-        <div className="flex flex-col gap-2">
-          {reimbursements.map((r: Reimbursement) => (
-            <div key={r.id} className="flex items-center justify-between rounded-[var(--radius-md)] border border-border bg-card px-4 py-3">
-              <div className="flex flex-1 flex-col gap-0.5">
-                <div className="flex items-center gap-2">
-                  <Badge className={r.paid_to === 'till' ? 'bg-primary text-white' : 'bg-success text-white'}>
-                    {r.paid_to}
-                  </Badge>
-                  {r.till_session_id && (
-                    <span className="text-xs text-muted-foreground">Till #{r.till_session_id}</span>
-                  )}
-                </div>
-                <p className="m-0 text-[0.875rem] text-muted-foreground">{r.description}</p>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <span className="text-[0.9375rem] font-bold">{fmt.format(r.amount_cents)}</span>
-                <span className="text-xs text-muted-foreground">{r.date}</span>
-                <Button onClick={() => setDeleteId(r.id)} variant="outline" size="xs" className="border-destructive text-destructive">
-                  Delete
-                </Button>
-              </div>
-            </div>
-          ))}
+        <div>
+          <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
+            <Table className="table-zebra">
+              <TableHeader>
+                <TableRow className="bg-card hover:bg-card">
+                  <TableHead>Paid To</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pager.slice.map((r: Reimbursement) => (
+                  <TableRow key={r.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Badge className={r.paid_to === 'till' ? 'bg-primary text-white' : 'bg-success text-white'}>
+                          {r.paid_to}
+                        </Badge>
+                        {r.till_session_id && (
+                          <span className="text-xs text-muted-foreground">Till #{r.till_session_id}</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="max-w-[320px] truncate text-muted-foreground">{r.description}</TableCell>
+                    <TableCell className="text-muted-foreground">{r.date}</TableCell>
+                    <TableCell className="text-right font-bold">{fmt.format(r.amount_cents)}</TableCell>
+                    <TableCell className="text-right">
+                      <Button onClick={() => setDeleteId(r.id)} variant="outline" size="xs" className="border-destructive text-destructive">
+                        Delete
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <PaginationFooter pager={pager} />
         </div>
       )}
 

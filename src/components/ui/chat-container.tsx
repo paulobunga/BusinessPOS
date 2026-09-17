@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils"
-import { StickToBottom } from "use-stick-to-bottom"
+import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom"
+import { useEffect, useRef } from "react"
 
 export type ChatContainerRootProps = {
   children: React.ReactNode
@@ -15,6 +16,32 @@ export type ChatContainerScrollAnchorProps = {
   className?: string
   ref?: React.RefObject<HTMLDivElement>
 } & React.HTMLAttributes<HTMLDivElement>
+
+export type ChatAutoScrollProps = {
+  dependencies?: React.DependencyList
+}
+
+function ChatAutoScroll({ dependencies = [] }: ChatAutoScrollProps) {
+  const { scrollToBottom } = useStickToBottomContext()
+  const lastDepsRef = useRef<string>("")
+  const scheduledRef = useRef(false)
+
+  const key = JSON.stringify(dependencies)
+
+  useEffect(() => {
+    if (key === lastDepsRef.current) return
+    lastDepsRef.current = key
+    if (scheduledRef.current) return
+    scheduledRef.current = true
+    const id = requestAnimationFrame(() => {
+      scheduledRef.current = false
+      scrollToBottom({ animation: "instant", wait: true })
+    })
+    return () => { cancelAnimationFrame(id) }
+  }, [key, scrollToBottom])
+
+  return null
+}
 
 function ChatContainerRoot({
   children,
@@ -62,4 +89,4 @@ function ChatContainerScrollAnchor({
   )
 }
 
-export { ChatContainerRoot, ChatContainerContent, ChatContainerScrollAnchor }
+export { ChatContainerRoot, ChatContainerContent, ChatContainerScrollAnchor, ChatAutoScroll }

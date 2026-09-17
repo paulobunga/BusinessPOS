@@ -57,10 +57,10 @@ interface AiDeps {
 
 function loadDeps(overrides?: Partial<AiDeps>): AiDeps {
   const cfg = getAiConfig()
-  if (!cfg.apiKey) throw new Error('OpenRouter API key is not configured')
+  if (!cfg.apiKey) throw new Error('DeepSeek API key is not configured')
   const { apiKey, model } = cfg
   return {
-    client: new OpenAI({ apiKey, baseURL: 'https://openrouter.ai/api/v1' }),
+    client: new OpenAI({ apiKey, baseURL: 'https://api.deepseek.com' }),
     config: { apiKey, model },
     chatRepo,
     executeToolFn: executeTool,
@@ -174,7 +174,7 @@ export async function runAssistant(input: {
   }
 
   if (finalContent === '' && toolCallsThisRun.length === 0) {
-    throw new Error('The assistant produced no response. Check the model + OpenRouter config.')
+    throw new Error('The assistant produced no response. Check the model + DeepSeek config.')
   }
   if (finalContent === '' && toolCallsThisRun.length > 0) {
     finalContent = 'Done — I updated the records as requested.'

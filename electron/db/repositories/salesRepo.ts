@@ -47,6 +47,64 @@ export const salesRepo = {
     }
     return saleId
   },
+  createCaptainOrder(data: {
+    customer_name?: string
+    service_description: string
+    subtotal_cents: number
+    discount_cents: number
+    discount_reason?: string
+    total_cents: number
+    till_session_id?: number | null
+    created_by: number
+    items: Array<{ item_id: number; free_item_id?: number | null; price_cents: number; quantity?: number }>
+  }): number {
+    if (!data.service_description || !data.service_description.trim()) {
+      throw new Error('A service description is required for a Captain Order')
+    }
+    const db = getDb()
+    return db.transaction(() => {
+      const customerId = resolveCustomer(data.customer_name)
+      const result = db.prepare(`
+        INSERT INTO sales (customer_id, customer_name, subtotal_cents, discount_cents, discount_reason, debt_cents, payment_method, status, payment_source, total_cents, till_session_id, created_by, sale_kind, service_description)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        customerId,
+        data.customer_name ?? null,
+        data.subtotal_cents,
+        data.discount_cents,
+        data.discount_reason ?? null,
+        data.total_cents,
+        'debt',
+        'unpaid',
+        'unpaid',
+        data.total_cents,
+        data.till_session_id ?? null,
+        data.created_by,
+        'captain',
+        data.service_description.trim()
+      )
+      const saleId = result.lastInsertRowid as number
+
+      const insertItem = db.prepare(`
+        INSERT INTO sale_items (sale_id, item_id, free_item_id, name_snapshot, unit_price_cents, quantity, line_total_cents)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `)
+      const getItem = db.prepare('SELECT name FROM menu_items WHERE id = ?')
+      for (const item of data.items) {
+        const mi = getItem.get(item.item_id) as { name: string } | undefined
+        const qty = item.quantity ?? 1
+        insertItem.run(saleId, item.item_id, item.free_item_id ?? null, mi?.name ?? '', item.price_cents, qty, item.price_cents * qty)
+      }
+
+      db.prepare(`
+        INSERT INTO payment_allocations (sale_id, amount_cents, payment_method, till_session_id, created_by, note)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(saleId, data.total_cents, 'service', null, data.created_by, data.service_description.trim())
+
+      db.prepare("UPDATE sales SET status = 'completed' WHERE id = ?").run(saleId)
+      return saleId
+    })()
+  },
   listByDate(date: string) {
     return getDb().prepare('SELECT * FROM sales WHERE DATE(created_at) = ? ORDER BY created_at DESC').all(date)
   },

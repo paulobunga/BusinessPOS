@@ -3,7 +3,7 @@ import type { AiChatMessage, AiToolCall, AiEvent } from '../../../shared/types'
 import { messagesToOpenAI, runAssistant, SYSTEM_PROMPT } from '../service'
 
 const { config } = vi.hoisted(() => ({
-  config: { apiKey: 'sk-test', model: 'openai/gpt-4o-mini' },
+  config: { apiKey: 'sk-test', model: 'deepseek-flash' },
 }))
 
 vi.mock('../config', () => ({ getAiConfig: () => config }))

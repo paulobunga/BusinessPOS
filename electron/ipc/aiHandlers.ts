@@ -1,5 +1,7 @@
-import { ipcMain, type IpcMainInvokeEvent } from 'electron'
+import { ipcMain, dialog, app, type IpcMainInvokeEvent } from 'electron'
 import { randomUUID } from 'crypto'
+import path from 'path'
+import { writeFileSync } from 'fs'
 import { aiConfigService } from './aiConfigService.js'
 import { chatRepo } from '../db/repositories/chatRepo.js'
 import { runAssistant } from '../ai/service.js'
@@ -22,6 +24,18 @@ export function registerAiHandlers() {
   ipcMain.handle('ai:sessions:list', () => chatRepo.listSessions())
   ipcMain.handle('ai:sessions:create', (_e, title?: string) => chatRepo.createSession(title))
   ipcMain.handle('ai:sessions:rename', (_e, id: number, title: string) => chatRepo.renameSession(id, title))
+  ipcMain.handle('ai:sessions:archive', (_e, id: number) => chatRepo.archiveSession(id))
+  ipcMain.handle('ai:sessions:export', async (_e, id: number) => {
+    const data = chatRepo.exportSession(id)
+    const defaultPath = path.join(app.getPath('documents'), `chat-session-${id}.json`)
+    const result = await dialog.showSaveDialog({
+      defaultPath,
+      filters: [{ name: 'JSON', extensions: ['json'] }],
+    })
+    if (result.canceled || !result.filePath) return null
+    writeFileSync(result.filePath, JSON.stringify(data, null, 2))
+    return data
+  })
   ipcMain.handle('ai:sessions:delete', (_e, id: number) => chatRepo.deleteSession(id))
 
   ipcMain.handle('ai:chat:messages', (_e, sessionId: number): AiChatMessage[] => chatRepo.listMessages(sessionId))
