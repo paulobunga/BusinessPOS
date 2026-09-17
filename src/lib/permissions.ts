@@ -1,6 +1,6 @@
 import type { Role } from '../../shared/types'
 
-export const MODULES = ['pos', 'till', 'expenses', 'debts', 'reimbursements', 'inventory', 'waste', 'assets', 'reports', 'settings', 'users'] as const
+export const MODULES = ['pos', 'till', 'expenses', 'debts', 'reimbursements', 'inventory', 'waste', 'assets', 'recipes', 'reports', 'settings', 'users'] as const
 export type Module = typeof MODULES[number]
 export type Permission = `${Module}.view` | `${Module}.manage`
 

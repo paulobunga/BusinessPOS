@@ -21,6 +21,7 @@ import { SettingsPage } from './pages/Settings/SettingsPage'
 import { RequireModule } from './components/RequireModule'
 import { UsersPage } from './pages/Users/UsersPage'
 import { AssetsPage } from './pages/Assets/AssetsPage'
+import { RecipesPage } from './pages/Recipes/RecipesPage'
 
 type Phase = 'loading' | 'setup' | 'ready'
 
@@ -61,6 +62,7 @@ function Root() {
             <Route path="/inventory" element={<RequireModule module="inventory"><InventoryPage /></RequireModule>} />
             <Route path="/waste" element={<RequireModule module="waste"><WastePage /></RequireModule>} />
             <Route path="/assets" element={<RequireModule module="assets"><AssetsPage /></RequireModule>} />
+            <Route path="/recipes" element={<RequireModule module="recipes"><RecipesPage /></RequireModule>} />
             <Route path="/reports" element={<RequireModule module="reports"><ReportsPage /></RequireModule>} />
             <Route path="/assistant" element={<RequireModule module="reports"><AssistantPage /></RequireModule>} />
             <Route path="/settings" element={<RequireModule module="settings"><SettingsPage /></RequireModule>} />

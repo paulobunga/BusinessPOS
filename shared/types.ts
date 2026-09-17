@@ -310,10 +310,9 @@ export interface ItemPurchase {
   purchase_date: string
   quantity_kg: number
   cost_cents: number
-  expected_yield: number
+  total_yield: number
   created_by: number | null
   unit?: string
-  yield_item_id?: number | null
   created_at?: string
 }
 
@@ -492,6 +491,44 @@ export interface MealDraft {
   yields: MealYieldDraft[]
 }
 
+// === Recipes ===
+export interface Recipe {
+  id: number
+  name: string
+  description: string | null
+  servings: number
+  active: number
+  created_at: string
+}
+
+export interface RecipeIngredient {
+  id: number
+  recipe_id: number
+  item_id: number | null
+  item_name: string
+  quantity: number
+  unit: string
+}
+
+export interface RecipeWithIngredients extends Recipe {
+  ingredients: RecipeIngredient[]
+}
+
+export interface CreateRecipePayload {
+  name: string
+  description?: string | null
+  servings?: number
+  ingredients: Array<{ item_id: number | null; item_name: string; quantity: number; unit: string }>
+}
+
+export interface UpdateRecipePayload {
+  name?: string
+  description?: string | null
+  servings?: number
+  active?: number
+  ingredients?: Array<{ id?: number; item_id: number | null; item_name: string; quantity: number; unit: string }>
+}
+
 export interface SetupPayload {
   businessName: string
   phone: string
@@ -581,6 +618,11 @@ export interface Api {
   'assets:update': (id: number, payload: Partial<CreateAssetPayload>) => Promise<AssetWithValue>
   'assets:dispose': (id: number, payload: DisposeAssetPayload) => Promise<AssetWithValue>
   'assets:summary': () => Promise<AssetSummary>
+  'recipes:list': () => Promise<RecipeWithIngredients[]>
+  'recipes:get': (id: number) => Promise<RecipeWithIngredients | null>
+  'recipes:create': (payload: CreateRecipePayload) => Promise<Recipe>
+  'recipes:update': (id: number, payload: UpdateRecipePayload) => Promise<Recipe | null>
+  'recipes:delete': (id: number) => Promise<void>
   'ai:chat:start': (payload: { sessionId: number; content: string; userId: number; role: Role }) => Promise<{ requestId: string }>
   'ai:chat:messages': (sessionId: number) => Promise<AiChatMessage[]>
   'ai:toolApproval': (payload: { requestId: string; callId: string; approved: boolean }) => Promise<void>
