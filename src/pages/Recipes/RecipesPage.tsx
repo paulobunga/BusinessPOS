@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ChefHat, BookOpen, Trash2 } from 'lucide-react'
 import { useRecipes } from '../../hooks/useRecipes'
 import { useItems } from '../../hooks/useItems'
 import { Markdown } from '../../components/ui/markdown'
 import { Button } from '../../components/ui/button'
+import { FilterBar, FilterCard, FilterSearch } from '../../components/FilterBar'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Badge } from '../../components/ui/badge'
@@ -56,8 +57,17 @@ export function RecipesPage() {
   const [ingredients, setIngredients] = useState<IngredientRow[]>([
     { item_id: null, item_name: '', quantity: 1, unit: 'pcs' },
   ])
+  const [query, setQuery] = useState('')
 
-  const recipesPager = usePagination(recipes)
+  const filteredRecipes = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return recipes
+    return recipes.filter(r =>
+      r.name.toLowerCase().includes(q) ||
+      r.ingredients.some(g => g.item_name.toLowerCase().includes(q))
+    )
+  }, [recipes, query])
+  const recipesPager = usePagination(filteredRecipes)
 
   const openCreate = () => {
     setEditing(null)
@@ -174,12 +184,20 @@ export function RecipesPage() {
         </Button>
       </div>
 
+      <FilterBar>
+        <FilterCard>
+          <FilterSearch value={query} onChange={setQuery} placeholder="Search recipes or ingredients…" />
+        </FilterCard>
+      </FilterBar>
+
       {loading ? (
         <p className="text-center text-muted-foreground">Loading...</p>
       ) : loadError ? (
         <p className="text-center font-semibold text-destructive">{loadError}</p>
       ) : recipes.length === 0 ? (
         <p className="p-12 text-center text-lg text-muted-foreground">No recipes yet</p>
+      ) : filteredRecipes.length === 0 ? (
+        <p className="p-12 text-center text-lg text-muted-foreground">No recipes match "{query.trim()}"</p>
       ) : (
         <div className="flex flex-col gap-3">
           <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
@@ -330,7 +348,7 @@ export function RecipesPage() {
 
               <div className="flex flex-col gap-2">
                 {ingredients.map((ing, idx) => (
-                  <div key={idx} className="grid grid-cols-[2fr_1fr_1fr_auto] gap-2 items-end">
+                  <div key={idx} className="flex flex-col gap-4">
                     <div className="flex flex-col gap-1">
                       <Label className="text-[0.75rem] font-semibold text-muted-foreground">Item name</Label>
                       <Input

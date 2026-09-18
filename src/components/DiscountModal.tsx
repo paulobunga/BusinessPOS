@@ -27,15 +27,15 @@ export function DiscountModal({ onApply, onClose }: DiscountModalProps) {
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">Apply Discount</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3">
-          <div className="flex flex-col gap-1.5">
-            <Label className="font-semibold">Amount (UGX)</Label>
+        <div className="flex flex-col gap-4">
+          <Label className="flex w-full flex-col gap-1.5 font-semibold">
+            Amount (UGX)
             <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="h-11 bg-background text-base" autoFocus />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label className="font-semibold">Reason</Label>
+          </Label>
+          <Label className="flex w-full flex-col gap-1.5 font-semibold">
+            Reason
             <Input type="text" value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. Waste discount" className="h-11 bg-background text-base" />
-          </div>
+          </Label>
         </div>
         <DialogFooter>
           <Button onClick={onClose} variant="outline" className="h-12 flex-1 font-semibold">

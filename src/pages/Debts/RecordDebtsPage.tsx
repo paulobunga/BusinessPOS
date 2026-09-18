@@ -20,7 +20,8 @@ export function RecordDebtsPage() {
   const [showConfirm, setShowConfirm] = useState(false)
 
   const addEntry = () => {
-    setEntries((prev) => [...prev, { customer_name: '', date: '2026-09-15', items: [{ name_snapshot: '', unit_price_cents: 0, quantity: 1 }], paid_cents: 0 }])
+    const today = new Date().toISOString().slice(0, 10)
+    setEntries((prev) => [...prev, { customer_name: '', date: today, items: [{ name_snapshot: '', unit_price_cents: 0, quantity: 1 }], paid_cents: 0 }])
   }
 
   const removeEntry = (index: number) => {
@@ -117,36 +118,45 @@ export function RecordDebtsPage() {
                     <>
                       <TableRow key={i}>
                         <TableCell>
-                          <Input
-                            value={entry.customer_name}
-                            onChange={(e) => updateEntry(i, { customer_name: e.target.value })}
-                            placeholder="Customer name"
-                            className="h-9 bg-background text-base"
-                          />
+                          <div className="flex min-w-36 flex-col gap-1.5">
+                            <Input
+                              value={entry.customer_name}
+                              onChange={(e) => updateEntry(i, { customer_name: e.target.value })}
+                              placeholder="Customer name"
+                              className="h-9 bg-background text-base"
+                            />
+                            <Input
+                              type="date"
+                              value={entry.date}
+                              onChange={(e) => updateEntry(i, { date: e.target.value })}
+                              className="h-9 bg-background text-xs"
+                              aria-label="Sale date"
+                            />
+                          </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex flex-col gap-1.5">
+                          <div className="flex min-w-44 flex-col gap-1.5">
                             {entry.items.map((item, j) => (
-                              <div key={j} className="flex gap-1.5">
+                              <div key={j} className="flex flex-col gap-1.5 rounded-[var(--radius-md)] border border-border p-2">
                                 <Input
                                   value={item.name_snapshot}
                                   onChange={(e) => updateItem(i, j, { name_snapshot: e.target.value })}
                                   placeholder="Item"
-                                  className="h-8 flex-1 bg-background text-xs"
+                                  className="h-8 bg-background text-xs"
                                 />
                                 <Input
                                   type="number"
                                   value={item.unit_price_cents || ''}
                                   onChange={(e) => updateItem(i, j, { unit_price_cents: Number(e.target.value) })}
-                                  placeholder="Price"
-                                  className="h-8 w-20 bg-background text-xs"
+                                  placeholder="Price (UGX)"
+                                  className="h-8 bg-background text-xs"
                                 />
                                 <Input
                                   type="number"
                                   value={item.quantity || ''}
                                   onChange={(e) => updateItem(i, j, { quantity: Number(e.target.value) || 1 })}
                                   placeholder="Qty"
-                                  className="h-8 w-14 bg-background text-xs"
+                                  className="h-8 bg-background text-xs"
                                 />
                                 <Button
                                   type="button"
@@ -154,6 +164,7 @@ export function RecordDebtsPage() {
                                   size="icon-sm"
                                   onClick={() => removeItem(i, j)}
                                   className="h-8 w-8 shrink-0"
+                                  aria-label="Remove item"
                                 >
                                   <Trash2 className="h-3 w-3" />
                                 </Button>

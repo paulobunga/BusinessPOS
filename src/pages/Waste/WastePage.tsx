@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useWaste } from '../../hooks/useWaste'
 import { useItems } from '../../hooks/useItems'
 import { Button } from '../../components/ui/button'
@@ -24,6 +24,8 @@ import {
   SelectValue,
 } from '../../components/ui/select'
 import { DatePicker } from '../../components/ui/date-picker'
+import { DateRangeFilter } from '../../components/DateRangeFilter'
+import { FilterBar } from '../../components/FilterBar'
 import type { WasteRecord } from '../../../shared/types'
 
 const fmt = (n: number) => new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 }).format(n)
@@ -42,9 +44,11 @@ const REASON_COLORS: Record<string, string> = {
 
 export function WastePage() {
   const today = new Date().toISOString().slice(0, 10)
-  const [date, setDate] = useState(today)
+  const [dateFrom, setDateFrom] = useState(today)
+  const [dateTo, setDateTo] = useState(today)
+  const [wasteDate, setWasteDate] = useState(today)
   const { items } = useItems({ kind: 'priced', activeOnly: true })
-  const { records, dailyTotal, loading, record, byItem, byItemData } = useWaste(date)
+  const { records, totalValue, loading, error: loadError, record, byItemData } = useWaste(dateFrom, dateTo)
 
   const [open, setOpen] = useState(false)
   const [itemId, setItemId] = useState('')
@@ -54,10 +58,6 @@ export function WastePage() {
   const [notes, setNotes] = useState('')
   const [error, setError] = useState('')
   const [processing, setProcessing] = useState(false)
-
-  useEffect(() => {
-    byItem(date, date)
-  }, [date, byItem])
 
   const recordsPager = usePagination(records)
   const byItemPager = usePagination(byItemData)
@@ -90,10 +90,9 @@ export function WastePage() {
       quantity: quantityNum,
       estimated_value_cents: valueInput,
       reason,
-      waste_date: date,
+      waste_date: wasteDate || today,
       notes: notes.trim() || undefined,
     })
-    await byItem(date, date)
     setProcessing(false)
     setItemId('')
     setQuantity('')
@@ -110,27 +109,32 @@ export function WastePage() {
         <h1 className="text-2xl font-bold">Waste Recording</h1>
         <div className="flex items-center gap-3">
           <span className="text-[0.9375rem] font-bold">
-            Daily Waste Value: {fmt(dailyTotal)}
+            Waste Value: {fmt(totalValue)}
           </span>
-          <Button onClick={() => { setError(''); setOpen(true) }} className="bg-primary font-semibold">
+          <Button onClick={() => { setError(''); setWasteDate(today); setOpen(true) }} className="bg-primary font-semibold">
             + Record Waste
           </Button>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-end gap-4">
-        <Label className="flex w-44 flex-col gap-1.5 text-[0.875rem] font-semibold">
-          Date
-          <DatePicker value={date} onValueChange={setDate} />
-        </Label>
-      </div>
+      <FilterBar>
+        <DateRangeFilter
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onDateFromChange={setDateFrom}
+          onDateToChange={setDateTo}
+          onReset={() => { setDateFrom(today); setDateTo(today) }}
+        />
+      </FilterBar>
 
       {/* List */}
       {loading ? (
         <p className="text-center text-muted-foreground">Loading...</p>
+      ) : loadError ? (
+        <p className="text-center font-semibold text-destructive">{loadError}</p>
       ) : records.length === 0 ? (
         <p className="p-12 text-center text-lg text-muted-foreground">
-          No waste recorded for this date.
+          No waste recorded in this period.
         </p>
       ) : (
         <div className="flex flex-col gap-3">
@@ -148,6 +152,7 @@ export function WastePage() {
               <TableBody>
                 {recordsPager.slice.map((w: WasteRecord) => (
                   <TableRow key={w.id}>
+                    <TableCell className="whitespace-nowrap text-muted-foreground">{w.waste_date}</TableCell>
                     <TableCell className="font-semibold">{w.item_name ?? `Item #${w.item_id}`}</TableCell>
                     <TableCell>
                       <Badge className={REASON_COLORS[w.reason] ?? 'bg-muted text-foreground'}>
@@ -206,55 +211,58 @@ export function WastePage() {
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             {error && <p className="m-0 font-semibold text-destructive">{error}</p>}
 
-            <div className="grid grid-cols-2 gap-4">
-              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
-                Item
-                <Select value={itemId} onValueChange={handleItemChange}>
-                  <SelectTrigger className="h-11 w-full rounded-[var(--radius-md)]">
-                    <SelectValue placeholder="Select item..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {items.map(p => (
-                      <SelectItem key={p.id} value={String(p.id)}>
-                        {p.name} — {fmt(p.cost_price_cents)}/kg
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Label>
+            <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+              Date
+              <DatePicker value={wasteDate} onValueChange={setWasteDate} />
+            </Label>
 
-              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
-                Quantity (kg)
-                <Input type="number" placeholder="0" value={quantity} onChange={e => setQuantity(e.target.value)} className={inputClass} min="0" step="0.1" />
-              </Label>
+            <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+              Item
+              <Select value={itemId} onValueChange={handleItemChange}>
+                <SelectTrigger className="h-11 w-full rounded-[var(--radius-md)]">
+                  <SelectValue placeholder="Select item..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {items.map(p => (
+                    <SelectItem key={p.id} value={String(p.id)}>
+                      {p.name} — {fmt(p.cost_price_cents)}/kg
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Label>
 
-              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
-                Reason
-                <Select value={reason} onValueChange={v => setReason(v as typeof reason)}>
-                  <SelectTrigger className="h-11 w-full rounded-[var(--radius-md)]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {REASONS.map(r => (
-                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Label>
+            <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+              Quantity (kg)
+              <Input type="number" placeholder="0" value={quantity} onChange={e => setQuantity(e.target.value)} className={inputClass} min="0" step="0.1" />
+            </Label>
 
-              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
-                Estimated Value (UGX)
-                <Input
-                  type="number"
-                  placeholder={autoValue > 0 ? String(autoValue) : 'auto'}
-                  value={estimatedValue}
-                  onChange={e => setEstimatedValue(e.target.value)}
-                  className={inputClass}
-                  min="0"
-                  step="0.01"
-                />
-              </Label>
-            </div>
+            <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+              Reason
+              <Select value={reason} onValueChange={v => setReason(v as typeof reason)}>
+                <SelectTrigger className="h-11 w-full rounded-[var(--radius-md)]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {REASONS.map(r => (
+                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Label>
+
+            <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+              Estimated Value (UGX)
+              <Input
+                type="number"
+                placeholder={autoValue > 0 ? String(autoValue) : 'auto'}
+                value={estimatedValue}
+                onChange={e => setEstimatedValue(e.target.value)}
+                className={inputClass}
+                min="0"
+                step="0.01"
+              />
+            </Label>
 
             {selectedItem && (
               <p className="m-0 text-[0.8125rem] text-muted-foreground">

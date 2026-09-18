@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useUsers } from '../../hooks/useUsers'
 import { ROLE_LABELS } from '../../lib/permissions'
 import { Button } from '../../components/ui/button'
+import { FilterBar, FilterCard, FilterSearch } from '../../components/FilterBar'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Badge } from '../../components/ui/badge'
@@ -53,8 +54,14 @@ export function UsersPage() {
   const [newPin, setNewPin] = useState('')
   const [confirmPin, setConfirmPin] = useState('')
   const [pinStatus, setPinStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [query, setQuery] = useState('')
 
-  const usersPager = usePagination(users)
+  const filteredUsers = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return users
+    return users.filter(u => u.name.toLowerCase().includes(q) || ROLE_LABELS[u.role].toLowerCase().includes(q))
+  }, [users, query])
+  const usersPager = usePagination(filteredUsers)
 
   if (!hasAccess('users.manage')) {
     return (
@@ -153,6 +160,12 @@ export function UsersPage() {
 
       {status && <StatusLine type={status.type} text={status.text} />}
 
+      <FilterBar>
+        <FilterCard>
+          <FilterSearch value={query} onChange={setQuery} placeholder="Search name or role…" />
+        </FilterCard>
+      </FilterBar>
+
       {loading ? (
         <p className="text-center text-muted-foreground">Loading...</p>
       ) : error ? (
@@ -162,6 +175,8 @@ export function UsersPage() {
         </div>
       ) : users.length === 0 ? (
         <p className="p-12 text-center text-lg text-muted-foreground">No users yet.</p>
+      ) : filteredUsers.length === 0 ? (
+        <p className="p-12 text-center text-lg text-muted-foreground">No users match "{query.trim()}".</p>
       ) : (
         <div className="flex flex-col gap-3">
           <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
@@ -282,7 +297,7 @@ export function UsersPage() {
           </DialogHeader>
           <div className="flex flex-col gap-4">
             {pinStatus?.type === 'error' && <StatusLine type="error" text={pinStatus.text} />}
-            <div className="flex flex-wrap items-end gap-4">
+            <div className="flex flex-col gap-4">
               <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
                 New PIN
                 <Input className={pinClass} type="password" inputMode="numeric" maxLength={4} value={newPin} onChange={e => setNewPin(e.target.value.replace(/\D/g, ''))} />

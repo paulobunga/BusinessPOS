@@ -26,8 +26,8 @@ export function OpenTillModal({ onOpen, onClose }: OpenTillModalProps) {
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">Open Till</DialogTitle>
         </DialogHeader>
-        <div className="flex flex-col gap-1.5">
-          <Label className="font-semibold">Opening Float (UGX)</Label>
+        <Label className="flex w-full flex-col gap-1.5 font-semibold">
+          Opening Float (UGX)
           <Input
             type="number"
             value={balance}
@@ -35,7 +35,7 @@ export function OpenTillModal({ onOpen, onClose }: OpenTillModalProps) {
             className="bg-background text-base"
             autoFocus
           />
-        </div>
+        </Label>
         <DialogFooter>
           <Button onClick={onClose} variant="outline" className="h-12 flex-1 font-semibold">
             Cancel

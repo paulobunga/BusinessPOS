@@ -3,6 +3,7 @@ import { useReimbursements } from '../../hooks/useReimbursements'
 import { useAuth } from '../../context/AuthContext'
 import { useTill } from '../../context/TillContext'
 import { DateRangeFilter } from '../../components/DateRangeFilter'
+import { FilterBar } from '../../components/FilterBar'
 import { Button } from '../../components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog'
 import { Input } from '../../components/ui/input'
@@ -94,13 +95,15 @@ export function ReimbursementsPage() {
         </div>
       </div>
 
-      <DateRangeFilter
-        dateFrom={startDate}
-        dateTo={endDate}
-        onDateFromChange={setStartDate}
-        onDateToChange={setEndDate}
-        onReset={() => { setStartDate(today); setEndDate(today) }}
-      />
+      <FilterBar>
+        <DateRangeFilter
+          dateFrom={startDate}
+          dateTo={endDate}
+          onDateFromChange={setStartDate}
+          onDateToChange={setEndDate}
+          onReset={() => { setStartDate(today); setEndDate(today) }}
+        />
+      </FilterBar>
 
       {/* List */}
       {loading ? (
@@ -158,17 +161,15 @@ export function ReimbursementsPage() {
           <form onSubmit={handleCreate} className="flex flex-col gap-4">
             {error && <p className="font-semibold text-destructive">{error}</p>}
 
-            <div className="grid grid-cols-2 gap-4">
-              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
-                Date
-                <DatePicker value={date} onValueChange={setDate} />
-              </Label>
+            <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+              Date
+              <DatePicker value={date} onValueChange={setDate} />
+            </Label>
 
-              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
-                Amount (UGX)
-                <Input type="number" placeholder="0" value={amount} onChange={e => setAmount(e.target.value)} className={inputClass} min="0" step="0.01" />
-              </Label>
-            </div>
+            <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+              Amount (UGX)
+              <Input type="number" placeholder="0" value={amount} onChange={e => setAmount(e.target.value)} className={inputClass} min="0" step="0.01" />
+            </Label>
 
             <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
               Description

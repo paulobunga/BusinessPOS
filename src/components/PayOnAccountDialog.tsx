@@ -29,8 +29,8 @@ export function PayOnAccountDialog({ open, customerName, totalOwedCents, process
           {customerName} currently owes {fmt(totalOwedCents)}
         </DialogDescription>
         {error && <p className="font-semibold text-destructive">{error}</p>}
-        <div className="flex flex-col gap-1.5">
-          <Label className="font-semibold">Payment Amount (UGX)</Label>
+        <Label className="flex w-full flex-col gap-1.5 font-semibold">
+          Payment Amount (UGX)
           <Input
             type="number"
             value={amount}
@@ -39,7 +39,7 @@ export function PayOnAccountDialog({ open, customerName, totalOwedCents, process
             className="bg-background text-base"
             autoFocus
           />
-        </div>
+        </Label>
         <DialogFooter>
           <Button onClick={onClose} variant="outline" className="h-12 flex-1 font-semibold">Cancel</Button>
           <Button onClick={() => onConfirm(cents)} disabled={processing || cents <= 0} className="h-12 flex-1 font-bold">

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { DateRangeFilter } from '../../components/DateRangeFilter'
+import { FilterBar } from '../../components/FilterBar'
 import { PaginationFooter } from '../../components/PaginationFooter'
 import { usePagination } from '../../hooks/usePagination'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
@@ -48,13 +49,15 @@ export function SalesReportPage() {
         </span>
       </div>
 
-      <DateRangeFilter
-        dateFrom={dateFrom}
-        dateTo={dateTo}
-        onDateFromChange={setDateFrom}
-        onDateToChange={setDateTo}
-        onReset={handleReset}
-      />
+      <FilterBar>
+        <DateRangeFilter
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onDateFromChange={setDateFrom}
+          onDateToChange={setDateTo}
+          onReset={handleReset}
+        />
+      </FilterBar>
 
       {loading ? (
         <p className="text-center text-muted-foreground">Loading...</p>

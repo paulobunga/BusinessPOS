@@ -59,7 +59,7 @@ export function DisposeAssetDialog({ open, asset, onSubmit, onOpenChange }: Prop
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {error && <p className="m-0 font-semibold text-destructive">{error}</p>}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="flex flex-col gap-4">
             <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
               Disposal date
               <DatePicker value={disposedAt} onValueChange={setDisposedAt} />

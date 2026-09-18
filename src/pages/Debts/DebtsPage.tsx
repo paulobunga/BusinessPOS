@@ -4,6 +4,7 @@ import { useDebts } from '../../hooks/useDebts'
 import { useAuth } from '../../context/AuthContext'
 import { useTill } from '../../context/TillContext'
 import { DateRangeFilter } from '../../components/DateRangeFilter'
+import { FilterBar } from '../../components/FilterBar'
 import { Button } from '../../components/ui/button'
 import { PayOnAccountDialog } from '../../components/PayOnAccountDialog'
 import { DebtAgingBadge } from '../../components/DebtAgingBadge'
@@ -60,13 +61,15 @@ export function DebtsPage() {
         </Link>
       </div>
 
-      <DateRangeFilter
-        dateFrom={dateFrom}
-        dateTo={dateTo}
-        onDateFromChange={setDateFrom}
-        onDateToChange={setDateTo}
-        onReset={() => { setDateFrom(''); setDateTo('') }}
-      />
+      <FilterBar>
+        <DateRangeFilter
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onDateFromChange={setDateFrom}
+          onDateToChange={setDateTo}
+          onReset={() => { setDateFrom(''); setDateTo('') }}
+        />
+      </FilterBar>
 
       {loading ? (
         <p className="text-center text-muted-foreground">Loading...</p>

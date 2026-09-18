@@ -4,14 +4,8 @@ import { ExpenseForm } from './ExpenseForm'
 import { ExpenseList } from './ExpenseList'
 import { Button } from '../../components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../../components/ui/select'
 import { DateRangeFilter } from '../../components/DateRangeFilter'
+import { FilterBar, FilterSelect } from '../../components/FilterBar'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import type { Expense } from '../../../shared/types'
 
@@ -41,8 +35,6 @@ export function ExpensesPage() {
 
   const totalCents = expenses.reduce((sum, e) => sum + e.amount_cents, 0)
 
-  const selectClass = 'h-11 w-full rounded-[var(--radius-md)]'
-
   return (
     <div className="flex flex-col gap-4 p-6">
       <div className="flex items-center justify-between">
@@ -55,29 +47,27 @@ export function ExpensesPage() {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-end gap-4">
+      <FilterBar>
         <DateRangeFilter
           dateFrom={filters.date_from ?? ''}
           dateTo={filters.date_to ?? ''}
           onDateFromChange={v => setFilters(f => ({ ...f, date_from: v || undefined }))}
           onDateToChange={v => setFilters(f => ({ ...f, date_to: v || undefined }))}
           onReset={() => setFilters({})}
-        />
-        <label className="flex w-44 flex-col gap-1.5 text-[0.875rem] font-semibold">
-          Source
-          <Select value={filters.payment_source ?? 'all'} onValueChange={v => setFilters(f => ({ ...f, payment_source: v === 'all' ? undefined : v }))}>
-            <SelectTrigger className={selectClass}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="till">Till</SelectItem>
-              <SelectItem value="personal">Personal</SelectItem>
-              <SelectItem value="mpesa">Mpesa</SelectItem>
-            </SelectContent>
-          </Select>
-        </label>
-      </div>
+        >
+          <FilterSelect
+            label="Source"
+            value={filters.payment_source ?? 'all'}
+            onChange={v => setFilters(f => ({ ...f, payment_source: v === 'all' ? undefined : v }))}
+            options={[
+              { value: 'all', label: 'All' },
+              { value: 'till', label: 'Till' },
+              { value: 'personal', label: 'Personal' },
+              { value: 'mpesa', label: 'Mpesa' },
+            ]}
+          />
+        </DateRangeFilter>
+      </FilterBar>
 
       {loading ? (
         <p className="text-center text-muted-foreground">Loading...</p>

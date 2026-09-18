@@ -247,10 +247,10 @@ export function DebtDetailPage() {
           <p className="mb-3 font-semibold">
             Remaining: {payingSale ? fmt(payingSale.remaining_cents) : ''}
           </p>
-          <div className="flex flex-col gap-1.5">
-            <Label className="font-semibold">Payment Amount (UGX)</Label>
+          <Label className="flex w-full flex-col gap-1.5 font-semibold">
+            Payment Amount (UGX)
             <Input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} className="bg-background text-base" autoFocus />
-          </div>
+          </Label>
           <DialogFooter>
             <Button onClick={() => { setPayingSale(null); setPayAmount('') }} variant="outline" className="h-12 flex-1 font-semibold">Cancel</Button>
             <Button onClick={() => payingSale && handlePerSalePay(payingSale.sale_id)} disabled={payProcessing || !payAmount || parseFloat(payAmount) <= 0} className="h-12 flex-1 font-bold">
@@ -276,13 +276,13 @@ export function DebtDetailPage() {
           <p className="mb-3 font-semibold">
             Remaining: {writingOff ? fmt(writingOff.remaining_cents) : ''}
           </p>
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label className="font-semibold">Amount (UGX)</Label>
+          <div className="flex flex-col gap-4">
+            <Label className="flex w-full flex-col gap-1.5 font-semibold">
+              Amount (UGX)
               <Input type="number" value={writeOffAmount} onChange={e => setWriteOffAmount(e.target.value)} className="bg-background text-base" autoFocus />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label className="font-semibold">Reason</Label>
+            </Label>
+            <Label className="flex w-full flex-col gap-1.5 font-semibold">
+              Reason
               <Input
                 type="text"
                 value={writeOffReason}
@@ -290,7 +290,7 @@ export function DebtDetailPage() {
                 placeholder="e.g. Customer is no longer reachable"
                 className="bg-background text-base"
               />
-            </div>
+            </Label>
             {writeOffError && (
               <p className="text-sm font-semibold text-destructive">{writeOffError}</p>
             )}

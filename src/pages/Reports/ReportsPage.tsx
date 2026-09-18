@@ -6,6 +6,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/ta
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
 import { DatePicker } from '../../components/ui/date-picker'
 import { DateRangeFilter } from '../../components/DateRangeFilter'
+import { FilterBar, FilterCard } from '../../components/FilterBar'
 import { PaginationFooter } from '../../components/PaginationFooter'
 import { usePagination } from '../../hooks/usePagination'
 import type { DailyReport, MonthlyReport, ItemPerformance, DebtSummaryItem, SaleWithItems } from '../../../shared/types'
@@ -383,18 +384,20 @@ export function ReportsPage() {
         </TabsList>
 
         <TabsContent value="daily">
-          <div className="flex flex-wrap items-center gap-3">
-            <Button onClick={() => navigateDay(-1)} variant="outline" size="sm" className="bg-card text-[0.875rem]">
-              ◀ Prev
-            </Button>
-            <DatePicker className="w-44" value={selectedDate} onValueChange={setSelectedDate} />
-            <Button onClick={() => setSelectedDate(new Date().toISOString().slice(0, 10))} variant="outline" size="sm" className="bg-card text-[0.875rem] font-semibold">
-              Today
-            </Button>
-            <Button onClick={() => navigateDay(1)} variant="outline" size="sm" className="bg-card text-[0.875rem]">
-              Next ▶
-            </Button>
-          </div>
+          <FilterBar>
+            <FilterCard>
+              <Button onClick={() => navigateDay(-1)} variant="outline" size="sm" className="bg-card text-[0.875rem]">
+                ◀ Prev
+              </Button>
+              <DatePicker className="w-44" value={selectedDate} onValueChange={setSelectedDate} />
+              <Button onClick={() => setSelectedDate(new Date().toISOString().slice(0, 10))} variant="outline" size="sm" className="bg-card text-[0.875rem] font-semibold">
+                Today
+              </Button>
+              <Button onClick={() => navigateDay(1)} variant="outline" size="sm" className="bg-card text-[0.875rem]">
+                Next ▶
+              </Button>
+            </FilterCard>
+          </FilterBar>
         </TabsContent>
 
         <TabsContent value="custom">

@@ -148,16 +148,14 @@ export function SetupPage({ onComplete }: { onComplete: () => void }) {
               Business name
               <Input className={inputClass} value={businessName} onChange={e => setBusinessName(e.target.value)} placeholder="e.g. Kafunda Kitchen" autoFocus />
             </Label>
-            <div className="grid grid-cols-2 gap-4">
-              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
-                Phone (optional)
-                <Input className={inputClass} value={phone} onChange={e => setPhone(e.target.value)} placeholder="0700 000 000" />
-              </Label>
-              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
-                Address (optional)
-                <Input className={inputClass} value={address} onChange={e => setAddress(e.target.value)} placeholder="Kampala" />
-              </Label>
-            </div>
+            <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+              Phone (optional)
+              <Input className={inputClass} value={phone} onChange={e => setPhone(e.target.value)} placeholder="0700 000 000" />
+            </Label>
+            <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+              Address (optional)
+              <Input className={inputClass} value={address} onChange={e => setAddress(e.target.value)} placeholder="Kampala" />
+            </Label>
           </div>
         )}
 

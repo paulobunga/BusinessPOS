@@ -11,6 +11,15 @@ export function registerSalesHandlers() {
     const id = salesRepo.createCaptainOrder(payload)
     return salesRepo.getById(id)
   })
+  ipcMain.handle('sales:list', (_e, filters?: { status?: string; date_from?: string; date_to?: string }) => {
+    return salesRepo.list(filters)
+  })
+  ipcMain.handle('sales:get', (_e, id: number) => {
+    return salesRepo.getWithItems(id)
+  })
+  ipcMain.handle('sales:void', (_e, id: number, reason: string) => {
+    salesRepo.voidSale(id, reason)
+  })
   ipcMain.handle('sales:listByDate', (_e, date) => {
     return salesRepo.listByDate(date)
   })

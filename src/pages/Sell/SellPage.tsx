@@ -1,9 +1,18 @@
 import { cn } from '@/lib/utils'
-import { useEffect, useState } from 'react'
-import { Search, X } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Plus, Search, X } from 'lucide-react'
 import { useCategories } from '../../hooks/useCategories'
 import { useItems } from '../../hooks/useItems'
-import { useCart } from '../../hooks/useCart'
+import {
+  addItemToCart,
+  attachAddOnToCart,
+  calcSubtotal,
+  decrementCartLine,
+  incrementCartLine,
+  removeCartLine,
+  setLinePrice,
+  type CartLine,
+} from '../../hooks/cartItems'
 import { ItemCard } from '../../components/ItemCard'
 import { AddOnSelector } from '../../components/AddOnSelector'
 import { Cart } from '../../components/Cart'
@@ -15,13 +24,15 @@ import { Button } from '../../components/ui/button'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useAuth } from '../../context/AuthContext'
 import { useTill } from '../../context/TillContext'
+import { usePosTabs, type PosTab } from '../../context/PosTabsContext'
 import type { Category, MenuItemWithCategory } from '../../../shared/types'
 import type { CreateSalePayload, CreateCaptainOrderPayload } from '../../../shared/types'
 
 export function SellPage() {
   const { categories, loading: categoriesLoading, error: categoriesError, retry: retryCategories } = useCategories(false)
   const { items, loading: itemsLoading, error: itemsError, retry: retryItems } = useItems()
-  const cart = useCart()
+  const { tabs, setTabs, activeTabId, setActiveTabId, createTab } = usePosTabs()
+  const activeTab = tabs.find(t => t.id === activeTabId) ?? tabs[0]
   const { userId } = useAuth()
   const { currentTill } = useTill()
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null)
@@ -33,9 +44,12 @@ export function SellPage() {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
-  const [pendingSale, setPendingSale] = useState<{ paymentMethod: 'cash' | 'debt'; customerName?: string; paidNowCents: number } | null>(null)
-  const [pendingCaptain, setPendingCaptain] = useState<{ serviceDescription: string; customerName?: string } | null>(null)
+  const [pendingSale, setPendingSale] = useState<{ paymentMethod: 'cash' | 'debt'; customerName?: string; paidNowCents: number; tabId: string } | null>(null)
+  const [pendingCaptain, setPendingCaptain] = useState<{ serviceDescription: string; customerName?: string; tabId: string } | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [closingTab, setClosingTab] = useState<PosTab | null>(null)
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
   const [availability, setAvailability] = useState<Record<number, number | null>>({})
 
   const refreshAvailability = async (ids: number[]) => {
@@ -53,6 +67,45 @@ export function SellPage() {
   useEffect(() => {
     void refreshAvailability(items.map(i => i.id))
   }, [items])
+
+  // Facade over the active tab's cart so Cart + modals keep working unchanged
+  const cart = useMemo(() => {
+    const id = activeTab.id
+    const subtotal = calcSubtotal(activeTab.items)
+    return {
+      items: activeTab.items,
+      subtotal,
+      discountCents: activeTab.discountCents,
+      discountReason: activeTab.discountReason,
+      total: Math.max(0, subtotal - activeTab.discountCents),
+      itemCount: activeTab.items.reduce((s, l) => s + l.quantity, 0),
+      addItem: (item: { id: number; name: string; selling_price_cents: number }) =>
+        setTabs(prev => prev.map(t => (t.id === id ? { ...t, items: addItemToCart(t.items, item) } : t))),
+      increment: (index: number) =>
+        setTabs(prev => prev.map(t => (t.id === id ? { ...t, items: incrementCartLine(t.items, index) } : t))),
+      decrement: (index: number) =>
+        setTabs(prev => prev.map(t => (t.id === id ? { ...t, items: decrementCartLine(t.items, index) } : t))),
+      removeItem: (index: number) =>
+        setTabs(prev => prev.map(t => (t.id === id ? { ...t, items: removeCartLine(t.items, index) } : t))),
+      setLinePrice: (index: number, cents: number) =>
+        setTabs(prev => prev.map(t => (t.id === id ? { ...t, items: setLinePrice(t.items, index, cents) } : t))),
+      attachAddOn: (data: {
+        pricedItemId: number
+        pricedItemName: string
+        pricedPrice: number
+        addOnId: number
+        addOnName: string
+      }) => setTabs(prev => prev.map(t => (t.id === id ? { ...t, items: attachAddOnToCart(t.items, data) } : t))),
+      clearCart: (tabId: string = id) =>
+        setTabs(prev => prev.map(t => (t.id === tabId ? { ...t, items: [], discountCents: 0, discountReason: '' } : t))),
+      setDiscountCents: (cents: number) =>
+        setTabs(prev => prev.map(t => (t.id === id ? { ...t, discountCents: cents } : t))),
+      setDiscountReason: (reason: string) =>
+        setTabs(prev => prev.map(t => (t.id === id ? { ...t, discountReason: reason } : t))),
+      setTabLabel: (tabId: string, label: string) =>
+        setTabs(prev => prev.map(t => (t.id === tabId ? { ...t, label } : t))),
+    }
+  }, [activeTab])
 
   useEffect(() => {
     const isEditableTarget = (t: EventTarget | null): boolean => {
@@ -143,34 +196,37 @@ export function SellPage() {
       setMessage('You must be signed in to complete a sale.')
       return
     }
-    setPendingSale({ paymentMethod, customerName, paidNowCents })
+    setPendingSale({ paymentMethod, customerName, paidNowCents, tabId: activeTab.id })
   }
 
-  const completeSale = async (paymentMethod: 'cash' | 'debt', customerName?: string, paidNowCents = 0) => {
-    if (!currentTill || userId == null || cart.items.length === 0) return
+  const completeSale = async (paymentMethod: 'cash' | 'debt', customerName?: string, paidNowCents = 0, tabId: string = activeTab.id) => {
+    const tab = tabs.find(t => t.id === tabId) ?? activeTab
+    if (!currentTill || userId == null || tab.items.length === 0) return
     setSaving(true)
     setMessage(null)
+    const subtotal = calcSubtotal(tab.items)
+    const total = Math.max(0, subtotal - tab.discountCents)
     try {
       const isDebtFlow = paymentMethod === 'debt'
       const method: 'cash' | 'debt' | 'mixed' = !isDebtFlow
         ? 'cash'
-        : paidNowCents >= cart.total
+        : paidNowCents >= total
           ? 'cash'
           : paidNowCents > 0
             ? 'mixed'
             : 'debt'
-      const debtCents = method === 'cash' ? 0 : cart.total - paidNowCents
+      const debtCents = method === 'cash' ? 0 : total - paidNowCents
       const payload: CreateSalePayload = {
         customer_name: method !== 'cash' ? customerName : undefined,
-        subtotal_cents: cart.subtotal,
-        discount_cents: cart.discountCents,
-        discount_reason: cart.discountReason || undefined,
-        total_cents: cart.total,
+        subtotal_cents: subtotal,
+        discount_cents: tab.discountCents,
+        discount_reason: tab.discountReason || undefined,
+        total_cents: total,
         debt_cents: debtCents,
         payment_method: method,
         till_session_id: currentTill.id,
         created_by: userId,
-        items: cart.items.map(item => ({
+        items: tab.items.map(item => ({
           item_id: item.itemId,
           free_item_id: item.addOnId ?? null,
           price_cents: item.itemPrice,
@@ -178,11 +234,12 @@ export function SellPage() {
         })),
       }
       await window.api['sales:create'](payload)
-      cart.clearCart()
+      cart.clearCart(tabId)
+      if (customerName?.trim()) cart.setTabLabel(tabId, customerName.trim())
       setSelectedItem(null)
       setSearchQuery('')
       setSuccess(true)
-      void refreshAvailability(cart.items.map(i => i.itemId))
+      void refreshAvailability(tab.items.map(i => i.itemId))
       setTimeout(() => setSuccess(false), 2000)
     } catch (err) {
       setMessage('Sale failed: ' + (err as Error).message)
@@ -191,21 +248,24 @@ export function SellPage() {
     }
   }
 
-  const completeCaptainOrder = async (serviceDescription: string, customerName?: string) => {
-    if (!currentTill || userId == null || cart.items.length === 0) return
+  const completeCaptainOrder = async (serviceDescription: string, customerName?: string, tabId: string = activeTab.id) => {
+    const tab = tabs.find(t => t.id === tabId) ?? activeTab
+    if (!currentTill || userId == null || tab.items.length === 0) return
     setSaving(true)
     setMessage(null)
+    const subtotal = calcSubtotal(tab.items)
+    const total = Math.max(0, subtotal - tab.discountCents)
     try {
       const payload: CreateCaptainOrderPayload = {
         customer_name: customerName || undefined,
         service_description: serviceDescription,
-        subtotal_cents: cart.subtotal,
-        discount_cents: cart.discountCents,
-        discount_reason: cart.discountReason || undefined,
-        total_cents: cart.total,
+        subtotal_cents: subtotal,
+        discount_cents: tab.discountCents,
+        discount_reason: tab.discountReason || undefined,
+        total_cents: total,
         till_session_id: currentTill.id,
         created_by: userId,
-        items: cart.items.map(item => ({
+        items: tab.items.map(item => ({
           item_id: item.itemId,
           free_item_id: item.addOnId ?? null,
           price_cents: item.itemPrice,
@@ -213,17 +273,61 @@ export function SellPage() {
         })),
       }
       await window.api['sales:createCaptainOrder'](payload)
-      cart.clearCart()
+      cart.clearCart(tabId)
+      if (customerName?.trim()) cart.setTabLabel(tabId, customerName.trim())
       setSelectedItem(null)
       setSearchQuery('')
       setSuccess(true)
-      void refreshAvailability(cart.items.map(i => i.itemId))
+      void refreshAvailability(tab.items.map(i => i.itemId))
       setTimeout(() => setSuccess(false), 2000)
     } catch (err) {
       setMessage('Captain order failed: ' + (err as Error).message)
     } finally {
       setSaving(false)
     }
+  }
+
+  const switchTab = (id: string) => {
+    setActiveTabId(id)
+    setSelectedItem(null)
+    setShowOptions(false)
+    setShowDiscount(false)
+    setShowDebt(false)
+    setShowCaptain(false)
+    setPendingSale(null)
+    setPendingCaptain(null)
+  }
+
+  const addTab = () => {
+    const t = createTab()
+    setTabs(prev => [...prev, t])
+    switchTab(t.id)
+  }
+
+  const doCloseTab = (target: PosTab) => {
+    let next = tabs.filter(t => t.id !== target.id)
+    if (next.length === 0) next = [createTab()]
+    setTabs(next)
+    if (!next.some(t => t.id === activeTabId)) {
+      const idx = tabs.findIndex(t => t.id === target.id)
+      switchTab(next[Math.min(idx, next.length - 1)].id)
+    }
+  }
+
+  const requestCloseTab = (target: PosTab) => {
+    if (target.items.length === 0) {
+      doCloseTab(target)
+    } else {
+      setClosingTab(target)
+    }
+  }
+
+  const commitRename = () => {
+    if (renamingId) {
+      const v = renameValue.trim()
+      if (v) setTabs(prev => prev.map(t => (t.id === renamingId ? { ...t, label: v } : t)))
+    }
+    setRenamingId(null)
   }
 
   const loading = categoriesLoading || itemsLoading
@@ -241,7 +345,77 @@ export function SellPage() {
   )
 
   return (
-    <div className="flex h-full min-h-0">
+    <div className="flex h-full min-h-0 flex-col">
+      {/* Customer tabs */}
+      <div className="flex shrink-0 items-end gap-1 overflow-x-auto border-b border-border bg-card px-3 pt-2">
+        {tabs.map(t => {
+          const isActive = t.id === activeTab.id
+          const count = t.items.reduce((s, l) => s + l.quantity, 0)
+          return (
+            <div
+              key={t.id}
+              className={cn(
+                'flex shrink-0 items-center gap-1 rounded-t-[var(--radius-md)] border px-2 py-1.5 text-[0.875rem]',
+                isActive
+                  ? '-mb-px border-border border-b-background bg-background font-bold'
+                  : 'border-transparent text-muted-foreground hover:bg-muted'
+              )}
+            >
+              {renamingId === t.id ? (
+                <input
+                  autoFocus
+                  value={renameValue}
+                  onChange={e => setRenameValue(e.target.value)}
+                  onBlur={commitRename}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') commitRename()
+                    if (e.key === 'Escape') setRenamingId(null)
+                  }}
+                  onClick={e => e.stopPropagation()}
+                  className="h-6 w-28 rounded border border-border bg-background px-1 text-[0.875rem] outline-none"
+                  aria-label="Tab name"
+                />
+              ) : (
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => switchTab(t.id)}
+                  onDoubleClick={() => { setRenamingId(t.id); setRenameValue(t.label) }}
+                  title="Double-click to rename"
+                  className="flex items-center gap-1.5"
+                >
+                  <span className="max-w-32 truncate">{t.label}</span>
+                  {count > 0 && (
+                    <span className="grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1 text-[0.6875rem] font-bold text-white">
+                      {count}
+                    </span>
+                  )}
+                </button>
+              )}
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => requestCloseTab(t)}
+                aria-label={`Close ${t.label}`}
+                className="grid h-5 w-5 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )
+        })}
+        <button
+          type="button"
+          disabled={saving}
+          onClick={addTab}
+          aria-label="New customer tab"
+          title="New customer tab"
+          className="mb-1 grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          <Plus className="h-4 w-4" />
+        </button>
+      </div>
+      <div className="flex min-h-0 flex-1">
       {/* Item selection — scrolls independently */}
       <div className="flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-6 pr-3">
         <h1 className="text-2xl font-bold">Point of Sale</h1>
@@ -329,6 +503,7 @@ export function SellPage() {
         )}
 
         <Cart
+          key={activeTab.id}
           items={cart.items}
           subtotal={cart.subtotal}
           discountCents={cart.discountCents}
@@ -337,10 +512,12 @@ export function SellPage() {
           onRemoveItem={cart.removeItem}
           onIncrement={cart.increment}
           onDecrement={cart.decrement}
+          onSetLinePrice={cart.setLinePrice}
           onClear={cart.clearCart}
           onOpenOptions={() => setShowOptions(true)}
           onCompleteSale={() => requestSale('cash')}
         />
+      </div>
       </div>
 
       {showOptions && (
@@ -390,7 +567,7 @@ export function SellPage() {
           onConfirm={(serviceDescription, customerName) => {
             setShowCaptain(false)
             if (!currentTill || userId == null || cart.items.length === 0) return
-            setPendingCaptain({ serviceDescription, customerName })
+            setPendingCaptain({ serviceDescription, customerName, tabId: activeTab.id })
           }}
           onClose={() => setShowCaptain(false)}
         />
@@ -405,7 +582,7 @@ export function SellPage() {
         onConfirm={() => {
           const p = pendingSale
           setPendingSale(null)
-          if (p) completeSale(p.paymentMethod, p.customerName, p.paidNowCents)
+          if (p) completeSale(p.paymentMethod, p.customerName, p.paidNowCents, p.tabId)
         }}
       />
 
@@ -418,7 +595,21 @@ export function SellPage() {
         onConfirm={() => {
           const p = pendingCaptain
           setPendingCaptain(null)
-          if (p) completeCaptainOrder(p.serviceDescription, p.customerName)
+          if (p) completeCaptainOrder(p.serviceDescription, p.customerName, p.tabId)
+        }}
+      />
+
+      <ConfirmDialog
+        open={closingTab != null}
+        onOpenChange={o => { if (!o) setClosingTab(null) }}
+        title={`Close ${closingTab?.label ?? 'tab'}?`}
+        description="Items in this order will be discarded."
+        destructive
+        confirmText="Close Tab"
+        onConfirm={() => {
+          const t = closingTab
+          setClosingTab(null)
+          if (t) doCloseTab(t)
         }}
       />
 

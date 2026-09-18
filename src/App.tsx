@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { TillProvider } from './context/TillContext'
+import { PosTabsProvider } from './context/PosTabsContext'
 import { PinPadPage } from './pages/Login/PinPadPage'
 import { RequireAuth } from './components/RequireAuth'
 import { AppLayout } from './components/AppLayout'
 import { RecordDebtsPage } from './pages/Debts/RecordDebtsPage'
 import { SetupPage } from './pages/Setup/SetupPage'
 import { SellPage } from './pages/Sell/SellPage'
+import { SalesHistoryPage } from './pages/Sales/SalesHistoryPage'
 import { ExpensesPage } from './pages/Expenses/ExpensesPage'
 import { DebtsPage } from './pages/Debts/DebtsPage'
 import { SalesReportPage } from './pages/Sales/SalesReportPage'
@@ -47,12 +49,14 @@ function Root() {
 
   return (
     <TillProvider>
+      <PosTabsProvider>
       <Routes>
         <Route path="/login" element={<PinPadPage />} />
         <Route path="/" element={<Navigate to="/sell" replace />} />
         <Route element={<RequireAuth />}>
           <Route element={<AppLayout />}>
             <Route path="/sell" element={<SellPage />} />
+            <Route path="/sales" element={<SalesHistoryPage />} />
             <Route path="/expenses" element={<RequireModule module="expenses"><ExpensesPage /></RequireModule>} />
             <Route path="/debts" element={<RequireModule module="debts"><DebtsPage /></RequireModule>} />
             <Route path="/sales/report" element={<RequireModule module="reports"><SalesReportPage /></RequireModule>} />
@@ -70,6 +74,7 @@ function Root() {
           </Route>
         </Route>
       </Routes>
+      </PosTabsProvider>
     </TillProvider>
   )
 }

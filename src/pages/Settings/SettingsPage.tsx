@@ -537,7 +537,7 @@ export function SettingsPage() {
           </DialogHeader>
           <div className="flex flex-col gap-4">
             {categoryStatus?.type === 'error' && <StatusLine type="error" text={categoryStatus.text} />}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-4">
               <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">Name<Input className={inputClass} value={categoryDraft.name} onChange={e => setCategoryDraft(d => ({ ...d, name: e.target.value }))} /></Label>
               <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">Sort order<Input className={inputClass} type="number" value={categoryDraft.sort_order} onChange={e => setCategoryDraft(d => ({ ...d, sort_order: e.target.value }))} /></Label>
             </div>
@@ -581,9 +581,9 @@ export function SettingsPage() {
           </DialogHeader>
           <div className="flex flex-col gap-4">
             {attrStatus?.type === 'error' && <StatusLine type="error" text={attrStatus.text} />}
-            <div className="grid grid-cols-[2fr_1fr_1fr] gap-4">
-              <Label className="flex min-w-0 flex-col gap-1 text-[0.875rem] font-semibold">Name<Input className={inputClass} value={attrDraft.name} onChange={e => setAttrDraft(d => ({ ...d, name: e.target.value }))} /></Label>
-              <Label className="flex min-w-0 flex-col gap-1 text-[0.875rem] font-semibold">Type
+            <div className="flex flex-col gap-4">
+              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">Name<Input className={inputClass} value={attrDraft.name} onChange={e => setAttrDraft(d => ({ ...d, name: e.target.value }))} /></Label>
+              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">Type
                 <Select value={attrDraft.type} onValueChange={v => setAttrDraft(d => ({ ...d, type: v }))}>
                   <SelectTrigger className={selectClass}>
                     <SelectValue />
@@ -595,7 +595,7 @@ export function SettingsPage() {
                   </SelectContent>
                 </Select>
               </Label>
-              <Label className="flex min-w-0 flex-col gap-1 text-[0.875rem] font-semibold">Scope
+              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">Scope
                 <Select value={attrDraft.scope} onValueChange={v => setAttrDraft(d => ({ ...d, scope: v }))}>
                   <SelectTrigger className={selectClass}>
                     <SelectValue />
@@ -628,27 +628,27 @@ export function SettingsPage() {
           </DialogHeader>
           <div className="flex flex-col gap-4">
             {itemStatus?.type === 'error' && <StatusLine type="error" text={itemStatus.text} />}
-            <div className="grid grid-cols-[2fr_1fr_1fr] gap-4">
-              <Label className="flex min-w-0 flex-col gap-1 text-[0.875rem] font-semibold">Name<Input className={inputClass} value={itemDraft.name} onChange={e => setItemDraft(d => ({ ...d, name: e.target.value }))} /></Label>
-              <Label className="flex min-w-0 flex-col gap-1 text-[0.875rem] font-semibold">Selling (UGX)<Input className={inputClass} type="number" min="0" value={itemDraft.selling} onChange={e => setItemDraft(d => ({ ...d, selling: e.target.value }))} /></Label>
-              <Label className="flex min-w-0 flex-col gap-1 text-[0.875rem] font-semibold">Cost (UGX)<Input className={inputClass} type="number" min="0" value={itemDraft.cost} onChange={e => setItemDraft(d => ({ ...d, cost: e.target.value }))} /></Label>
+            <div className="flex flex-col gap-4">
+              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">Name<Input className={inputClass} value={itemDraft.name} onChange={e => setItemDraft(d => ({ ...d, name: e.target.value }))} /></Label>
+              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">Selling (UGX)<Input className={inputClass} type="number" min="0" value={itemDraft.selling} onChange={e => setItemDraft(d => ({ ...d, selling: e.target.value }))} /></Label>
+              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">Cost (UGX)<Input className={inputClass} type="number" min="0" value={itemDraft.cost} onChange={e => setItemDraft(d => ({ ...d, cost: e.target.value }))} /></Label>
             </div>
             <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
               Purchase unit
               <Input className={`${inputClass} max-w-[160px]`} value={itemDraft.purchase_unit} onChange={e => setItemDraft(d => ({ ...d, purchase_unit: e.target.value }))} placeholder="kg" />
             </Label>
             {itemModal?.mode === 'edit' && categoryDefs.length > 0 && (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-col gap-4">
                 {categoryDefs.map(def => {
                   const v = itemDraft.values[def.id] ?? {}
                   if (def.type === 'text') return (
-                    <Label key={def.id} className="flex min-w-[160px] flex-1 flex-col gap-1 text-[0.875rem] font-semibold">
+                    <Label key={def.id} className="flex flex-col gap-1 text-[0.875rem] font-semibold">
                       {def.name}
                       <Input className={inputClass} value={v.text ?? ''} onChange={e => setItemDraft(d => ({ ...d, values: { ...d.values, [def.id]: { ...v, text: e.target.value } } }))} />
                     </Label>
                   )
                   if (def.type === 'number') return (
-                    <Label key={def.id} className="flex min-w-[160px] flex-1 flex-col gap-1 text-[0.875rem] font-semibold">
+                    <Label key={def.id} className="flex flex-col gap-1 text-[0.875rem] font-semibold">
                       {def.name}
                       <Input className={inputClass} type="number" value={v.number ?? ''} onChange={e => setItemDraft(d => ({ ...d, values: { ...d.values, [def.id]: { ...v, number: e.target.value } } }))} />
                     </Label>
@@ -679,7 +679,7 @@ export function SettingsPage() {
           </DialogHeader>
           <div className="flex flex-col gap-4">
             {pinStatus?.type === 'error' && <StatusLine type="error" text={pinStatus.text} />}
-            <div className="flex flex-wrap items-end gap-4">
+            <div className="flex flex-col gap-4">
               <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">Current PIN<Input className={pinClass} type="password" inputMode="numeric" maxLength={4} value={oldPin} onChange={e => setOldPin(e.target.value.replace(/\D/g, ''))} /></Label>
               <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">New PIN<Input className={pinClass} type="password" inputMode="numeric" maxLength={4} value={newPin} onChange={e => setNewPin(e.target.value.replace(/\D/g, ''))} /></Label>
               <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">Confirm new PIN<Input className={pinClass} type="password" inputMode="numeric" maxLength={4} value={confirmPin} onChange={e => setConfirmPin(e.target.value.replace(/\D/g, ''))} /></Label>

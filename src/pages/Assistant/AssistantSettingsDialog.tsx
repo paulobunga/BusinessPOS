@@ -42,9 +42,9 @@ export function AssistantSettingsDialog({ onClose }: { onClose: () => void }) {
         <DialogHeader>
           <DialogTitle>AI Assistant Settings</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="ds-key">DeepSeek API key</Label>
+        <div className="flex flex-col gap-4">
+          <Label htmlFor="ds-key" className="flex w-full flex-col gap-1.5">
+            DeepSeek API key
             <Input
               id="ds-key"
               type="password"
@@ -55,9 +55,9 @@ export function AssistantSettingsDialog({ onClose }: { onClose: () => void }) {
             <p className="text-xs text-muted-foreground">
               Stored encrypted on this device. Get a key at platform.openai.com.
             </p>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="ds-model">Model</Label>
+          </Label>
+          <Label htmlFor="ds-model" className="flex w-full flex-col gap-1.5">
+            Model
             <select
               id="ds-model"
               value={model}
@@ -66,7 +66,7 @@ export function AssistantSettingsDialog({ onClose }: { onClose: () => void }) {
             >
               {MODEL_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
-          </div>
+          </Label>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>

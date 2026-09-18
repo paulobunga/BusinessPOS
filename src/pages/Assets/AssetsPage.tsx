@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useAssets } from '../../hooks/useAssets'
 import { Button } from '../../components/ui/button'
 import { Badge } from '../../components/ui/badge'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
+import { FilterBar, FilterCard, FilterSelect } from '../../components/FilterBar'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
 import { PaginationFooter } from '../../components/PaginationFooter'
 import { usePagination } from '../../hooks/usePagination'
@@ -12,7 +12,6 @@ import { AssetFormDialog } from './AssetFormDialog'
 import { DisposeAssetDialog } from './DisposeAssetDialog'
 
 const fmt = (n: number) => new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 }).format(n)
-const selectClass = 'h-11 w-full rounded-[var(--radius-md)]'
 
 export function AssetsPage() {
   const { assets, summary, loading, error, create, update, dispose } = useAssets()
@@ -44,33 +43,30 @@ export function AssetsPage() {
         </Button>
       </div>
 
-      <div className="flex flex-wrap items-end gap-4">
-        <label className="flex w-44 flex-col gap-1.5 text-[0.875rem] font-semibold">
-          Status
-          <Select value={status} onValueChange={v => setStatus(v as typeof status)}>
-            <SelectTrigger className={selectClass}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="disposed">Disposed</SelectItem>
-            </SelectContent>
-          </Select>
-        </label>
-        <label className="flex w-56 flex-col gap-1.5 text-[0.875rem] font-semibold">
-          Category
-          <Select value={cat} onValueChange={setCat}>
-            <SelectTrigger className={selectClass}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              {ASSET_CATEGORIES.map(c => <SelectItem key={c.name} value={c.name}>{c.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </label>
-      </div>
+      <FilterBar>
+        <FilterCard>
+          <FilterSelect
+            label="Status"
+            value={status}
+            onChange={v => setStatus(v as typeof status)}
+            options={[
+              { value: 'all', label: 'All' },
+              { value: 'active', label: 'Active' },
+              { value: 'disposed', label: 'Disposed' },
+            ]}
+          />
+          <FilterSelect
+            label="Category"
+            value={cat}
+            onChange={setCat}
+            width="w-56"
+            options={[
+              { value: 'all', label: 'All' },
+              ...ASSET_CATEGORIES.map(c => ({ value: c.name, label: c.name })),
+            ]}
+          />
+        </FilterCard>
+      </FilterBar>
 
       {loading ? (
         <p className="text-center text-muted-foreground">Loading...</p>

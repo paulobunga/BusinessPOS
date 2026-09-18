@@ -60,41 +60,39 @@ export function ExpenseForm({ initial, onSubmit, onCancel }: Props) {
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       {error && <p className="font-semibold text-destructive">{error}</p>}
 
-      <div className="grid grid-cols-2 gap-4">
-        <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
-          Date
-          <DatePicker value={date} onValueChange={setDate} />
-        </Label>
+      <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+        Date
+        <DatePicker value={date} onValueChange={setDate} />
+      </Label>
 
-        <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
-          Category
-          <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger className={selectClass}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </Label>
+      <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+        Category
+        <Select value={category} onValueChange={setCategory}>
+          <SelectTrigger className={selectClass}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </Label>
 
-        <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
-          Amount (UGX)
-          <Input type="number" placeholder="0" value={amount} onChange={e => setAmount(e.target.value)} className={inputClass} min="0" step="0.01" />
-        </Label>
+      <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+        Amount (UGX)
+        <Input type="number" placeholder="0" value={amount} onChange={e => setAmount(e.target.value)} className={inputClass} min="0" step="0.01" />
+      </Label>
 
-        <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
-          Payment Source
-          <Select value={paymentSource} onValueChange={v => setPaymentSource(v as typeof paymentSource)}>
-            <SelectTrigger className={selectClass}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PAYMENT_SOURCES.map(s => <SelectItem key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </Label>
-      </div>
+      <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+        Payment Source
+        <Select value={paymentSource} onValueChange={v => setPaymentSource(v as typeof paymentSource)}>
+          <SelectTrigger className={selectClass}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {PAYMENT_SOURCES.map(s => <SelectItem key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </Label>
 
       <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
         Description

@@ -26,9 +26,9 @@ export function CaptainOrderModal({ total, onConfirm, onClose }: CaptainOrderMod
         <DialogDescription className="font-semibold">
           Food provided in exchange for a service. Total: {fmt(total)} — no cash changes hands, recorded as a completed barter sale.
         </DialogDescription>
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1.5">
-            <Label className="font-semibold">Service Provided</Label>
+        <div className="flex flex-col gap-4">
+          <Label className="flex w-full flex-col gap-1.5 font-semibold">
+            Service Provided
             <Textarea
               value={description}
               onChange={e => setDescription(e.target.value)}
@@ -36,9 +36,9 @@ export function CaptainOrderModal({ total, onConfirm, onClose }: CaptainOrderMod
               className="bg-background text-base"
               autoFocus
             />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label className="font-semibold">Person / Service Provider (optional)</Label>
+          </Label>
+          <Label className="flex w-full flex-col gap-1.5 font-semibold">
+            Person / Service Provider (optional)
             <Input
               type="text"
               value={name}
@@ -46,7 +46,7 @@ export function CaptainOrderModal({ total, onConfirm, onClose }: CaptainOrderMod
               placeholder="Enter name"
               className="h-11 bg-background text-base"
             />
-          </div>
+          </Label>
         </div>
         <DialogFooter>
           <Button onClick={onClose} variant="outline" className="h-12 flex-1 font-semibold">Cancel</Button>

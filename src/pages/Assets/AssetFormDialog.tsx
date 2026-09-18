@@ -109,7 +109,7 @@ export function AssetFormDialog({ open, initial, onSubmit, onOpenChange }: Props
             <Input value={name} onChange={e => setName(e.target.value)} className={inputClass} placeholder="e.g. Freezer, Plates" autoFocus />
           </Label>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="flex flex-col gap-4">
             <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
               Category
               <Select value={category} onValueChange={handleCategoryChange}>
@@ -127,7 +127,7 @@ export function AssetFormDialog({ open, initial, onSubmit, onOpenChange }: Props
             </Label>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="flex flex-col gap-4">
             <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
               Purchase date
               <DatePicker value={purchaseDate} onValueChange={setPurchaseDate} />
@@ -138,7 +138,7 @@ export function AssetFormDialog({ open, initial, onSubmit, onOpenChange }: Props
             </Label>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="flex flex-col gap-4">
             <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
               Salvage value (UGX)
               <Input type="number" min="0" value={salvage} onChange={e => setSalvage(e.target.value)} className={inputClass} placeholder="0" />
@@ -149,7 +149,7 @@ export function AssetFormDialog({ open, initial, onSubmit, onOpenChange }: Props
             </Label>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="flex flex-col gap-4">
             <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
               Location (optional)
               <Input value={location} onChange={e => setLocation(e.target.value)} className={inputClass} placeholder="Kitchen, Store…" />

@@ -26,6 +26,7 @@ import { PaginationFooter } from '../../components/PaginationFooter'
 import { usePagination } from '../../hooks/usePagination'
 import { DatePicker } from '../../components/ui/date-picker'
 import { DateRangeFilter } from '../../components/DateRangeFilter'
+import { FilterBar } from '../../components/FilterBar'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover'
 import { Check, ChevronsUpDown, Package, Plus, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -290,13 +291,15 @@ export function InventoryPage() {
         </div>
       </div>
 
-      <DateRangeFilter
-        dateFrom={dateFrom}
-        dateTo={dateTo}
-        onDateFromChange={setDateFrom}
-        onDateToChange={setDateTo}
-        onReset={() => { setDateFrom(''); setDateTo('') }}
-      />
+      <FilterBar>
+        <DateRangeFilter
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onDateFromChange={setDateFrom}
+          onDateToChange={setDateTo}
+          onReset={() => { setDateFrom(''); setDateTo('') }}
+        />
+      </FilterBar>
 
       <h2 className="text-lg font-bold">Purchases</h2>
 
@@ -446,7 +449,7 @@ export function InventoryPage() {
             </Label>
 
             {addKind === 'stock' ? (
-              <div className="grid grid-cols-2 gap-4">
+              <>
                 <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
                   Purchase unit
                   <Input value={addUnit} onChange={e => setAddUnit(e.target.value)} className={inputClass} placeholder="kg" />
@@ -455,7 +458,7 @@ export function InventoryPage() {
                   Default unit cost (UGX)
                   <Input type="number" min="0" step="0.5" value={addUnitCost} onChange={e => setAddUnitCost(e.target.value)} className={inputClass} placeholder="e.g. 17000" />
                 </Label>
-              </div>
+              </>
             ) : (
               <>
                 <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
@@ -501,12 +504,10 @@ export function InventoryPage() {
           <form onSubmit={handleSubmit} className="flex max-h-[min(80vh,700px)] flex-col gap-4 overflow-y-auto pr-1">
             {error && <p className="m-0 font-semibold text-destructive">{error}</p>}
 
-            <div className="grid grid-cols-[1fr_11rem] gap-4">
-              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
-                Date
-                <DatePicker value={purchaseDate} onValueChange={setPurchaseDate} className="w-full" />
-              </Label>
-            </div>
+            <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+              Date
+              <DatePicker value={purchaseDate} onValueChange={setPurchaseDate} className="w-full" />
+            </Label>
 
             <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
               Stock item
@@ -569,16 +570,14 @@ export function InventoryPage() {
               </Popover>
             </Label>
 
-            <div className="grid grid-cols-2 gap-4">
-              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
-                Quantity ({selectedItem?.purchase_unit ?? 'kg'})
-                <Input type="number" placeholder="0" value={quantity} onChange={e => setQuantity(e.target.value)} className={inputClass} min="0" step="0.1" />
-              </Label>
-              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
-                Unit
-                <Input value={unit} onChange={e => setUnit(e.target.value)} className={inputClass} placeholder="kg" />
-              </Label>
-            </div>
+            <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+              Quantity ({selectedItem?.purchase_unit ?? 'kg'})
+              <Input type="number" placeholder="0" value={quantity} onChange={e => setQuantity(e.target.value)} className={inputClass} min="0" step="0.1" />
+            </Label>
+            <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+              Unit
+              <Input value={unit} onChange={e => setUnit(e.target.value)} className={inputClass} placeholder="kg" />
+            </Label>
 
             <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
               Cost per {unit || 'unit'} (UGX)

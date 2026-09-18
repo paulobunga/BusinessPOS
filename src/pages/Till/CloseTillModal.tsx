@@ -54,8 +54,8 @@ export function CloseTillModal({ onCloseTill, onClose }: CloseTillModalProps) {
             </div>
           </div>
         )}
-        <div className="flex flex-col gap-1.5">
-          <Label className="font-semibold">Actual Cash Counted (UGX)</Label>
+        <Label className="flex w-full flex-col gap-1.5 font-semibold">
+          Actual Cash Counted (UGX)
           <Input
             type="number"
             value={actualCash}
@@ -63,7 +63,7 @@ export function CloseTillModal({ onCloseTill, onClose }: CloseTillModalProps) {
             className="bg-background text-base"
             autoFocus
           />
-        </div>
+        </Label>
         {actualCash && countData && (
           <div
             className={`rounded-[var(--radius-md)] px-3 py-3 font-bold ${

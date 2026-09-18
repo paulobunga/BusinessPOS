@@ -1,5 +1,33 @@
 import { getDb } from '../index'
 import { stockRepo } from './stockRepo'
+import type { SaleWithItems, SaleItem } from '../../../shared/types'
+
+const SALE_COLUMNS = `
+  id, till_session_id, created_at, status, subtotal_cents, discount_cents,
+  tax_cents, total_cents, payment_source, customer_id, customer_name,
+  created_by, voided_at, voided_by, void_reason, discount_reason,
+  debt_cents, payment_method, sale_kind, service_description
+`
+
+function attachItems(sales: SaleWithItems[]): SaleWithItems[] {
+  const db = getDb()
+  const ids = sales.map(s => s.id)
+  const itemRows: SaleItem[] = ids.length
+    ? db.prepare(`
+        SELECT id, sale_id, item_id, free_item_id, name_snapshot, unit_price_cents, quantity, line_total_cents
+        FROM sale_items
+        WHERE sale_id IN (${ids.map(() => '?').join(',')})
+        ORDER BY id ASC
+      `).all(...ids) as SaleItem[]
+    : []
+  const bySale = new Map<number, SaleItem[]>()
+  for (const it of itemRows) {
+    const arr = bySale.get(it.sale_id) ?? []
+    arr.push(it)
+    bySale.set(it.sale_id, arr)
+  }
+  return sales.map(s => ({ ...s, items: bySale.get(s.id) ?? [] }))
+}
 
 export const salesRepo = {
   create(data: {
@@ -124,7 +152,38 @@ export const salesRepo = {
   },
   getById(id: number) {
     return getDb().prepare('SELECT * FROM sales WHERE id = ?').get(id)
-  }
+  },
+  list(filters?: { status?: string; date_from?: string; date_to?: string }): SaleWithItems[] {
+    const db = getDb()
+    const where: string[] = []
+    const params: (string | number)[] = []
+    if (filters?.status) { where.push('status = ?'); params.push(filters.status) }
+    if (filters?.date_from) { where.push('DATE(created_at) >= ?'); params.push(filters.date_from) }
+    if (filters?.date_to) { where.push('DATE(created_at) <= ?'); params.push(filters.date_to) }
+    const rows = db.prepare(`
+      SELECT ${SALE_COLUMNS}
+      FROM sales
+      ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+      ORDER BY id DESC
+    `).all(...params) as SaleWithItems[]
+    return attachItems(rows)
+  },
+  getWithItems(id: number): SaleWithItems {
+    const row = getDb().prepare(`SELECT ${SALE_COLUMNS} FROM sales WHERE id = ?`).get(id) as SaleWithItems | undefined
+    if (!row) throw new Error(`Sale ${id} not found`)
+    return attachItems([row])[0]
+  },
+  voidSale(id: number, reason: string): void {
+    if (!reason || !reason.trim()) throw new Error('A void reason is required')
+    const db = getDb()
+    const sale = db.prepare('SELECT status FROM sales WHERE id = ?').get(id) as { status: string } | undefined
+    if (!sale) throw new Error(`Sale ${id} not found`)
+    if (sale.status === 'voided') throw new Error('Sale is already voided')
+    // Stock is left untouched: voided items were already served, so no restock.
+    // Reports and debt lists filter on completed/unpaid, so voided sales drop out automatically.
+    db.prepare(`UPDATE sales SET status = 'voided', void_reason = ?, voided_at = datetime('now') WHERE id = ?`)
+      .run(reason.trim(), id)
+  },
 }
 
 function resolveCustomer(name?: string): number | null {

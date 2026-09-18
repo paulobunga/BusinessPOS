@@ -43,10 +43,10 @@ export function DebtModal({ total, onConfirm, onClose }: DebtModalProps) {
           <DialogTitle className="text-xl font-bold">Debt / Partial Payment</DialogTitle>
         </DialogHeader>
         <DialogDescription className="font-semibold">Total: {fmt(total)}</DialogDescription>
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-4">
           {owed > 0 && <BalanceWarning owedCents={owed} />}
-          <div className="flex flex-col gap-1.5">
-            <Label className="font-semibold">Customer Name</Label>
+          <Label className="flex w-full flex-col gap-1.5 font-semibold">
+            Customer Name
             <Input
               type="text"
               value={name}
@@ -56,9 +56,9 @@ export function DebtModal({ total, onConfirm, onClose }: DebtModalProps) {
               className="h-11 bg-background text-base"
               autoFocus
             />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label className="font-semibold">Paid Now (UGX)</Label>
+          </Label>
+          <Label className="flex w-full flex-col gap-1.5 font-semibold">
+            Paid Now (UGX)
             <Input
               type="number"
               value={paidNow}
@@ -66,15 +66,15 @@ export function DebtModal({ total, onConfirm, onClose }: DebtModalProps) {
               placeholder="0"
               className="bg-background text-base"
             />
-            <Button
-              type="button"
-              variant="outline"
-              className="h-10 border-border bg-card text-[0.8125rem] font-semibold"
-              onClick={() => setPaidNow(String(total))}
-            >
-              Pay in full ({fmt(total)})
-            </Button>
-          </div>
+          </Label>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-10 border-border bg-card text-[0.8125rem] font-semibold"
+            onClick={() => setPaidNow(String(total))}
+          >
+            Pay in full ({fmt(total)})
+          </Button>
           <p className="text-sm font-semibold text-muted-foreground">
             To carry forward: <span className="text-warning">{fmt(carried)}</span>
           </p>
