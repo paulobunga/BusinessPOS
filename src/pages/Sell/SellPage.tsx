@@ -36,6 +36,23 @@ export function SellPage() {
   const [pendingSale, setPendingSale] = useState<{ paymentMethod: 'cash' | 'debt'; customerName?: string; paidNowCents: number } | null>(null)
   const [pendingCaptain, setPendingCaptain] = useState<{ serviceDescription: string; customerName?: string } | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [availability, setAvailability] = useState<Record<number, number | null>>({})
+
+  const refreshAvailability = async (ids: number[]) => {
+    if (ids.length === 0) return
+    const getAvailability = (window.api as unknown as Record<string, ((itemIds: number[]) => Promise<Record<number, number | null>>) | undefined>)['inventory:stockAvailability']
+    if (typeof getAvailability !== 'function') return
+    try {
+      const result = await getAvailability(ids)
+      setAvailability(prev => ({ ...prev, ...result }))
+    } catch {
+      // stock tracking unavailable — items remain sellable
+    }
+  }
+
+  useEffect(() => {
+    void refreshAvailability(items.map(i => i.id))
+  }, [items])
 
   useEffect(() => {
     const isEditableTarget = (t: EventTarget | null): boolean => {
@@ -97,6 +114,8 @@ export function SellPage() {
 
   const handleItemSelect = (item: MenuItemWithCategory) => {
     if (item.category_kind !== 'priced') return
+    const left = availability[item.id]
+    if (left != null && left <= 0) return
     setSelectedItem(item)
     cart.addItem(item)
   }
@@ -163,6 +182,7 @@ export function SellPage() {
       setSelectedItem(null)
       setSearchQuery('')
       setSuccess(true)
+      void refreshAvailability(cart.items.map(i => i.itemId))
       setTimeout(() => setSuccess(false), 2000)
     } catch (err) {
       setMessage('Sale failed: ' + (err as Error).message)
@@ -197,6 +217,7 @@ export function SellPage() {
       setSelectedItem(null)
       setSearchQuery('')
       setSuccess(true)
+      void refreshAvailability(cart.items.map(i => i.itemId))
       setTimeout(() => setSuccess(false), 2000)
     } catch (err) {
       setMessage('Captain order failed: ' + (err as Error).message)
@@ -275,6 +296,7 @@ export function SellPage() {
               item={item}
               selected={selectedItem?.id === item.id}
               onSelect={handleItemSelect}
+              stockLeft={availability[item.id]}
             />
           ))}
         </div>

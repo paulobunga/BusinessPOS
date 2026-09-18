@@ -26,18 +26,16 @@ import {
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import type { Category, MenuItemWithCategory, AttributeDef } from '../../../shared/types'
 
-const fmt = new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 })
+const fmt = (n: number) => new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 }).format(n)
 const inputClass = 'min-h-10 rounded-[var(--radius-md)] border-border bg-background text-[0.875rem]'
 const selectClass = 'h-11 w-full rounded-[var(--radius-md)]'
 const pinClass = `${inputClass} max-w-[120px] text-center text-base font-bold tracking-[8px]`
 
 function Section({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-4 rounded-[var(--radius-lg)] border border-border bg-card p-6">
-      <div>
-        <h2 className="m-0 text-lg font-bold text-foreground">{title}</h2>
-        {subtitle && <p className="m-0 mt-1 text-[0.875rem] text-muted-foreground">{subtitle}</p>}
-      </div>
+    <div className="flex flex-col gap-3">
+      <h2 className="text-lg font-bold">{title}</h2>
+      {subtitle && <p className="text-[0.875rem] text-muted-foreground">{subtitle}</p>}
       {children}
     </div>
   )
@@ -342,10 +340,10 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="flex max-w-900 flex-col gap-5 p-6">
-      <div>
-        <h1 className="m-0 text-2xl font-bold text-foreground">Settings</h1>
-        <p className="m-0 mt-1 text-[0.875rem] text-muted-foreground">Manage your business details, menu items, and backups.</p>
+    <div className="flex flex-col gap-4 p-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Settings</h1>
+        <span className="text-[0.9375rem] font-bold">{categories.length} categories · {items.length} items</span>
       </div>
 
       {/* Business Info */}
@@ -364,11 +362,14 @@ export function SettingsPage() {
       <Section title="Categories" subtitle="Organize menu items into priced (mains) and free (add-on) categories.">
         {categoriesError && (
           <div className="flex items-center gap-3">
-            <StatusLine type="error" text={categoriesError} />
-            <Button variant="outline" className="h-11 border-border bg-card font-semibold" onClick={retryCategories}>Retry</Button>
+            <p className="text-center font-semibold text-destructive">{categoriesError}</p>
+            <Button variant="outline" size="sm" onClick={retryCategories}>Retry</Button>
           </div>
         )}
-        <div className="flex flex-col gap-2">
+        {categoriesLoading ? (
+          <p className="text-center text-muted-foreground">Loading...</p>
+        ) : (
+        <div className="flex flex-col gap-3">
           {categories.map(c => (
             <div key={c.id} className={`flex items-center justify-between gap-3 rounded-[var(--radius-md)] border border-border bg-card px-4 py-3 ${c.active ? '' : 'opacity-55'}`}>
               <div className="flex min-w-0 flex-wrap items-center gap-3">
@@ -384,12 +385,11 @@ export function SettingsPage() {
               </div>
             </div>
           ))}
-          {!categoriesLoading && categories.length === 0 && <p className="text-[0.9375rem] font-semibold text-muted-foreground">No categories yet.</p>}
+          {categories.length === 0 && <p className="p-12 text-center text-lg text-muted-foreground">No categories yet.</p>}
         </div>
+        )}
 
-        <div className="flex flex-col gap-3 border-t border-border pt-4">
-          <Button className="h-11 w-fit bg-primary font-semibold" onClick={openAddCategory}>+ Add Category</Button>
-        </div>
+        <Button className="h-11 w-fit bg-primary font-semibold" onClick={openAddCategory}>+ Add Category</Button>
         {categoryStatus && <StatusLine type={categoryStatus.type} text={categoryStatus.text} />}
       </Section>
 
@@ -397,11 +397,14 @@ export function SettingsPage() {
       <Section title="Attributes" subtitle="Track text, number, or boolean details per menu item.">
         {attributesError && (
           <div className="flex items-center gap-3">
-            <StatusLine type="error" text={attributesError} />
-            <Button variant="outline" className="h-11 border-border bg-card font-semibold" onClick={retryAttributes}>Retry</Button>
+            <p className="text-center font-semibold text-destructive">{attributesError}</p>
+            <Button variant="outline" size="sm" onClick={retryAttributes}>Retry</Button>
           </div>
         )}
-        <div className="flex flex-col gap-2">
+        {attributesLoading ? (
+          <p className="text-center text-muted-foreground">Loading...</p>
+        ) : (
+        <div className="flex flex-col gap-3">
           {attributes.map(a => (
             <div key={a.id} className="flex items-center justify-between gap-3 rounded-[var(--radius-md)] border border-border bg-card px-4 py-3">
               <div className="min-w-0">
@@ -416,12 +419,11 @@ export function SettingsPage() {
               </div>
             </div>
           ))}
-          {!attributesLoading && attributes.length === 0 && <p className="text-[0.9375rem] font-semibold text-muted-foreground">No attributes yet.</p>}
+          {attributes.length === 0 && <p className="p-12 text-center text-lg text-muted-foreground">No attributes yet.</p>}
         </div>
+        )}
 
-        <div className="flex flex-col gap-3 border-t border-border pt-4">
-          <Button className="h-11 w-fit bg-primary font-semibold" onClick={openAddAttr}>+ Add Attribute</Button>
-        </div>
+        <Button className="h-11 w-fit bg-primary font-semibold" onClick={openAddAttr}>+ Add Attribute</Button>
         {attrStatus && <StatusLine type={attrStatus.type} text={attrStatus.text} />}
       </Section>
 
@@ -429,8 +431,8 @@ export function SettingsPage() {
       <Section title="Menu Items" subtitle="Manage items per category, including prices, out-of-stock state, and attribute values.">
         {itemsError && (
           <div className="flex items-center gap-3">
-            <StatusLine type="error" text={itemsError} />
-            <Button variant="outline" className="h-11 border-border bg-card font-semibold" onClick={retryItems}>Retry</Button>
+            <p className="text-center font-semibold text-destructive">{itemsError}</p>
+            <Button variant="outline" size="sm" onClick={retryItems}>Retry</Button>
           </div>
         )}
         <div className="flex flex-wrap items-end gap-3">
@@ -451,7 +453,10 @@ export function SettingsPage() {
         </div>
 
         {menuCatId != null && (
-          <div className="flex flex-col gap-2">
+          itemsLoading ? (
+            <p className="text-center text-muted-foreground">Loading...</p>
+          ) : (
+          <div className="flex flex-col gap-3">
             {menuItems.map(item => (
               <div key={item.id} className={`flex items-center justify-between gap-3 rounded-[var(--radius-md)] border border-border bg-card px-4 py-3 ${item.active ? '' : 'opacity-55'}`}>
                 <div className="min-w-0">
@@ -461,7 +466,7 @@ export function SettingsPage() {
                     {item.active ? '' : ' · inactive'}
                   </p>
                   <p className="m-0 mt-0.5 text-[0.8125rem] text-muted-foreground">
-                    Sell {fmt.format(item.selling_price_cents)} · Cost {fmt.format(item.cost_price_cents)}
+                    Sell {fmt(item.selling_price_cents)} · Cost {fmt(item.cost_price_cents)}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -472,14 +477,13 @@ export function SettingsPage() {
                 </div>
               </div>
             ))}
-            {!itemsLoading && menuItems.length === 0 && <p className="text-[0.9375rem] font-semibold text-muted-foreground">No items in this category yet.</p>}
+            {menuItems.length === 0 && <p className="p-12 text-center text-lg text-muted-foreground">No items in this category yet.</p>}
           </div>
+          )
         )}
 
         {menuCatId != null && (
-          <div className="flex flex-col gap-3 border-t border-border pt-4">
-            <Button className="h-11 w-fit bg-primary font-semibold" onClick={openAddItem}>+ Add Item</Button>
-          </div>
+          <Button className="h-11 w-fit bg-primary font-semibold" onClick={openAddItem}>+ Add Item</Button>
         )}
         {itemStatus && <StatusLine type={itemStatus.type} text={itemStatus.text} />}
       </Section>

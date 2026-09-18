@@ -26,7 +26,7 @@ import {
 import { DatePicker } from '../../components/ui/date-picker'
 import type { WasteRecord } from '../../../shared/types'
 
-const fmt = new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 })
+const fmt = (n: number) => new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 }).format(n)
 
 const REASONS: { value: 'staff_meal' | 'spoiled' | 'other'; label: string }[] = [
   { value: 'staff_meal', label: 'Cooked leftovers — given to staff' },
@@ -107,31 +107,92 @@ export function WastePage() {
   return (
     <div className="flex flex-col gap-4 p-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Waste Recording</h1>
-          <p className="m-0 text-[0.875rem] text-muted-foreground">
-            Food bought but not sold is a loss. Record cooked leftovers given to staff or raw leftovers thrown out.
-          </p>
+        <h1 className="text-2xl font-bold">Waste Recording</h1>
+        <div className="flex items-center gap-3">
+          <span className="text-[0.9375rem] font-bold">
+            Daily Waste Value: {fmt(dailyTotal)}
+          </span>
+          <Button onClick={() => { setError(''); setOpen(true) }} className="bg-primary font-semibold">
+            + Record Waste
+          </Button>
         </div>
       </div>
 
-      {/* Date picker */}
       <div className="flex flex-wrap items-end gap-4">
         <Label className="flex w-44 flex-col gap-1.5 text-[0.875rem] font-semibold">
           Date
           <DatePicker value={date} onValueChange={setDate} />
         </Label>
-        <span className="ml-auto pb-1 text-base font-bold">
-          Daily Waste Value: {fmt.format(dailyTotal)}
-        </span>
       </div>
 
-      {/* Record form */}
-      <div className="flex justify-end">
-        <Button onClick={() => { setError(''); setOpen(true) }} className="bg-primary font-semibold">
-          + Record Waste
-        </Button>
-      </div>
+      {/* List */}
+      {loading ? (
+        <p className="text-center text-muted-foreground">Loading...</p>
+      ) : records.length === 0 ? (
+        <p className="p-12 text-center text-lg text-muted-foreground">
+          No waste recorded for this date.
+        </p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
+            <Table className="table-zebra">
+              <TableHeader>
+                <TableRow className="bg-card hover:bg-card">
+                  <TableHead>Item</TableHead>
+                  <TableHead>Reason</TableHead>
+                  <TableHead>Notes</TableHead>
+                  <TableHead className="text-right">Qty</TableHead>
+                  <TableHead className="text-right">Estimated Value</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recordsPager.slice.map((w: WasteRecord) => (
+                  <TableRow key={w.id}>
+                    <TableCell className="font-semibold">{w.item_name ?? `Item #${w.item_id}`}</TableCell>
+                    <TableCell>
+                      <Badge className={REASON_COLORS[w.reason] ?? 'bg-muted text-foreground'}>
+                        {REASONS.find(r => r.value === w.reason)?.label ?? w.reason}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="max-w-[280px] truncate text-muted-foreground">{w.notes ?? '—'}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{w.quantity} kg</TableCell>
+                    <TableCell className="text-right font-bold">{fmt(w.estimated_value_cents)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <PaginationFooter pager={recordsPager} />
+        </div>
+      )}
+
+      {/* Aggregate by item */}
+      {byItemData.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <h3 className="m-0 text-[0.9375rem] font-bold text-foreground">Waste by Item</h3>
+          <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
+            <Table className="table-zebra">
+              <TableHeader>
+                <TableRow className="bg-card hover:bg-card">
+                  <TableHead>Item</TableHead>
+                  <TableHead className="text-right">Total Qty</TableHead>
+                  <TableHead className="text-right">Total Value</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {byItemPager.slice.map(row => (
+                  <TableRow key={row.item_name}>
+                    <TableCell className="font-semibold">{row.item_name}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{row.total_quantity} kg</TableCell>
+                    <TableCell className="text-right font-bold">{fmt(row.total_value_cents)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <PaginationFooter pager={byItemPager} />
+        </div>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
@@ -155,7 +216,7 @@ export function WastePage() {
                   <SelectContent>
                     {items.map(p => (
                       <SelectItem key={p.id} value={String(p.id)}>
-                        {p.name} — {fmt.format(p.cost_price_cents)}/kg
+                        {p.name} — {fmt(p.cost_price_cents)}/kg
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -197,7 +258,7 @@ export function WastePage() {
 
             {selectedItem && (
               <p className="m-0 text-[0.8125rem] text-muted-foreground">
-                Auto-calculated as {quantity || '0'} kg × {fmt.format(unitCostCents)}/kg = {fmt.format(autoValue)}. Leave the field empty to use this value.
+                Auto-calculated as {quantity || '0'} kg × {fmt(unitCostCents)}/kg = {fmt(autoValue)}. Leave the field empty to use this value.
               </p>
             )}
 
@@ -214,77 +275,6 @@ export function WastePage() {
           </form>
         </DialogContent>
       </Dialog>
-
-      {/* List */}
-      {loading ? (
-        <p className="text-center text-muted-foreground">Loading...</p>
-      ) : records.length === 0 ? (
-        <p className="p-12 text-center text-lg text-muted-foreground">
-          No waste recorded for this date.
-        </p>
-      ) : (
-        <div>
-          <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
-            <Table className="table-zebra">
-              <TableHeader>
-                <TableRow className="bg-card hover:bg-card">
-                  <TableHead>Item</TableHead>
-                  <TableHead>Reason</TableHead>
-                  <TableHead>Notes</TableHead>
-                  <TableHead className="text-right">Qty</TableHead>
-                  <TableHead className="text-right">Estimated Value</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recordsPager.slice.map((w: WasteRecord) => (
-                  <TableRow key={w.id}>
-                    <TableCell className="font-semibold">{w.item_name ?? `Item #${w.item_id}`}</TableCell>
-                    <TableCell>
-                      <Badge className={REASON_COLORS[w.reason] ?? 'bg-muted text-foreground'}>
-                        {REASONS.find(r => r.value === w.reason)?.label ?? w.reason}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="max-w-[280px] truncate text-muted-foreground">{w.notes ?? '—'}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">{w.quantity} kg</TableCell>
-                    <TableCell className="text-right font-bold">{fmt.format(w.estimated_value_cents)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-          <PaginationFooter pager={recordsPager} />
-        </div>
-      )}
-
-      {/* Aggregate by item */}
-      {byItemData.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <h3 className="m-0 text-[0.9375rem] font-bold text-foreground">Waste by Item</h3>
-          <div>
-            <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
-            <Table className="table-zebra">
-              <TableHeader>
-                <TableRow className="bg-card hover:bg-card">
-                  <TableHead>Item</TableHead>
-                  <TableHead className="text-right">Total Qty</TableHead>
-                  <TableHead className="text-right">Total Value</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {byItemPager.slice.map(row => (
-                  <TableRow key={row.item_name}>
-                    <TableCell className="font-semibold">{row.item_name}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">{row.total_quantity} kg</TableCell>
-                    <TableCell className="text-right font-bold">{fmt.format(row.total_value_cents)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-          <PaginationFooter pager={byItemPager} />
-        </div>
-        </div>
-      )}
     </div>
   )
 }

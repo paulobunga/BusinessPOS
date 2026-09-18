@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { ChefHat, BookOpen, X, Plus, Trash2 } from 'lucide-react'
+import { useState } from 'react'
+import { ChefHat, BookOpen, Trash2 } from 'lucide-react'
 import { useRecipes } from '../../hooks/useRecipes'
 import { useItems } from '../../hooks/useItems'
 import { Markdown } from '../../components/ui/markdown'
@@ -25,11 +25,10 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
 import { PaginationFooter } from '../../components/PaginationFooter'
 import { usePagination } from '../../hooks/usePagination'
-import { EmptyState } from '../../components/ui/empty-state'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import type { RecipeWithIngredients } from '../../../shared/types'
 
-const fmt = new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 })
+const fmt = (n: number) => new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 }).format(n)
 
 interface IngredientRow {
   id?: number
@@ -40,9 +39,8 @@ interface IngredientRow {
 }
 
 export function RecipesPage() {
-  const today = new Date().toISOString().slice(0, 10)
-  const { recipes, loading, create, update, del } = useRecipes()
-  const { items, retry: retryItems } = useItems({ kind: 'priced', activeOnly: true })
+  const { recipes, loading, error: loadError, create, update, del } = useRecipes()
+  const { items } = useItems({ kind: 'priced', activeOnly: true })
 
   const [showForm, setShowForm] = useState(false)
   const [showDetail, setShowDetail] = useState(false)
@@ -169,26 +167,19 @@ export function RecipesPage() {
   return (
     <div className="flex flex-col gap-4 p-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Recipes</h1>
-          <p className="m-0 text-[0.875rem] text-muted-foreground">
-            Chef reference — stored meals with formatted recipes and ingredient breakdowns.
-          </p>
-        </div>
+        <h1 className="text-2xl font-bold">Recipes</h1>
+        <span className="text-[0.9375rem] font-bold">Total: {recipes.length}</span>
         <Button onClick={openCreate} className="bg-primary font-semibold">
           + New Recipe
         </Button>
       </div>
 
       {loading ? (
-        <EmptyState icon={ChefHat} title="Loading recipes..." loading />
+        <p className="text-center text-muted-foreground">Loading...</p>
+      ) : loadError ? (
+        <p className="text-center font-semibold text-destructive">{loadError}</p>
       ) : recipes.length === 0 ? (
-        <EmptyState
-          icon={ChefHat}
-          title="No recipes yet"
-          description="Create your first recipe to get started."
-          action={<Button onClick={openCreate} className="bg-primary font-semibold">+ New Recipe</Button>}
-        />
+        <p className="p-12 text-center text-lg text-muted-foreground">No recipes yet</p>
       ) : (
         <div className="flex flex-col gap-3">
           <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">

@@ -21,8 +21,9 @@ import { runInventoryV2SeedMigration } from './migrations/019_inventory_v2_seed.
 import { runChatTablesMigration } from './migrations/020_chat_tables.js'
 import { runChatArchiveMigration } from './migrations/021_chat_archive.js'
 import { runTotalYieldMigration } from './migrations/022_total_yield.js'
-import { runItemStockMovementsMigration } from './migrations/023_item_stock_movements.js'
 import { runRecipesMigration } from './migrations/023_recipes.js'
+import { runItemStockMovementsMigration } from './migrations/024_item_stock_movements.js'
+import { runYieldCleanupMigration } from './migrations/025_yield_cleanup.js'
 import { runRemovePaymentIdMigration } from './migrations/014_debt_allocations_cleanup.js'
 import { runSetupMigration } from './migrations/012_setup.js'
 import { usersRepo } from './repositories/usersRepo.js'
@@ -33,9 +34,10 @@ import { categoriesRepo } from './repositories/categoriesRepo.js'
 let db: Database.Database | null = null
 
 const DATA_TABLES = [
-  'item_purchase_yields',
   'item_yield_defaults',
   'item_purchases',
+  'item_stock_movements',
+  'item_stock_movements',
   'sale_items',
   'sales',
   'item_attribute_values',
@@ -107,8 +109,9 @@ export function getDb(): Database.Database {
     runChatTablesMigration(db)
     runChatArchiveMigration(db)
     runTotalYieldMigration(db)
-    runItemStockMovementsMigration(db)
     runRecipesMigration(db)
+    runItemStockMovementsMigration(db)
+    runYieldCleanupMigration(db)
 
     const setupComplete = db.prepare("SELECT value FROM settings WHERE key = 'setup_complete'").get() as { value: string } | undefined
     const userCount = (db.prepare('SELECT COUNT(*) as c FROM users').get() as { c: number }).c

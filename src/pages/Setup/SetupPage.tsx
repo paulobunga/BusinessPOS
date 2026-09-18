@@ -17,7 +17,7 @@ const inputClass = 'min-h-10 w-full rounded-[var(--radius-md)] border-border bg-
 const pinClass = `${inputClass} max-w-[140px] text-center text-base font-bold tracking-[8px]`
 const selectClass = 'h-11 w-full rounded-[var(--radius-md)]'
 const UNITS = ['kg', 'pieces', 'litres', 'bags', 'boxes', 'heads', 'dozen']
-const STEPS = ['Business Info', 'Manager Account', 'Raw Inputs', 'Meals']
+const STEPS = ['Business Info', 'Manager Account', 'Menu & Stock']
 
 const toMoney = (s: string) => {
   const n = Number(s)
@@ -59,18 +59,8 @@ export function SetupPage({ onComplete }: { onComplete: () => void }) {
       if (!/^\d{4}$/.test(pin) || !/^\d{4}$/.test(confirmPin)) { setError('PIN must be 4 digits'); return }
       if (pin !== confirmPin) { setError('PINs do not match'); return }
     }
-    if (step === 2) {
-      if (rawInputs.length === 0) { setError('Add at least one raw input'); return }
-      if (rawInputs.some(r => !r.name.trim())) { setError('Every raw input needs a name'); return }
-    }
-    if (step === 3) {
-      if (meals.length === 0) { setError('Add at least one meal'); return }
-      if (meals.some(m => !m.name.trim() || toMoney(String(m.sellingPrice)) <= 0)) {
-        setError('Every meal needs a name and a selling price above 0'); return
-      }
-    }
     setError(null)
-    setStep(s => Math.min(3, s + 1))
+    setStep(s => Math.min(STEPS.length - 1, s + 1))
   }
 
   const finish = async () => {
@@ -78,6 +68,7 @@ export function SetupPage({ onComplete }: { onComplete: () => void }) {
     if (meals.some(m => !m.name.trim() || toMoney(String(m.sellingPrice)) <= 0)) {
       setError('Every meal needs a name and a selling price above 0'); return
     }
+    if (rawInputs.some(r => !r.name.trim())) { setError('Every stock item needs a name'); return }
     setError(null)
     setSaving(true)
     try {
@@ -193,102 +184,104 @@ export function SetupPage({ onComplete }: { onComplete: () => void }) {
         )}
 
         {step === 2 && (
-          <div className="flex flex-col gap-3">
-            {rawInputs.map((r, i) => (
-              <div key={i} className="flex flex-wrap items-end gap-3 rounded-[var(--radius-md)] border border-border bg-background p-3">
-                <Label className="flex min-w-[150px] flex-1 flex-col gap-1 text-[0.8125rem] font-semibold">
-                  Name
-                  <Input className={inputClass} value={r.name} onChange={e => patchRaw(i, { name: e.target.value })} placeholder="e.g. Whole Chicken" />
-                </Label>
-                <Label className="flex w-[130px] flex-col gap-1 text-[0.8125rem] font-semibold">
-                  Unit
-                  <Select value={r.unit || 'kg'} onValueChange={v => patchRaw(i, { unit: v })}>
-                    <SelectTrigger className={selectClass}><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {UNITS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </Label>
-                <Label className="flex w-[140px] flex-col gap-1 text-[0.8125rem] font-semibold">
-                  Cost per unit (UGX)
-                  <Input className={inputClass} type="number" min="0" value={r.costPerUnit === 0 ? '' : r.costPerUnit} onChange={e => patchRaw(i, { costPerUnit: toMoney(e.target.value) })} placeholder="17000" />
-                </Label>
-                <Button variant="outline" className="h-10 w-10 p-0 border-destructive text-destructive" onClick={() => setRawInputs(rs => rs.filter((_, idx) => idx !== i))} aria-label="Remove raw input">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-            <Button variant="outline" className="h-11 w-fit border-border bg-card font-semibold" onClick={() => setRawInputs(rs => [...rs, { name: '', unit: 'kg', costPerUnit: 0 }])}>
-              <Plus className="mr-1 h-4 w-4" /> Add Raw Input
-            </Button>
-            <p className="m-0 text-[0.8125rem] text-muted-foreground">
-              Raw inputs are ingredients you buy in bulk. They stay hidden on the POS screen and can be purchased to back out meal costs.
-            </p>
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className="flex flex-col gap-4">
-            {meals.map((m, i) => (
-              <div key={i} className="flex flex-col gap-3 rounded-[var(--radius-md)] border border-border bg-background p-3">
-                <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-3">
+              <h2 className="m-0 text-base font-bold">Stock items <span className="font-normal text-muted-foreground">(optional)</span></h2>
+              {rawInputs.map((r, i) => (
+                <div key={i} className="flex flex-wrap items-end gap-3 rounded-[var(--radius-md)] border border-border bg-background p-3">
                   <Label className="flex min-w-[150px] flex-1 flex-col gap-1 text-[0.8125rem] font-semibold">
-                    Meal name
-                    <Input className={inputClass} value={m.name} onChange={e => patchMeal(i, { name: e.target.value })} placeholder="e.g. Roast Chicken" />
+                    Name
+                    <Input className={inputClass} value={r.name} onChange={e => patchRaw(i, { name: e.target.value })} placeholder="e.g. Whole Chicken" />
                   </Label>
                   <Label className="flex w-[130px] flex-col gap-1 text-[0.8125rem] font-semibold">
-                    Category
-                    <Input className={inputClass} value={m.category} onChange={e => patchMeal(i, { category: e.target.value })} placeholder="Meals" />
+                    Unit
+                    <Select value={r.unit || 'kg'} onValueChange={v => patchRaw(i, { unit: v })}>
+                      <SelectTrigger className={selectClass}><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {UNITS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                   </Label>
                   <Label className="flex w-[140px] flex-col gap-1 text-[0.8125rem] font-semibold">
-                    Selling price (UGX)
-                    <Input className={inputClass} type="number" min="0" value={m.sellingPrice === 0 ? '' : m.sellingPrice} onChange={e => patchMeal(i, { sellingPrice: toMoney(e.target.value) })} placeholder="12000" />
+                    Cost per unit (UGX)
+                    <Input className={inputClass} type="number" min="0" value={r.costPerUnit === 0 ? '' : r.costPerUnit} onChange={e => patchRaw(i, { costPerUnit: toMoney(e.target.value) })} placeholder="17000" />
                   </Label>
-                  <Label className="flex w-[150px] flex-col gap-1 text-[0.8125rem] font-semibold">
-                    Cost per serving (optional)
-                    <Input className={inputClass} type="number" min="0" value={m.costPerServing === 0 ? '' : m.costPerServing} onChange={e => patchMeal(i, { costPerServing: toMoney(e.target.value) })} placeholder="4000" />
-                  </Label>
-                  <Button variant="outline" className="h-10 w-10 p-0 border-destructive text-destructive" onClick={() => setMeals(ms => ms.filter((_, idx) => idx !== i))} aria-label="Remove meal">
+                  <Button variant="outline" className="h-10 w-10 p-0 border-destructive text-destructive" onClick={() => setRawInputs(rs => rs.filter((_, idx) => idx !== i))} aria-label="Remove stock item">
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
+              ))}
+              <Button variant="outline" className="h-11 w-fit border-border bg-card font-semibold" onClick={() => setRawInputs(rs => [...rs, { name: '', unit: 'kg', costPerUnit: 0 }])}>
+                <Plus className="mr-1 h-4 w-4" /> Add Stock Item
+              </Button>
+              <p className="m-0 text-[0.8125rem] text-muted-foreground">
+                Stock items are ingredients you buy in bulk. They stay hidden on the POS screen — you can also add them later from Inventory.
+              </p>
+            </div>
 
-                <div className="flex flex-col gap-2 border-t border-border pt-3">
-                  <p className="m-0 text-[0.8125rem] font-semibold text-muted-foreground">Made from raw inputs</p>
-                  {m.yields.map((y, yi) => (
-                    <div key={yi} className="flex flex-wrap items-end gap-3">
-                      <Label className="flex min-w-[180px] flex-1 flex-col gap-1 text-[0.8125rem] font-semibold">
-                        Raw input
-                        <Select value={y.rawInputName} onValueChange={v => patchYield(i, yi, { rawInputName: v })}>
-                          <SelectTrigger className={selectClass}><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {rawInputs.filter(r => r.name.trim()).map(r => (
-                              <SelectItem key={r.name.trim()} value={r.name.trim()}>{r.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </Label>
-                      <Label className="flex w-[130px] flex-col gap-1 text-[0.8125rem] font-semibold">
-                        Portions served
-                        <Input className={inputClass} type="number" min="1" value={y.portions === 0 ? '' : y.portions} onChange={e => patchYield(i, yi, { portions: toMoney(e.target.value) })} placeholder="5" />
-                      </Label>
-                      <Button variant="outline" className="h-10 w-10 p-0 border-destructive text-destructive" onClick={() => patchMeal(i, { yields: m.yields.filter((_, yi2) => yi2 !== yi) })} aria-label="Remove yield">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                  <Button variant="outline" className="h-9 w-fit border-border bg-card text-[0.8125rem] font-semibold" disabled={rawInputs.length === 0} onClick={() => patchMeal(i, { yields: [...m.yields, { rawInputName: rawInputs[0]?.name ?? '', portions: 0 }] })}>
-                    <Plus className="mr-1 h-3.5 w-3.5" /> Add raw input link
-                  </Button>
+            <div className="flex flex-col gap-4">
+              <h2 className="m-0 text-base font-bold">Meals</h2>
+              {meals.map((m, i) => (
+                <div key={i} className="flex flex-col gap-3 rounded-[var(--radius-md)] border border-border bg-background p-3">
+                  <div className="flex flex-wrap items-end gap-3">
+                    <Label className="flex min-w-[150px] flex-1 flex-col gap-1 text-[0.8125rem] font-semibold">
+                      Meal name
+                      <Input className={inputClass} value={m.name} onChange={e => patchMeal(i, { name: e.target.value })} placeholder="e.g. Roast Chicken" />
+                    </Label>
+                    <Label className="flex w-[130px] flex-col gap-1 text-[0.8125rem] font-semibold">
+                      Category
+                      <Input className={inputClass} value={m.category} onChange={e => patchMeal(i, { category: e.target.value })} placeholder="Meals" />
+                    </Label>
+                    <Label className="flex w-[140px] flex-col gap-1 text-[0.8125rem] font-semibold">
+                      Selling price (UGX)
+                      <Input className={inputClass} type="number" min="0" value={m.sellingPrice === 0 ? '' : m.sellingPrice} onChange={e => patchMeal(i, { sellingPrice: toMoney(e.target.value) })} placeholder="12000" />
+                    </Label>
+                    <Label className="flex w-[150px] flex-col gap-1 text-[0.8125rem] font-semibold">
+                      Cost per serving (optional)
+                      <Input className={inputClass} type="number" min="0" value={m.costPerServing === 0 ? '' : m.costPerServing} onChange={e => patchMeal(i, { costPerServing: toMoney(e.target.value) })} placeholder="4000" />
+                    </Label>
+                    <Button variant="outline" className="h-10 w-10 p-0 border-destructive text-destructive" onClick={() => setMeals(ms => ms.filter((_, idx) => idx !== i))} aria-label="Remove meal">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  <div className="flex flex-col gap-2 border-t border-border pt-3">
+                    <p className="m-0 text-[0.8125rem] font-semibold text-muted-foreground">Made from stock items</p>
+                    {m.yields.map((y, yi) => (
+                      <div key={yi} className="flex flex-wrap items-end gap-3">
+                        <Label className="flex min-w-[180px] flex-1 flex-col gap-1 text-[0.8125rem] font-semibold">
+                          Stock item
+                          <Select value={y.rawInputName} onValueChange={v => patchYield(i, yi, { rawInputName: v })}>
+                            <SelectTrigger className={selectClass}><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {rawInputs.filter(r => r.name.trim()).map(r => (
+                                <SelectItem key={r.name.trim()} value={r.name.trim()}>{r.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </Label>
+                        <Label className="flex w-[130px] flex-col gap-1 text-[0.8125rem] font-semibold">
+                          Portions served
+                          <Input className={inputClass} type="number" min="1" value={y.portions === 0 ? '' : y.portions} onChange={e => patchYield(i, yi, { portions: toMoney(e.target.value) })} placeholder="5" />
+                        </Label>
+                        <Button variant="outline" className="h-10 w-10 p-0 border-destructive text-destructive" onClick={() => patchMeal(i, { yields: m.yields.filter((_, yi2) => yi2 !== yi) })} aria-label="Remove yield">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button variant="outline" className="h-9 w-fit border-border bg-card text-[0.8125rem] font-semibold" disabled={rawInputs.length === 0} onClick={() => patchMeal(i, { yields: [...m.yields, { rawInputName: rawInputs[0]?.name ?? '', portions: 0 }] })}>
+                      <Plus className="mr-1 h-3.5 w-3.5" /> Add stock item link
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ))}
-            <Button variant="outline" className="h-11 w-fit border-border bg-card font-semibold" onClick={() => setMeals(ms => [...ms, { name: '', category: '', sellingPrice: 0, costPerServing: 0, yields: [] }])}>
-              <Plus className="mr-1 h-4 w-4" /> Add Meal
-            </Button>
-            <p className="m-0 text-[0.8125rem] text-muted-foreground">
-              Meals are what you sell on the POS screen. Linking them to raw inputs pre-fills yield suggestions when you record purchases.
-            </p>
+              ))}
+              <Button variant="outline" className="h-11 w-fit border-border bg-card font-semibold" onClick={() => setMeals(ms => [...ms, { name: '', category: '', sellingPrice: 0, costPerServing: 0, yields: [] }])}>
+                <Plus className="mr-1 h-4 w-4" /> Add Meal
+              </Button>
+              <p className="m-0 text-[0.8125rem] text-muted-foreground">
+                Meals are what you sell on the POS screen. Linking them to stock items pre-fills yield suggestions when you record purchases.
+              </p>
+            </div>
           </div>
         )}
 

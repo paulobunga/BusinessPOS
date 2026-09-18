@@ -7,10 +7,12 @@ interface ItemCardProps {
   item: MenuItemWithCategory
   selected: boolean
   onSelect: (item: MenuItemWithCategory) => void
+  stockLeft?: number | null
 }
 
-export function ItemCard({ item, selected, onSelect }: ItemCardProps) {
-  const outOfStock = item.out_of_stock === 1
+export function ItemCard({ item, selected, onSelect, stockLeft }: ItemCardProps) {
+  const outOfStock = item.out_of_stock === 1 || (stockLeft != null && stockLeft <= 0)
+  const lowStock = stockLeft != null && stockLeft > 0 && stockLeft <= 5
   const isPriced = item.category_kind === 'priced'
   const fmt = (n: number) =>
     new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 }).format(n)
@@ -64,6 +66,11 @@ export function ItemCard({ item, selected, onSelect }: ItemCardProps) {
         >
           {outOfStock ? 'Out of stock' : isPriced ? fmt(item.selling_price_cents) : 'Free'}
         </span>
+        {!outOfStock && stockLeft != null && (
+          <span className={cn('text-xs font-semibold', lowStock ? 'text-warning' : 'text-muted-foreground')}>
+            {stockLeft} left
+          </span>
+        )}
       </div>
     </Button>
   )

@@ -1,4 +1,5 @@
 import { getDb } from '../index'
+import { stockRepo } from './stockRepo'
 
 export const salesRepo = {
   create(data: {
@@ -44,6 +45,13 @@ export const salesRepo = {
       const mi = getItem.get(item.item_id) as { name: string } | undefined
       const qty = item.quantity ?? 1
       insertItem.run(saleId, item.item_id, item.free_item_id ?? null, mi?.name ?? '', item.price_cents, qty, item.price_cents * qty)
+      stockRepo.consumeForSale(item.item_id, qty, {
+        movement_type: 'sale_out',
+        is_discount: data.discount_cents > 0 ? 1 : 0,
+        reference_table: 'sales',
+        reference_id: saleId,
+        created_by: data.created_by,
+      })
     }
     return saleId
   },
@@ -94,15 +102,21 @@ export const salesRepo = {
         const mi = getItem.get(item.item_id) as { name: string } | undefined
         const qty = item.quantity ?? 1
         insertItem.run(saleId, item.item_id, item.free_item_id ?? null, mi?.name ?? '', item.price_cents, qty, item.price_cents * qty)
+        stockRepo.consumeForSale(item.item_id, qty, {
+          movement_type: 'captain_out',
+          reference_table: 'sales',
+          reference_id: saleId,
+          created_by: data.created_by,
+        })
       }
 
-      db.prepare(`
-        INSERT INTO payment_allocations (sale_id, amount_cents, payment_method, till_session_id, created_by, note)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `).run(saleId, data.total_cents, 'service', null, data.created_by, data.service_description.trim())
+    db.prepare(`
+      INSERT INTO payment_allocations (sale_id, amount_cents, payment_method, till_session_id, created_by, note)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(saleId, data.total_cents, 'service', null, data.created_by, data.service_description.trim())
 
-      db.prepare("UPDATE sales SET status = 'completed' WHERE id = ?").run(saleId)
-      return saleId
+    db.prepare("UPDATE sales SET status = 'completed' WHERE id = ?").run(saleId)
+    return saleId
     })()
   },
   listByDate(date: string) {

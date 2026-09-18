@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron'
 import { purchasesRepo } from '../db/repositories/purchasesRepo'
 import { expensesRepo } from '../db/repositories/expensesRepo'
+import { stockRepo } from '../db/repositories/stockRepo'
 
 export function registerInventoryHandlers() {
   ipcMain.handle('inventory:recordPurchase', (_e, payload: { item_id: number; quantity: number; cost_cents: number; date: string; created_by: number | null; unit?: string; total_yield: number }) => {
@@ -20,6 +21,18 @@ export function registerInventoryHandlers() {
     } catch {
       // expense failure should not block purchase
     }
+    try {
+      stockRepo.recordMovement({
+        item_id: payload.item_id,
+        movement_type: 'purchase_in',
+        quantity: payload.total_yield,
+        reference_table: 'item_purchases',
+        reference_id: purchase.id,
+        created_by: payload.created_by ?? 1,
+      })
+    } catch {
+      // stock movement failure should not block purchase
+    }
     return purchase
   })
 
@@ -33,5 +46,21 @@ export function registerInventoryHandlers() {
 
   ipcMain.handle('inventory:dailyTotal', (_e, date: string) => {
     return purchasesRepo.dailyTotal(date)
+  })
+
+  ipcMain.handle('inventory:recordMovement', (_e, payload: { item_id: number; movement_type: 'purchase_in' | 'sale_out' | 'discount_out' | 'captain_out' | 'waste'; quantity: number; is_discount?: number; reference_table?: string; reference_id?: number; created_by?: number | null; notes?: string }) => {
+    return stockRepo.recordMovement(payload)
+  })
+
+  ipcMain.handle('inventory:stockBalance', (_e, itemId: number) => {
+    return stockRepo.getBalance(itemId)
+  })
+
+  ipcMain.handle('inventory:stockMovements', (_e, itemId: number, limit?: number) => {
+    return stockRepo.getMovements(itemId, limit)
+  })
+
+  ipcMain.handle('inventory:stockAvailability', (_e, itemIds: number[]) => {
+    return stockRepo.getAvailabilityMany(itemIds)
   })
 }

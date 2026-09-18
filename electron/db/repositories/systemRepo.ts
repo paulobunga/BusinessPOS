@@ -2,9 +2,9 @@ import { getDb } from '../index.js'
 import { settingsRepo } from './settingsRepo.js'
 
 const DATA_TABLES = [
-  'item_purchase_yields',
   'item_yield_defaults',
   'item_purchases',
+  'item_stock_movements',
   'sale_items',
   'sales',
   'item_attribute_values',

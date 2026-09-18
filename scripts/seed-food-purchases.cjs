@@ -2,8 +2,9 @@
 /* Reclassify food-buy expenses in the live BusinessPOS DB into the Inventory purchase model.
    - Creates a 'Stock' (purchase_only) category + raw input items if missing.
    - For each historical food expense: deletes the expense row and inserts an item_purchase.
-   - Protein purchases carry yields that set meal cost_price_cents (Chicken->Boiled Chicken etc.),
-     matching purchasesRepo.recordPurchase semantics, so Item Performance deducts real cost.
+   - Purchases carry total_yield (servings produced) which feeds the item_stock_movements
+     ledger, and meal links are stored as recipes (item_yield_defaults) while meal
+     cost_price_cents is set from cost-per-portion, so Item Performance deducts real cost.
    Idempotent + guarded. Run with the app CLOSED. */
 
 const Database = require('better-sqlite3')
@@ -111,8 +112,9 @@ const run = db.transaction(() => {
   const getExpense = db.prepare('SELECT id FROM expenses WHERE date = ? AND description = ? AND amount_cents = ? ORDER BY id LIMIT 1')
   const delExpense = db.prepare('DELETE FROM expenses WHERE id = ?')
   const purchaseExists = db.prepare('SELECT id FROM item_purchases WHERE item_id = ? AND purchase_date = ? AND cost_cents = ? ORDER BY id LIMIT 1')
-  const insertPurchase = db.prepare(`INSERT INTO item_purchases (item_id, purchase_date, quantity_kg, cost_cents, expected_yield, created_by, unit, yield_item_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
-  const insertYield = db.prepare('INSERT INTO item_purchase_yields (purchase_id, item_id, portions, cost_cents) VALUES (?, ?, ?, ?)')
+  const insertPurchase = db.prepare(`INSERT INTO item_purchases (item_id, purchase_date, quantity_kg, cost_cents, total_yield, created_by, unit) VALUES (?, ?, ?, ?, ?, ?, ?)`)
+  const insertMovement = db.prepare(`INSERT INTO item_stock_movements (item_id, movement_type, quantity, reference_table, reference_id, created_by) VALUES (?, 'purchase_in', ?, 'item_purchases', ?, ?)`)
+  const linkRecipe = db.prepare(`INSERT OR IGNORE INTO item_yield_defaults (raw_input_id, meal_id, portions) VALUES (?, ?, ?)`)
   const setRawCost = db.prepare('UPDATE menu_items SET cost_price_cents = ? WHERE id = ?')
   const setMealCost = db.prepare('UPDATE menu_items SET cost_price_cents = ? WHERE id = ?')
   const anitah = db.prepare("SELECT id FROM users WHERE name = 'Anitah'").get().id
@@ -136,15 +138,16 @@ const run = db.transaction(() => {
     }
 
     const totalPortions = m.yields.reduce((s, [, p]) => s + p, 0)
-    const legacyYield = m.yields.length > 0 && m.qty > 0 ? Math.max(1, Math.round(m.yields[0][1] / m.qty)) : Math.max(1, m.qty)
-    const res = insertPurchase.run(rawId, m.date, m.qty, m.cost, legacyYield, anitah, m.unit, m.yields.length > 0 ? getMeal.get(m.yields[0][0]).id : null)
+    const totalYield = totalPortions > 0 ? totalPortions : Math.max(1, Math.round(m.qty))
+    const res = insertPurchase.run(rawId, m.date, m.qty, m.cost, totalYield, anitah, m.unit)
+    insertMovement.run(rawId, totalYield, res.lastInsertRowid, anitah)
 
     setRawCost.run(Math.round(m.cost / m.qty), rawId)
     if (m.yields.length > 0) {
       const costPerPortion = Math.round(m.cost / totalPortions)
       for (const [mealName, portions] of m.yields) {
         const mealId = getMeal.get(mealName).id
-        insertYield.run(res.lastInsertRowid, mealId, portions, Math.round((m.cost * portions) / totalPortions))
+        linkRecipe.run(rawId, mealId, portions)
         setMealCost.run(costPerPortion, mealId)
       }
     }

@@ -4,7 +4,6 @@ import { useReports, type ViewMode } from '../../hooks/useReports'
 import { Button } from '../../components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
 import { DatePicker } from '../../components/ui/date-picker'
 import { DateRangeFilter } from '../../components/DateRangeFilter'
 import { PaginationFooter } from '../../components/PaginationFooter'
@@ -37,7 +36,7 @@ function PagedList<T>({ rows, renderRow, pageSize = 50 }: { rows: T[]; renderRow
   const pager = usePagination(rows, pageSize)
 
   return (
-    <div>
+    <div className="flex flex-col gap-3">
       <div className="flex flex-col">
         {pager.slice.map(row => renderRow(row))}
       </div>
@@ -47,8 +46,10 @@ function PagedList<T>({ rows, renderRow, pageSize = 50 }: { rows: T[]; renderRow
 }
 
 function ItemPerformanceView({ rows }: { rows: ItemPerformance[] }) {
+  const pager = usePagination(rows)
+
   if (rows.length === 0) {
-    return <p className="p-12 text-center text-muted-foreground">No item performance data for this period.</p>
+    return <p className="p-12 text-center text-lg text-muted-foreground">No item performance data for this period.</p>
   }
 
   const totals = rows.reduce(
@@ -74,35 +75,38 @@ function ItemPerformanceView({ rows }: { rows: ItemPerformance[] }) {
         <StatCard label="Profit Realised" value={(totals.profit >= 0 ? '+' : '') + formatUGX(totals.profit)} />
       </div>
 
-      <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-card">
-        <div className="overflow-x-auto">
-          <Table className="table-zebra">
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>Category</TableHead>
-                <TableHead>Item</TableHead>
-                <TableHead className="text-right">Sold Qty</TableHead>
-                <TableHead className="text-right">Price / Item</TableHead>
-                <TableHead className="text-right">Amount Sold</TableHead>
-                <TableHead className="text-right">Profit Realised</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map(r => (
-                <TableRow key={r.item_name}>
-                  <TableCell className="text-muted-foreground">{r.category_name}</TableCell>
-                  <TableCell className="font-medium">{r.item_name}</TableCell>
-                  <TableCell className="text-right">{r.quantity_sold}</TableCell>
-                  <TableCell className="text-right">{formatUGX(r.price_per_item_cents)}</TableCell>
-                  <TableCell className="text-right">{formatUGX(r.amount_sold_cents)}</TableCell>
-                  <TableCell className={`text-right font-semibold ${r.profit_cents >= 0 ? 'text-success' : 'text-destructive'}`}>
-                    {r.profit_cents >= 0 ? '+' : ''}{formatUGX(r.profit_cents)}
-                  </TableCell>
+      <div className="flex flex-col gap-3">
+        <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
+          <div className="overflow-x-auto">
+            <Table className="table-zebra">
+              <TableHeader>
+                <TableRow className="bg-card hover:bg-card">
+                  <TableHead>Category</TableHead>
+                  <TableHead>Item</TableHead>
+                  <TableHead className="text-right">Sold Qty</TableHead>
+                  <TableHead className="text-right">Price / Item</TableHead>
+                  <TableHead className="text-right">Amount Sold</TableHead>
+                  <TableHead className="text-right">Profit Realised</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {pager.slice.map(r => (
+                  <TableRow key={r.item_name}>
+                    <TableCell className="text-muted-foreground">{r.category_name}</TableCell>
+                    <TableCell className="font-medium">{r.item_name}</TableCell>
+                    <TableCell className="text-right">{r.quantity_sold}</TableCell>
+                    <TableCell className="text-right">{formatUGX(r.price_per_item_cents)}</TableCell>
+                    <TableCell className="text-right">{formatUGX(r.amount_sold_cents)}</TableCell>
+                    <TableCell className={`text-right font-semibold ${r.profit_cents >= 0 ? 'text-success' : 'text-destructive'}`}>
+                      {r.profit_cents >= 0 ? '+' : ''}{formatUGX(r.profit_cents)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
+        <PaginationFooter pager={pager} />
       </div>
     </div>
   )
@@ -110,7 +114,7 @@ function ItemPerformanceView({ rows }: { rows: ItemPerformance[] }) {
 
 function SalesView({ sales }: { sales: SaleWithItems[] }) {
   if (sales.length === 0) {
-    return <p className="p-12 text-center text-muted-foreground">No sales in this period.</p>
+    return <p className="p-12 text-center text-lg text-muted-foreground">No sales in this period.</p>
   }
 
   const fmtTime = (iso: string) =>
@@ -125,7 +129,7 @@ function SalesView({ sales }: { sales: SaleWithItems[] }) {
   }
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       <div className="rounded-[var(--radius-md)] border border-border bg-muted px-4 py-2.5 text-[0.8125rem] text-muted-foreground">
         Each order shows its items at the price charged, the discount and the total. Debt sales also show the amount owed.
       </div>
@@ -208,7 +212,7 @@ function ReceivablesView({ rows }: { rows: DebtSummaryItem[] }) {
   const totalDebt = rows.reduce((sum, d) => sum + d.total_debt_cents, 0)
 
   if (rows.length === 0) {
-    return <p className="p-12 text-center text-muted-foreground">No accounts receivable — everyone has paid.</p>
+    return <p className="p-12 text-center text-lg text-muted-foreground">No accounts receivable — everyone has paid.</p>
   }
 
   return (
@@ -235,10 +239,10 @@ function ReceivablesView({ rows }: { rows: DebtSummaryItem[] }) {
 
 function DayView({ data, categories }: { data: DailyReport[]; categories: { category: string; amount_cents: number }[] }) {
   const day = data[0]
-  if (!day) return <p className="p-12 text-center text-muted-foreground">No data for this date.</p>
+  if (!day) return <p className="p-12 text-center text-lg text-muted-foreground">No data for this date.</p>
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(160px,1fr))]">
         <StatCard label="Revenue" value={formatUGX(day.sales_revenue_cents)} />
         <StatCard label="Food Cost" value={formatUGX(day.food_purchase_cents)} muted />
@@ -301,45 +305,49 @@ function TableView({ data, label }: { data: (DailyReport | MonthlyReport)[]; lab
   const getExpenses = (row: DailyReport | MonthlyReport) => row.expense_cents
   const getDebt = (row: DailyReport | MonthlyReport) => row.debt_sales_cents
   const getProfit = (row: DailyReport | MonthlyReport) => row.net_profit_cents
+  const pager = usePagination(data)
 
-  if (data.length === 0) return <p className="p-12 text-center text-muted-foreground">No data available.</p>
+  if (data.length === 0) return <p className="p-12 text-center text-lg text-muted-foreground">No data available.</p>
 
   return (
-    <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-card">
-      <div className="overflow-x-auto">
-        <Table className="table-zebra">
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead>{label}</TableHead>
-              <TableHead>Revenue</TableHead>
-              <TableHead>Food Cost</TableHead>
-              <TableHead>Waste</TableHead>
-              <TableHead>Expenses</TableHead>
-              <TableHead>Still Owed</TableHead>
-              <TableHead>Barter</TableHead>
-              <TableHead>Bad Debt</TableHead>
-              <TableHead className="text-right">Net Profit</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.map(row => (
-              <TableRow key={getKey(row)}>
-                <TableCell>{getKey(row)}</TableCell>
-                <TableCell>{formatUGX(getRevenue(row))}</TableCell>
-                <TableCell>{formatUGX(getFood(row))}</TableCell>
-                <TableCell>{formatUGX(getWaste(row))}</TableCell>
-                <TableCell>{formatUGX(getExpenses(row))}</TableCell>
-                <TableCell>{getDebt(row) > 0 ? <span className="font-semibold text-warning">{formatUGX(getDebt(row))}</span> : '—'}</TableCell>
-                <TableCell>{getBarter(row) > 0 ? formatUGX(getBarter(row)) : '—'}</TableCell>
-                <TableCell>{getBadDebt(row) > 0 ? <span className="font-semibold text-destructive">{formatUGX(getBadDebt(row))}</span> : '—'}</TableCell>
-                <TableCell className={`text-right font-semibold ${getProfit(row) >= 0 ? 'text-success' : 'text-destructive'}`}>
-                  {getProfit(row) >= 0 ? '+' : ''}{formatUGX(getProfit(row))}
-                </TableCell>
+    <div className="flex flex-col gap-3">
+      <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
+        <div className="overflow-x-auto">
+          <Table className="table-zebra">
+            <TableHeader>
+              <TableRow className="bg-card hover:bg-card">
+                <TableHead>{label}</TableHead>
+                <TableHead>Revenue</TableHead>
+                <TableHead>Food Cost</TableHead>
+                <TableHead>Waste</TableHead>
+                <TableHead>Expenses</TableHead>
+                <TableHead>Still Owed</TableHead>
+                <TableHead>Barter</TableHead>
+                <TableHead>Bad Debt</TableHead>
+                <TableHead className="text-right">Net Profit</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {pager.slice.map(row => (
+                <TableRow key={getKey(row)}>
+                  <TableCell>{getKey(row)}</TableCell>
+                  <TableCell>{formatUGX(getRevenue(row))}</TableCell>
+                  <TableCell>{formatUGX(getFood(row))}</TableCell>
+                  <TableCell>{formatUGX(getWaste(row))}</TableCell>
+                  <TableCell>{formatUGX(getExpenses(row))}</TableCell>
+                  <TableCell>{getDebt(row) > 0 ? <span className="font-semibold text-warning">{formatUGX(getDebt(row))}</span> : '—'}</TableCell>
+                  <TableCell>{getBarter(row) > 0 ? formatUGX(getBarter(row)) : '—'}</TableCell>
+                  <TableCell>{getBadDebt(row) > 0 ? <span className="font-semibold text-destructive">{formatUGX(getBadDebt(row))}</span> : '—'}</TableCell>
+                  <TableCell className={`text-right font-semibold ${getProfit(row) >= 0 ? 'text-success' : 'text-destructive'}`}>
+                    {getProfit(row) >= 0 ? '+' : ''}{formatUGX(getProfit(row))}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </div>
+      <PaginationFooter pager={pager} />
     </div>
   )
 }
@@ -361,8 +369,10 @@ export function ReportsPage() {
   const [section, setSection] = useState<Section>('pnl')
 
   return (
-    <div className="flex max-w-960 flex-col gap-5 p-6">
-      <h1 className="text-2xl font-bold">Reports &amp; P&amp;L</h1>
+    <div className="flex flex-col gap-4 p-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Reports &amp; P&amp;L</h1>
+      </div>
 
       {/* Period picker */}
       <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)} className="w-full">
@@ -373,60 +383,38 @@ export function ReportsPage() {
         </TabsList>
 
         <TabsContent value="daily">
-          <Card>
-            <CardHeader>
-              <CardTitle>Daily report</CardTitle>
-              <CardDescription>Revenue, food cost, waste, expenses and profit for a single day.</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-wrap items-center gap-3">
-              <Button onClick={() => navigateDay(-1)} variant="outline" size="sm" className="bg-card text-[0.875rem]">
-                ◀ Prev
-              </Button>
-              <DatePicker className="w-44" value={selectedDate} onValueChange={setSelectedDate} />
-              <Button onClick={() => setSelectedDate(new Date().toISOString().slice(0, 10))} variant="outline" size="sm" className="bg-card text-[0.875rem] font-semibold">
-                Today
-              </Button>
-              <Button onClick={() => navigateDay(1)} variant="outline" size="sm" className="bg-card text-[0.875rem]">
-                Next ▶
-              </Button>
-            </CardContent>
-          </Card>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button onClick={() => navigateDay(-1)} variant="outline" size="sm" className="bg-card text-[0.875rem]">
+              ◀ Prev
+            </Button>
+            <DatePicker className="w-44" value={selectedDate} onValueChange={setSelectedDate} />
+            <Button onClick={() => setSelectedDate(new Date().toISOString().slice(0, 10))} variant="outline" size="sm" className="bg-card text-[0.875rem] font-semibold">
+              Today
+            </Button>
+            <Button onClick={() => navigateDay(1)} variant="outline" size="sm" className="bg-card text-[0.875rem]">
+              Next ▶
+            </Button>
+          </div>
         </TabsContent>
 
         <TabsContent value="custom">
-          <Card>
-            <CardHeader>
-              <CardTitle>Custom range</CardTitle>
-              <CardDescription>Compare P&amp;L and item performance between two dates.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <DateRangeFilter
-                dateFrom={startDate}
-                dateTo={endDate}
-                onDateFromChange={setStartDate}
-                onDateToChange={setEndDate}
-                onReset={() => {
-                  const t = new Date().toISOString().slice(0, 10)
-                  setStartDate(t)
-                  setEndDate(t)
-                }}
-              />
-            </CardContent>
-          </Card>
+          <DateRangeFilter
+            dateFrom={startDate}
+            dateTo={endDate}
+            onDateFromChange={setStartDate}
+            onDateToChange={setEndDate}
+            onReset={() => {
+              const t = new Date().toISOString().slice(0, 10)
+              setStartDate(t)
+              setEndDate(t)
+            }}
+          />
         </TabsContent>
 
         <TabsContent value="monthly">
-          <Card>
-            <CardHeader>
-              <CardTitle>Monthly report</CardTitle>
-              <CardDescription>Totals grouped by month.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="m-0 text-[0.875rem] text-muted-foreground">
-                Showing data for <strong>{new Date().getFullYear()}</strong>
-              </p>
-            </CardContent>
-          </Card>
+          <p className="m-0 text-[0.875rem] text-muted-foreground">
+            Showing data for <strong>{new Date().getFullYear()}</strong>
+          </p>
         </TabsContent>
       </Tabs>
 
@@ -440,87 +428,55 @@ export function ReportsPage() {
         </TabsList>
 
         <TabsContent value="pnl">
-          <Card>
-            <CardHeader>
-              <CardTitle>Profit &amp; Loss</CardTitle>
-              <CardDescription>Revenue vs food cost and other expenses.</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col">
-              {loading ? (
-                <p className="p-12 text-center text-muted-foreground">Loading...</p>
-              ) : viewMode === 'daily' ? (
-                <DayView data={dailyData} categories={categories} />
-              ) : (
-                <div className="flex flex-col gap-5">
-                  <TableView
-                    data={viewMode === 'monthly' ? monthlyData : dailyData}
-                    label={viewMode === 'monthly' ? 'Month' : 'Date'}
-                  />
-                  {categories.length > 0 && (
-                    <div className="rounded-[var(--radius-lg)] border border-border bg-card p-4">
-                      <h3 className="mb-3 text-[0.875rem] font-bold text-muted-foreground">Expense Breakdown by Category</h3>
-                      <div className="flex flex-col gap-2">
-                        {categories.map(c => (
-                          <div key={c.category} className="flex items-center justify-between">
-                            <span className="text-[0.875rem]">{c.category}</span>
-                            <span className="text-[0.875rem] font-semibold">{formatUGX(c.amount_cents)}</span>
-                          </div>
-                        ))}
+          {loading ? (
+            <p className="text-center text-muted-foreground">Loading...</p>
+          ) : viewMode === 'daily' ? (
+            <DayView data={dailyData} categories={categories} />
+          ) : (
+            <div className="flex flex-col gap-4">
+              <TableView
+                data={viewMode === 'monthly' ? monthlyData : dailyData}
+                label={viewMode === 'monthly' ? 'Month' : 'Date'}
+              />
+              {categories.length > 0 && (
+                <div className="rounded-[var(--radius-lg)] border border-border bg-card p-4">
+                  <h3 className="mb-3 text-[0.875rem] font-bold text-muted-foreground">Expense Breakdown by Category</h3>
+                  <div className="flex flex-col gap-2">
+                    {categories.map(c => (
+                      <div key={c.category} className="flex items-center justify-between">
+                        <span className="text-[0.875rem]">{c.category}</span>
+                        <span className="text-[0.875rem] font-semibold">{formatUGX(c.amount_cents)}</span>
                       </div>
-                    </div>
-                  )}
+                    ))}
+                  </div>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="items">
-          <Card>
-            <CardHeader>
-              <CardTitle>Item Performance</CardTitle>
-              <CardDescription>Quantity sold, revenue and profit realised by each item.</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col">
-              {loading ? (
-                <p className="p-12 text-center text-muted-foreground">Loading...</p>
-              ) : (
-                <ItemPerformanceView rows={itemPerf} />
-              )}
-            </CardContent>
-          </Card>
+          {loading ? (
+            <p className="text-center text-muted-foreground">Loading...</p>
+          ) : (
+            <ItemPerformanceView rows={itemPerf} />
+          )}
         </TabsContent>
 
         <TabsContent value="receivables">
-          <Card>
-            <CardHeader>
-              <CardTitle>Receivables</CardTitle>
-              <CardDescription>Customers with unpaid debt.</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col">
-              {loading ? (
-                <p className="p-12 text-center text-muted-foreground">Loading...</p>
-              ) : (
-                <ReceivablesView rows={debtSummary} />
-              )}
-            </CardContent>
-          </Card>
+          {loading ? (
+            <p className="text-center text-muted-foreground">Loading...</p>
+          ) : (
+            <ReceivablesView rows={debtSummary} />
+          )}
         </TabsContent>
 
         <TabsContent value="sales">
-          <Card>
-            <CardHeader>
-              <CardTitle>Sales</CardTitle>
-              <CardDescription>Every order in this period, item by item, in execution order.</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col">
-              {loading ? (
-                <p className="p-12 text-center text-muted-foreground">Loading...</p>
-              ) : (
-                <SalesView sales={sales} />
-              )}
-            </CardContent>
-          </Card>
+          {loading ? (
+            <p className="text-center text-muted-foreground">Loading...</p>
+          ) : (
+            <SalesView sales={sales} />
+          )}
         </TabsContent>
       </Tabs>
     </div>

@@ -97,10 +97,12 @@ export const itemsRepo = {
 
   del(id: number): void {
     const db = getDb()
+    const hasStock = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'item_stock_movements'").get()
     const refCount = (db.prepare("SELECT COUNT(*) as c FROM sale_items WHERE item_id = ? OR free_item_id = ?").get(id, id) as { c: number }).c
       + (db.prepare('SELECT COUNT(*) as c FROM item_purchases WHERE item_id = ?').get(id) as { c: number }).c
       + (db.prepare('SELECT COUNT(*) as c FROM waste WHERE item_id = ?').get(id) as { c: number }).c
       + (db.prepare('SELECT COUNT(*) as c FROM cook_events WHERE item_id = ?').get(id) as { c: number }).c
+      + (hasStock ? (db.prepare('SELECT COUNT(*) as c FROM item_stock_movements WHERE item_id = ?').get(id) as { c: number }).c : 0)
     if (refCount === 0) {
       db.prepare('DELETE FROM item_attribute_values WHERE item_id = ?').run(id)
       db.prepare('DELETE FROM menu_items WHERE id = ?').run(id)

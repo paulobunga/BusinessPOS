@@ -15,9 +15,11 @@ import { DateRangeFilter } from '../../components/DateRangeFilter'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import type { Expense } from '../../../shared/types'
 
+const fmt = (n: number) => new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 }).format(n)
+
 export function ExpensesPage() {
   const [filters, setFilters] = useState<{ date_from?: string; date_to?: string; category?: string; payment_source?: string }>({})
-  const { expenses, loading, create, update, remove } = useExpenses(filters)
+  const { expenses, loading, error, create, update, remove } = useExpenses(filters)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Expense | null>(null)
   const [deleteId, setDeleteId] = useState<number | null>(null)
@@ -44,21 +46,15 @@ export function ExpensesPage() {
   return (
     <div className="flex flex-col gap-4 p-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Expenses</h1>
-          <p className="m-0 text-[0.875rem] text-muted-foreground">
-            Business spend. Food purchases live under Inventory — record those there.
-          </p>
-        </div>
+        <h1 className="text-2xl font-bold">Expenses</h1>
         <div className="flex items-center gap-4">
-          <span className="text-[0.9375rem] font-bold">Total: {totalCents.toLocaleString()} UGX</span>
+          <span className="text-[0.9375rem] font-bold">Total: {fmt(totalCents)}</span>
           <Button onClick={() => { setEditing(null); setShowForm(true) }} className="bg-primary font-semibold">
             + New Expense
           </Button>
         </div>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap items-end gap-4">
         <DateRangeFilter
           dateFrom={filters.date_from ?? ''}
@@ -83,7 +79,14 @@ export function ExpensesPage() {
         </label>
       </div>
 
-      {/* Form modal */}
+      {loading ? (
+        <p className="text-center text-muted-foreground">Loading...</p>
+      ) : error ? (
+        <p className="text-center font-semibold text-destructive">{error}</p>
+      ) : (
+        <ExpenseList expenses={expenses} onEdit={setEditing} onDelete={setDeleteId} />
+      )}
+
       <Dialog open={(showForm || editing != null)} onOpenChange={(o) => { if (!o) { setShowForm(false); setEditing(null) } }}>
         <DialogContent className="max-w-[520px]">
           <DialogHeader>
@@ -96,13 +99,6 @@ export function ExpensesPage() {
           />
         </DialogContent>
       </Dialog>
-
-      {/* List */}
-      {loading ? (
-        <p className="text-center text-muted-foreground">Loading...</p>
-      ) : (
-        <ExpenseList expenses={expenses} onEdit={setEditing} onDelete={setDeleteId} />
-      )}
 
       <ConfirmDialog
         open={deleteId != null}

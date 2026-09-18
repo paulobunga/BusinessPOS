@@ -15,6 +15,9 @@ import { runSetupMigration } from '../db/migrations/012_setup'
 import { runUserRolesMigration } from '../db/migrations/013_user_roles'
 import { runRemovePaymentIdMigration } from '../db/migrations/014_debt_allocations_cleanup'
 import { runDebtWriteOffsMigration } from '../db/migrations/017_debt_write_offs'
+import { runTotalYieldMigration } from '../db/migrations/022_total_yield'
+import { runItemStockMovementsMigration } from '../db/migrations/024_item_stock_movements'
+import { runYieldCleanupMigration } from '../db/migrations/025_yield_cleanup'
 
 let db: Database.Database
 
@@ -29,6 +32,7 @@ import { tillRepo } from '../db/repositories/tillRepo'
 import { salesRepo } from '../db/repositories/salesRepo'
 import { expensesRepo } from '../db/repositories/expensesRepo'
 import { purchasesRepo } from '../db/repositories/purchasesRepo'
+import { stockRepo } from '../db/repositories/stockRepo'
 import { reportsRepo } from '../db/repositories/reportsRepo'
 import { settingsRepo } from '../db/repositories/settingsRepo'
 import { systemRepo } from '../db/repositories/systemRepo'
@@ -61,6 +65,10 @@ describe('Full day at the restaurant (integration)', () => {
     runMenuSeedMigration(db)
     runPurchaseYieldMigration(db)
     runPurchaseYieldsMigration(db)
+    runSetupMigration(db)
+    runTotalYieldMigration(db)
+    runItemStockMovementsMigration(db)
+    runYieldCleanupMigration(db)
     runRemovePaymentIdMigration(db)
     runUserRolesMigration(db)
     runDebtWriteOffsMigration(db)
@@ -115,7 +123,7 @@ describe('Full day at the restaurant (integration)', () => {
   })
 
   test('3. Record a food purchase', () => {
-    const purchase = purchasesRepo.recordPurchase(goat.id, 5, 30000, reportDate, userId) as any
+    const purchase = purchasesRepo.recordPurchase(goat.id, 5, 30000, reportDate, userId, 0) as any
     expect(purchase.id).toBeGreaterThan(0)
     expect(purchase.cost_cents).toBe(30000)
     expect(purchase.quantity_kg).toBe(5)
@@ -226,7 +234,7 @@ describe('Full day at the restaurant (integration)', () => {
     expect(rows[0].name_snapshot).toBe('Chicken')
   })
 
-  test('10. Purchase-only category + whole chicken purchase backs out dish cost to portions', () => {
+  test('10. Whole chicken purchase records total yield', () => {
     const stockCat = categoriesRepo.upsert({ name: 'Test Stock', kind: 'priced', purchase_only: 1 })
     const stockRow = categoriesRepo.list().find(c => c.id === stockCat.id)!
     expect(stockRow.purchase_only).toBe(1)
@@ -234,56 +242,87 @@ describe('Full day at the restaurant (integration)', () => {
     wholeChicken = itemsRepo.upsert({ category_id: stockCat.id, name: 'Whole Chicken', purchase_unit: 'whole' })
     boiled = itemsRepo.upsert({ category_id: chicken.category_id, name: 'Chicken (Boiled)', selling_price_cents: 10000, cost_price_cents: 5000 })
 
-    const purchase = purchasesRepo.recordPurchase(wholeChicken.id, 1, 17000, reportDate, userId, {
+    const purchase = purchasesRepo.recordPurchase(wholeChicken.id, 1, 17000, reportDate, userId, 4, {
       unit: 'whole',
-      yieldItemId: boiled.id,
-      expectedYield: 4,
     }) as any
     expect(purchase.cost_cents).toBe(17000)
     expect(purchase.unit).toBe('whole')
-    expect(purchase.yield_item_id).toBe(boiled.id)
-    expect(purchase.yield_item_name).toBe('Chicken (Boiled)')
+    expect(purchase.total_yield).toBe(4)
 
     const wholeAfter = itemsRepo.getById(wholeChicken.id)!
     expect(wholeAfter.cost_price_cents).toBe(17000)
     expect(wholeAfter.purchase_unit).toBe('whole')
-
-    const boiledAfter = itemsRepo.getById(boiled.id)!
-    expect(boiledAfter.cost_price_cents).toBe(4250)
   })
 
-  test('11. Purchase list surfaces yield dish via getByDate', () => {
+  test('11. Purchase list shows total yield via getByDate', () => {
     const rows = purchasesRepo.getByDate(reportDate) as any[]
     const whole = rows.find((r: any) => r.item_name === 'Whole Chicken')
     expect(whole).toBeDefined()
     expect(whole!.unit).toBe('whole')
-    expect(whole!.yield_item_name).toBe('Chicken (Boiled)')
+    expect(whole!.total_yield).toBe(4)
   })
 
-  test('12. One purchase splits cost across multiple yielded meals by portions', () => {
-    const fried = itemsRepo.upsert({ category_id: chicken.category_id, name: 'Chicken (Fried)', selling_price_cents: 11000, cost_price_cents: 0 })
-
-    const purchase = purchasesRepo.recordPurchase(wholeChicken.id, 1, 17000, reportDate, userId, {
+  test('12. Total yield is stored per purchase', () => {
+    const purchase = purchasesRepo.recordPurchase(wholeChicken.id, 1, 17000, reportDate, userId, 4, {
       unit: 'whole',
-      yields: [
-        { itemId: boiled.id, portions: 3 },
-        { itemId: fried.id, portions: 2 },
-      ],
     }) as any
     expect(purchase.cost_cents).toBe(17000)
+    expect(purchase.total_yield).toBe(4)
+  })
 
-    const byMeal = new Map<string, any>(purchase.yields.map((y: any): [string, any] => [y.name, y]))
-    const boiledYield = byMeal.get('Chicken (Boiled)')
-    const friedYield = byMeal.get('Chicken (Fried)')
-    expect(boiledYield).toBeDefined()
-    expect(friedYield).toBeDefined()
-    expect(boiledYield.portions).toBe(3)
-    expect(boiledYield.cost_cents).toBe(10200)
-    expect(friedYield.portions).toBe(2)
-    expect(friedYield.cost_cents).toBe(6800)
+  test('12b. Stock movements track purchase-in, sale-out, discount and captain-out', () => {
+    db.prepare('INSERT INTO item_yield_defaults (raw_input_id, meal_id, portions) VALUES (?, ?, ?)').run(wholeChicken.id, boiled.id, 4)
 
-    expect(itemsRepo.getById(boiled.id)!.cost_price_cents).toBe(3400)
-    expect(itemsRepo.getById(fried.id)!.cost_price_cents).toBe(3400)
+    stockRepo.recordMovement({ item_id: wholeChicken.id, movement_type: 'purchase_in', quantity: 4, reference_table: 'item_purchases', reference_id: 1, created_by: userId })
+    expect(stockRepo.getBalance(wholeChicken.id)).toBe(4)
+    expect(stockRepo.getAvailability(boiled.id)).toBe(4)
+
+    const saleId = salesRepo.create({
+      subtotal_cents: 10000,
+      discount_cents: 0,
+      total_cents: 10000,
+      debt_cents: 0,
+      payment_method: 'cash',
+      till_session_id: tillId,
+      created_by: userId,
+      items: [{ item_id: boiled.id, price_cents: 10000 }],
+    })
+    db.prepare('UPDATE sales SET created_at = ? WHERE id = ?').run('2000-01-01 10:00:00', saleId)
+    expect(stockRepo.getBalance(wholeChicken.id)).toBe(3)
+
+    const discId = salesRepo.create({
+      subtotal_cents: 10000,
+      discount_cents: 500,
+      total_cents: 9500,
+      debt_cents: 0,
+      payment_method: 'cash',
+      till_session_id: tillId,
+      created_by: userId,
+      items: [{ item_id: boiled.id, price_cents: 10000 }],
+    })
+    db.prepare('UPDATE sales SET created_at = ? WHERE id = ?').run('2000-01-01 10:30:00', discId)
+    expect(stockRepo.getBalance(wholeChicken.id)).toBe(2)
+
+    const capId = salesRepo.createCaptainOrder({
+      service_description: 'Stock test service',
+      subtotal_cents: 10000,
+      discount_cents: 0,
+      total_cents: 10000,
+      till_session_id: tillId,
+      created_by: userId,
+      items: [{ item_id: boiled.id, price_cents: 10000 }],
+    })
+    db.prepare('UPDATE sales SET created_at = ? WHERE id = ?').run('2000-01-01 11:00:00', capId)
+    expect(stockRepo.getBalance(wholeChicken.id)).toBe(1)
+    expect(stockRepo.getAvailability(boiled.id)).toBe(1)
+
+    const movements = stockRepo.getMovements(wholeChicken.id, 10) as any[]
+    const types = movements.map(m => m.movement_type)
+    expect(types).toContain('purchase_in')
+    expect(types).toContain('sale_out')
+    expect(types).toContain('captain_out')
+    const discMove = movements.find(m => m.reference_id === discId)
+    expect(discMove.is_discount).toBe(1)
   })
 
   test('13. Sales ledger groups items per order for the period', () => {
@@ -328,6 +367,9 @@ describe('Setup wizard & system purge (fresh system)', () => {
     runMenuSeedMigration(db)
     runPurchaseYieldMigration(db)
     runPurchaseYieldsMigration(db)
+    runTotalYieldMigration(db)
+    runItemStockMovementsMigration(db)
+    runYieldCleanupMigration(db)
     runSetupMigration(db)
     runRemovePaymentIdMigration(db)
     runUserRolesMigration(db)

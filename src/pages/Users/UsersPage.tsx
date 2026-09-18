@@ -30,18 +30,6 @@ const inputClass = 'min-h-10 rounded-[var(--radius-md)] border-border bg-backgro
 const selectClass = 'h-11 w-full rounded-[var(--radius-md)]'
 const pinClass = `${inputClass} max-w-[120px] text-center text-base font-bold tracking-[8px]`
 
-function Section({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-4 rounded-[var(--radius-lg)] border border-border bg-card p-6">
-      <div>
-        <h2 className="m-0 text-lg font-bold text-foreground">{title}</h2>
-        {subtitle && <p className="m-0 mt-1 text-[0.875rem] text-muted-foreground">{subtitle}</p>}
-      </div>
-      {children}
-    </div>
-  )
-}
-
 function StatusLine({ type, text }: { type: 'success' | 'error' | 'info'; text: string }) {
   const cls = type === 'success' ? 'text-success' : type === 'error' ? 'text-destructive' : 'text-muted-foreground'
   return <p className={`m-0 text-[0.875rem] font-semibold ${cls}`}>{text}</p>
@@ -70,11 +58,11 @@ export function UsersPage() {
 
   if (!hasAccess('users.manage')) {
     return (
-      <div className="flex max-w-900 flex-col gap-5 p-6">
-        <h1 className="m-0 text-2xl font-bold text-foreground">Users & Roles</h1>
-        <Section title="Access Restricted" subtitle="Admin access required to manage users.">
-          <p className="m-0 text-[0.9375rem] font-semibold text-muted-foreground">Admin access required to manage users.</p>
-        </Section>
+      <div className="flex flex-col gap-4 p-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Users & Roles</h1>
+        </div>
+        <p className="p-12 text-center text-lg text-muted-foreground">Admin access required to manage users.</p>
       </div>
     )
   }
@@ -154,74 +142,69 @@ export function UsersPage() {
   }
 
   return (
-    <div className="flex max-w-900 flex-col gap-5 p-6">
-      <div>
-        <h1 className="m-0 text-2xl font-bold text-foreground">Users & Roles</h1>
-        <p className="m-0 mt-1 text-[0.875rem] text-muted-foreground">Manage staff accounts and roles.</p>
+    <div className="flex flex-col gap-4 p-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Users & Roles</h1>
+        <div className="flex items-center gap-3">
+          <span className="text-[0.9375rem] font-bold">{users.length} users</span>
+          <Button className="bg-primary font-semibold" size="sm" onClick={openAdd}>+ Add User</Button>
+        </div>
       </div>
 
-      <Section title="Users" subtitle="All registered staff accounts.">
-        {error && (
-          <div className="flex items-center gap-3">
-            <StatusLine type="error" text={error} />
-            <Button variant="outline" className="h-11 border-border bg-card font-semibold" onClick={retry}>Retry</Button>
-          </div>
-        )}
-        <div className="flex flex-col gap-3">
-          {loading ? (
-            <p className="text-[0.9375rem] text-muted-foreground">Loading users...</p>
-          ) : users.length === 0 ? (
-            <p className="text-[0.9375rem] font-semibold text-muted-foreground">No users yet.</p>
-          ) : (
-            <>
-              <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
-                <Table className="table-zebra">
-                  <TableHeader>
-                    <TableRow className="bg-card hover:bg-card">
-                      <TableHead>Name</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Created</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {usersPager.slice.map(u => (
-                      <TableRow key={u.id} className={u.active ? '' : 'opacity-55'}>
-                        <TableCell className="font-semibold">{u.name}</TableCell>
-                        <TableCell><Badge variant="outline">{ROLE_LABELS[u.role]}</Badge></TableCell>
-                        <TableCell>
-                          <span className="text-[0.875rem] font-semibold text-muted-foreground">{u.active === 1 ? 'Active' : 'Deactivated'}</span>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button className="h-9 bg-primary px-3 font-semibold" onClick={() => openEdit(u)}>Edit</Button>
-                            {u.id !== userId && (
-                              <Button variant="outline" className="h-9 border-border bg-card px-3 font-semibold" onClick={() => toggleActive(u)}>
-                                {u.active ? 'Deactivate' : 'Activate'}
-                              </Button>
-                            )}
-                            <Button variant="outline" className="h-9 border-border bg-card px-3 font-semibold" onClick={() => openResetPin(u)}>Reset PIN</Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-              <PaginationFooter pager={usersPager} />
-            </>
-          )}
-        </div>
+      {status && <StatusLine type={status.type} text={status.text} />}
 
-        <div className="flex flex-col gap-3 border-t border-border pt-4">
-          <Button className="h-11 w-fit bg-primary font-semibold" onClick={openAdd}>+ Add User</Button>
+      {loading ? (
+        <p className="text-center text-muted-foreground">Loading...</p>
+      ) : error ? (
+        <div className="flex items-center justify-center gap-3">
+          <p className="text-center font-semibold text-destructive">{error}</p>
+          <Button variant="outline" size="sm" onClick={retry}>Retry</Button>
         </div>
-        {status && <StatusLine type={status.type} text={status.text} />}
-      </Section>
+      ) : users.length === 0 ? (
+        <p className="p-12 text-center text-lg text-muted-foreground">No users yet.</p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
+            <Table className="table-zebra">
+              <TableHeader>
+                <TableRow className="bg-card hover:bg-card">
+                  <TableHead>Name</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {usersPager.slice.map(u => (
+                  <TableRow key={u.id} className={u.active ? '' : 'opacity-55'}>
+                    <TableCell className="font-semibold">{u.name}</TableCell>
+                    <TableCell><Badge variant="outline">{ROLE_LABELS[u.role]}</Badge></TableCell>
+                    <TableCell>
+                      <span className="text-[0.875rem] font-semibold text-muted-foreground">{u.active === 1 ? 'Active' : 'Deactivated'}</span>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button className="h-9 bg-primary px-3 font-semibold" onClick={() => openEdit(u)}>Edit</Button>
+                        {u.id !== userId && (
+                          <Button variant="outline" className="h-9 border-border bg-card px-3 font-semibold" onClick={() => toggleActive(u)}>
+                            {u.active ? 'Deactivate' : 'Activate'}
+                          </Button>
+                        )}
+                        <Button variant="outline" className="h-9 border-border bg-card px-3 font-semibold" onClick={() => openResetPin(u)}>Reset PIN</Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <PaginationFooter pager={usersPager} />
+        </div>
+      )}
 
       {/* Add / Edit dialog */}
       <Dialog open={modal != null} onOpenChange={o => { if (!o) setModal(null) }}>

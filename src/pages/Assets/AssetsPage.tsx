@@ -1,10 +1,7 @@
 import { useMemo, useState } from 'react'
-import { Boxes } from 'lucide-react'
 import { useAssets } from '../../hooks/useAssets'
 import { Button } from '../../components/ui/button'
 import { Badge } from '../../components/ui/badge'
-import { Card, CardContent } from '../../components/ui/card'
-import { EmptyState } from '../../components/ui/empty-state'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
 import { PaginationFooter } from '../../components/PaginationFooter'
@@ -14,11 +11,11 @@ import type { AssetWithValue } from '../../../shared/types'
 import { AssetFormDialog } from './AssetFormDialog'
 import { DisposeAssetDialog } from './DisposeAssetDialog'
 
-const fmt = new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 })
+const fmt = (n: number) => new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 }).format(n)
 const selectClass = 'h-11 w-full rounded-[var(--radius-md)]'
 
 export function AssetsPage() {
-  const { assets, summary, loading, create, update, dispose } = useAssets()
+  const { assets, summary, loading, error, create, update, dispose } = useAssets()
   const [status, setStatus] = useState<'all' | 'active' | 'disposed'>('all')
   const [cat, setCat] = useState('all')
   const [showForm, setShowForm] = useState(false)
@@ -37,36 +34,14 @@ export function AssetsPage() {
   const openCreate = () => { setEditing(null); setShowForm(true) }
   const openEdit = (a: AssetWithValue) => { setEditing(a); setShowForm(true) }
 
-  const cards = [
-    { label: 'Total book value', value: fmt.format(summary?.total_book_value_cents ?? 0) },
-    { label: 'Total purchase cost', value: fmt.format(summary?.total_cost_cents ?? 0) },
-    { label: 'Monthly depreciation', value: fmt.format(summary?.total_monthly_depreciation_cents ?? 0) },
-    { label: 'Disposed assets', value: String(summary?.disposed_count ?? 0) },
-  ]
-
   return (
     <div className="flex flex-col gap-4 p-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Assets</h1>
-          <p className="m-0 text-[0.875rem] text-muted-foreground">
-            Equipment and supplies you own, with straight-line depreciation. Book value is informational only.
-          </p>
-        </div>
+        <h1 className="text-2xl font-bold">Assets</h1>
+        <span className="text-[0.9375rem] font-bold">Total Book Value: {fmt(summary?.total_book_value_cents ?? 0)}</span>
         <Button onClick={openCreate} className="bg-primary font-semibold">
           + Register Asset
         </Button>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        {cards.map(c => (
-          <Card key={c.label} size="sm">
-            <CardContent className="flex flex-col gap-1">
-              <span className="text-[0.8125rem] font-semibold text-muted-foreground">{c.label}</span>
-              <span className="text-lg font-extrabold">{c.value}</span>
-            </CardContent>
-          </Card>
-        ))}
       </div>
 
       <div className="flex flex-wrap items-end gap-4">
@@ -98,14 +73,11 @@ export function AssetsPage() {
       </div>
 
       {loading ? (
-        <EmptyState icon={Boxes} title="Loading assets..." loading />
+        <p className="text-center text-muted-foreground">Loading...</p>
+      ) : error ? (
+        <p className="text-center font-semibold text-destructive">{error}</p>
       ) : filtered.length === 0 ? (
-        <EmptyState
-          icon={Boxes}
-          title={assets.length === 0 ? 'No assets registered yet' : 'No assets match the filters'}
-          description={assets.length === 0 ? 'Register your first asset — freezer, stove, plates — to start tracking value.' : undefined}
-          action={assets.length === 0 ? <Button onClick={openCreate} className="bg-primary font-semibold">+ Register Asset</Button> : undefined}
-        />
+        <p className="p-12 text-center text-lg text-muted-foreground">{assets.length === 0 ? 'No assets registered yet' : 'No assets match the filters'}</p>
       ) : (
         <div className="flex flex-col gap-3">
         <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
@@ -130,9 +102,9 @@ export function AssetsPage() {
                   <TableCell className="text-muted-foreground">{a.category}</TableCell>
                   <TableCell>{a.quantity}</TableCell>
                   <TableCell className="text-muted-foreground">{a.purchase_date}</TableCell>
-                  <TableCell>{fmt.format(a.purchase_cost_cents)}</TableCell>
-                  <TableCell className="font-semibold">{fmt.format(a.net_book_value_cents)}</TableCell>
-                  <TableCell className="text-muted-foreground">{fmt.format(a.monthly_depreciation_cents)}</TableCell>
+                  <TableCell>{fmt(a.purchase_cost_cents)}</TableCell>
+                  <TableCell className="font-semibold">{fmt(a.net_book_value_cents)}</TableCell>
+                  <TableCell className="text-muted-foreground">{fmt(a.monthly_depreciation_cents)}</TableCell>
                   <TableCell>
                     {a.active === 1 ? <Badge>Active</Badge> : <Badge variant="secondary">Disposed</Badge>}
                   </TableCell>

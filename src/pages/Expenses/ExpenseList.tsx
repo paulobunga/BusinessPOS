@@ -12,7 +12,7 @@ interface Props {
 }
 
 function formatCents(cents: number) {
-  return `UGX ${cents.toLocaleString()}`
+  return new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 }).format(cents)
 }
 
 const SOURCE_COLORS: Record<string, string> = {
@@ -25,11 +25,11 @@ export function ExpenseList({ expenses, onEdit, onDelete }: Props) {
   const pager = usePagination(expenses)
 
   if (expenses.length === 0) {
-    return <p className="p-6 text-center text-muted-foreground">No expenses recorded.</p>
+    return <p className="p-12 text-center text-lg text-muted-foreground">No expenses recorded.</p>
   }
 
   return (
-    <div>
+    <div className="flex flex-col gap-3">
       <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
         <Table className="table-zebra">
           <TableHeader>

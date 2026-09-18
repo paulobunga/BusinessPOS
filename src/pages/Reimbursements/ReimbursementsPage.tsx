@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useReimbursements } from '../../hooks/useReimbursements'
 import { useAuth } from '../../context/AuthContext'
 import { useTill } from '../../context/TillContext'
+import { DateRangeFilter } from '../../components/DateRangeFilter'
 import { Button } from '../../components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog'
 import { Input } from '../../components/ui/input'
@@ -21,7 +22,7 @@ import { DatePicker } from '../../components/ui/date-picker'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import type { Reimbursement } from '../../../shared/types'
 
-const fmt = new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 })
+const fmt = (n: number) => new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 }).format(n)
 
 export function ReimbursementsPage() {
   const today = new Date().toISOString().slice(0, 10)
@@ -74,7 +75,7 @@ export function ReimbursementsPage() {
   }
 
   const totalCents = reimbursements.reduce((sum, r) => sum + r.amount_cents, 0)
-const pager = usePagination(reimbursements)
+  const pager = usePagination(reimbursements)
 
   const selectClass = 'h-11 w-full rounded-[var(--radius-md)]'
   const inputClass = 'h-11 rounded-[var(--radius-md)] bg-background text-[0.875rem]'
@@ -82,33 +83,73 @@ const pager = usePagination(reimbursements)
   return (
     <div className="flex flex-col gap-4 p-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Owner Reimbursements</h1>
-          <p className="m-0 text-[0.875rem] text-muted-foreground">
-            Record when the business pays back the owner for personal money spent on business expenses
-          </p>
+        <h1 className="text-2xl font-bold">Owner Reimbursements</h1>
+        <div className="flex items-center gap-3">
+          <span className="text-[0.9375rem] font-bold">
+            Total: {fmt(totalCents)}
+          </span>
+          <Button onClick={() => setShowForm(true)} className="bg-primary font-semibold">
+            + New Reimbursement
+          </Button>
         </div>
-        <Button onClick={() => setShowForm(true)} className="bg-primary font-semibold">
-          + New Reimbursement
-        </Button>
       </div>
 
-      {/* Date range filter */}
-      <div className="flex flex-wrap items-end gap-4">
-        <label className="flex w-44 flex-col gap-1.5 text-[0.875rem] font-semibold">
-          From
-          <DatePicker value={startDate} onValueChange={setStartDate} />
-        </label>
-        <label className="flex w-44 flex-col gap-1.5 text-[0.875rem] font-semibold">
-          To
-          <DatePicker value={endDate} onValueChange={setEndDate} />
-        </label>
-        <span className="ml-auto pb-1 text-[0.9375rem] font-bold">
-          Total: {fmt.format(totalCents)}
-        </span>
-      </div>
+      <DateRangeFilter
+        dateFrom={startDate}
+        dateTo={endDate}
+        onDateFromChange={setStartDate}
+        onDateToChange={setEndDate}
+        onReset={() => { setStartDate(today); setEndDate(today) }}
+      />
 
-      {/* Create form modal */}
+      {/* List */}
+      {loading ? (
+        <p className="text-center text-muted-foreground">Loading...</p>
+      ) : reimbursements.length === 0 ? (
+        <p className="p-12 text-center text-lg text-muted-foreground">No reimbursements recorded.</p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
+            <Table className="table-zebra">
+              <TableHeader>
+                <TableRow className="bg-card hover:bg-card">
+                  <TableHead>Paid To</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pager.slice.map((r: Reimbursement) => (
+                  <TableRow key={r.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Badge className={r.paid_to === 'till' ? 'bg-primary text-white' : 'bg-success text-white'}>
+                          {r.paid_to}
+                        </Badge>
+                        {r.till_session_id && (
+                          <span className="text-xs text-muted-foreground">Till #{r.till_session_id}</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="max-w-[320px] truncate text-muted-foreground">{r.description}</TableCell>
+                    <TableCell className="text-muted-foreground">{r.date}</TableCell>
+                    <TableCell className="text-right font-bold">{fmt(r.amount_cents)}</TableCell>
+                    <TableCell className="text-right">
+                      <Button onClick={() => setDeleteId(r.id)} variant="outline" size="xs" className="border-destructive text-destructive">
+                        Delete
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <PaginationFooter pager={pager} />
+        </div>
+      )}
+
       <Dialog open={showForm} onOpenChange={(o) => { if (!o) { setShowForm(false); setError('') } }}>
         <DialogContent className="max-w-[520px]">
           <DialogHeader>
@@ -176,54 +217,6 @@ const pager = usePagination(reimbursements)
           </form>
         </DialogContent>
       </Dialog>
-
-      {/* List */}
-      {loading ? (
-        <p className="text-center text-muted-foreground">Loading...</p>
-      ) : reimbursements.length === 0 ? (
-        <p className="p-12 text-center text-lg text-muted-foreground">No reimbursements recorded.</p>
-      ) : (
-        <div>
-          <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
-            <Table className="table-zebra">
-              <TableHeader>
-                <TableRow className="bg-card hover:bg-card">
-                  <TableHead>Paid To</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pager.slice.map((r: Reimbursement) => (
-                  <TableRow key={r.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Badge className={r.paid_to === 'till' ? 'bg-primary text-white' : 'bg-success text-white'}>
-                          {r.paid_to}
-                        </Badge>
-                        {r.till_session_id && (
-                          <span className="text-xs text-muted-foreground">Till #{r.till_session_id}</span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="max-w-[320px] truncate text-muted-foreground">{r.description}</TableCell>
-                    <TableCell className="text-muted-foreground">{r.date}</TableCell>
-                    <TableCell className="text-right font-bold">{fmt.format(r.amount_cents)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button onClick={() => setDeleteId(r.id)} variant="outline" size="xs" className="border-destructive text-destructive">
-                        Delete
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-          <PaginationFooter pager={pager} />
-        </div>
-      )}
 
       <ConfirmDialog
         open={deleteId != null}

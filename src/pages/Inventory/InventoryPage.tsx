@@ -6,7 +6,6 @@ import { useAuth } from '../../context/AuthContext'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
-import { Checkbox } from '../../components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -22,25 +21,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../../components/ui/select'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/tabs'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
 import { PaginationFooter } from '../../components/PaginationFooter'
 import { usePagination } from '../../hooks/usePagination'
 import { DatePicker } from '../../components/ui/date-picker'
 import { DateRangeFilter } from '../../components/DateRangeFilter'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover'
-import { Check, ChevronsUpDown, Package, Plus, Search, X } from 'lucide-react'
+import { Check, ChevronsUpDown, Package, Plus, Search } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import type { ItemPurchaseWithName } from '../../../shared/types'
 
 const fmt = new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 })
 
-type YieldRow = { mealId: string; portions: string }
-type Tab = 'raw' | 'meals'
-
 export function InventoryPage() {
   const today = new Date().toISOString().slice(0, 10)
-  const [tab, setTab] = useState<Tab>('raw')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const { items, retry: retryItems } = useItems({ kind: 'priced', activeOnly: true })
@@ -54,10 +48,21 @@ export function InventoryPage() {
 
   const purchasesPager = usePagination(purchases)
 
-  const rawItems = items.filter(p => purchaseOnlyCatIds.has(p.category_id))
-  const meals = items.filter(p => !purchaseOnlyCatIds.has(p.category_id))
-  const mealCats = categories.filter(c => c.kind === 'priced' && c.purchase_only !== 1)
-  const mealsPager = usePagination(meals)
+  const isStockItem = (categoryId: number) => purchaseOnlyCatIds.has(categoryId)
+  const stockItems = items.filter(p => isStockItem(p.category_id))
+  const pricedCats = categories.filter(c => c.kind === 'priced' && c.purchase_only !== 1)
+  const itemsPager = usePagination(items)
+
+  const [availability, setAvailability] = useState<Record<number, number | null>>({})
+  useEffect(() => {
+    const ids = items.map(i => i.id)
+    if (ids.length === 0) return
+    const getAvailability = (window.api as unknown as Record<string, ((itemIds: number[]) => Promise<Record<number, number | null>>) | undefined>)['inventory:stockAvailability']
+    if (typeof getAvailability !== 'function') return
+    getAvailability(ids)
+      .then(result => setAvailability(prev => ({ ...prev, ...result })))
+      .catch(() => { /* stock tracking unavailable — hide stock column values */ })
+  }, [items])
 
   // Record purchase dialog
   const [open, setOpen] = useState(false)
@@ -66,8 +71,7 @@ export function InventoryPage() {
   const [quantity, setQuantity] = useState('')
   const [unit, setUnit] = useState('kg')
   const [costPerUnit, setCostPerUnit] = useState('')
-  const [yieldEnabled, setYieldEnabled] = useState(false)
-  const [yieldRows, setYieldRows] = useState<YieldRow[]>([])
+  const [totalYield, setTotalYield] = useState('')
   const [error, setError] = useState('')
   const [processing, setProcessing] = useState(false)
 
@@ -80,21 +84,16 @@ export function InventoryPage() {
   const [nestedError, setNestedError] = useState('')
   const [nestedProcessing, setNestedProcessing] = useState(false)
 
-  // Add raw input dialog
+  // Add item dialog (stock item or meal)
   const [addOpen, setAddOpen] = useState(false)
+  const [addKind, setAddKind] = useState<'stock' | 'meal'>('stock')
   const [addName, setAddName] = useState('')
+  const [addCatId, setAddCatId] = useState('')
   const [addUnit, setAddUnit] = useState('kg')
   const [addUnitCost, setAddUnitCost] = useState('')
+  const [addPrice, setAddPrice] = useState('')
   const [addError, setAddError] = useState('')
   const [addProcessing, setAddProcessing] = useState(false)
-
-  // Add meal dialog
-  const [mealOpen, setMealOpen] = useState(false)
-  const [mealName, setMealName] = useState('')
-  const [mealCatId, setMealCatId] = useState('')
-  const [mealPrice, setMealPrice] = useState('')
-  const [mealError, setMealError] = useState('')
-  const [mealProcessing, setMealProcessing] = useState(false)
 
   const selectedItem = items.find(p => String(p.id) === itemId)
   const quantityNum = parseFloat(quantity)
@@ -104,19 +103,11 @@ export function InventoryPage() {
       ? 0
       : Math.round(quantityNum * costPerUnitNum)
 
-  const validYieldRows = yieldRows
-    .map(r => ({ mealId: r.mealId, portions: parseFloat(r.portions) }))
-    .filter(r => r.mealId && !isNaN(r.portions) && r.portions > 0)
-  const totalPortions = validYieldRows.reduce((sum, r) => sum + r.portions, 0)
-  const costPerPortion = yieldEnabled && totalPortions > 0 && computedTotal > 0
-    ? Math.round(computedTotal / totalPortions)
-    : 0
-
   const comboFiltered = useMemo(() => {
     const q = comboQuery.trim().toLowerCase()
-    const base = q ? rawItems.filter(p => p.name.toLowerCase().includes(q)) : rawItems
+    const base = q ? stockItems.filter(p => p.name.toLowerCase().includes(q)) : stockItems
     return base.slice(0, 6)
-  }, [rawItems, comboQuery])
+  }, [stockItems, comboQuery])
 
   useEffect(() => {
     setCostPerUnit(selectedItem ? String(selectedItem.cost_price_cents) : '')
@@ -128,16 +119,9 @@ export function InventoryPage() {
     setQuantity('')
     setUnit('kg')
     setCostPerUnit('')
-    setYieldEnabled(false)
-    setYieldRows([])
+    setTotalYield('')
     setComboQuery('')
   }
-
-  const addYieldRow = () => setYieldRows(rows => [...rows, { mealId: '', portions: '' }])
-  const setYieldRow = (index: number, patch: Partial<YieldRow>) =>
-    setYieldRows(rows => rows.map((r, i) => (i === index ? { ...r, ...patch } : r)))
-  const removeYieldRow = (index: number) =>
-    setYieldRows(rows => rows.filter((_, i) => i !== index))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -150,14 +134,7 @@ export function InventoryPage() {
       setError('Enter a valid cost per unit')
       return
     }
-    if (yieldEnabled && validYieldRows.length === 0) {
-      setError('Add at least one meal and its portions, or turn off yields')
-      return
-    }
     setProcessing(true)
-    const yields = yieldEnabled
-      ? validYieldRows.map(r => ({ itemId: Number(r.mealId), portions: Math.round(r.portions) }))
-      : []
     try {
       await record({
         item_id: Number(itemId),
@@ -166,7 +143,7 @@ export function InventoryPage() {
         date: purchaseDate || today,
         created_by: userId ?? null,
         unit: unit.trim() || 'kg',
-        yields,
+        total_yield: parseInt(totalYield) || 0,
       })
       resetRecordForm()
       setOpen(false)
@@ -177,7 +154,7 @@ export function InventoryPage() {
     }
   }
 
-  const handleAddRaw = async (e: React.FormEvent) => {
+  const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault()
     setAddError('')
     const name = addName.trim()
@@ -185,33 +162,53 @@ export function InventoryPage() {
       setAddError('Item name is required')
       return
     }
-    if (isNaN(parseFloat(addUnitCost)) || parseFloat(addUnitCost) < 0) {
-      setAddError('Enter a valid default unit cost')
-      return
-    }
     setAddProcessing(true)
     try {
-      let stockCat = categories.find(c => c.purchase_only === 1)
-      if (!stockCat) {
-        stockCat = await window.api['categories:upsert']({ name: 'Stock', kind: 'priced', purchase_only: 1 })
-        retryCategories()
+      if (addKind === 'stock') {
+        if (isNaN(parseFloat(addUnitCost)) || parseFloat(addUnitCost) < 0) {
+          setAddError('Enter a valid default unit cost')
+          return
+        }
+        let stockCat = categories.find(c => c.purchase_only === 1)
+        if (!stockCat) {
+          stockCat = await window.api['categories:upsert']({ name: 'Stock', kind: 'priced', purchase_only: 1 })
+          retryCategories()
+        }
+        const unitName = addUnit.trim() || 'kg'
+        await window.api['items:upsert']({
+          category_id: stockCat.id,
+          name,
+          selling_price_cents: 0,
+          cost_price_cents: Math.round(parseFloat(addUnitCost)),
+          purchase_unit: unitName,
+          active: 1,
+        })
+      } else {
+        if (!addCatId) {
+          setAddError('Select a category')
+          return
+        }
+        if (isNaN(parseFloat(addPrice)) || parseFloat(addPrice) < 0) {
+          setAddError('Enter a valid selling price')
+          return
+        }
+        await window.api['items:upsert']({
+          category_id: Number(addCatId),
+          name,
+          selling_price_cents: Math.round(parseFloat(addPrice)),
+          cost_price_cents: 0,
+          active: 1,
+        })
       }
-      const unitName = addUnit.trim() || 'kg'
-      await window.api['items:upsert']({
-        category_id: stockCat.id,
-        name,
-        selling_price_cents: 0,
-        cost_price_cents: Math.round(parseFloat(addUnitCost)),
-        purchase_unit: unitName,
-        active: 1,
-      })
       retryItems()
       setAddOpen(false)
       setAddName('')
+      setAddCatId('')
       setAddUnit('kg')
       setAddUnitCost('')
+      setAddPrice('')
     } catch (err) {
-      setAddError((err as Error).message || 'Failed to add raw input')
+      setAddError((err as Error).message || 'Failed to add item')
     } finally {
       setAddProcessing(false)
     }
@@ -253,43 +250,6 @@ export function InventoryPage() {
     }
   }
 
-  const handleAddMeal = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setMealError('')
-    const name = mealName.trim()
-    if (!name) {
-      setMealError('Meal name is required')
-      return
-    }
-    if (!mealCatId) {
-      setMealError('Select a category')
-      return
-    }
-    if (isNaN(parseFloat(mealPrice)) || parseFloat(mealPrice) < 0) {
-      setMealError('Enter a valid selling price')
-      return
-    }
-    setMealProcessing(true)
-    try {
-      await window.api['items:upsert']({
-        category_id: Number(mealCatId),
-        name,
-        selling_price_cents: Math.round(parseFloat(mealPrice)),
-        cost_price_cents: 0,
-        active: 1,
-      })
-      retryItems()
-      setMealOpen(false)
-      setMealName('')
-      setMealCatId('')
-      setMealPrice('')
-    } catch (err) {
-      setMealError((err as Error).message || 'Failed to add meal')
-    } finally {
-      setMealProcessing(false)
-    }
-  }
-
   const toggleOutOfStock = async (item: { id: number; category_id: number; name: string; out_of_stock: number }) => {
     try {
       await window.api['items:upsert']({
@@ -304,58 +264,43 @@ export function InventoryPage() {
     }
   }
 
+  const stockLabel = (id: number): string => {
+    const v = availability[id]
+    if (v == null) return '—'
+    return String(v)
+  }
+
+  const isOut = (id: number, flag: number): boolean =>
+    flag === 1 || (availability[id] != null && (availability[id] as number) <= 0)
+
   const inputClass = 'h-11 rounded-[var(--radius-md)] bg-background text-[0.875rem]'
 
   return (
     <div className="flex flex-col gap-4 p-6">
-      <div>
+      <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Inventory</h1>
-        <p className="m-0 text-[0.875rem] text-muted-foreground">
-          Raw inputs are what you buy (e.g. a whole chicken). Meals are what you sell on the POS (e.g. Boiled Chicken).
-        </p>
+        <div className="flex items-center gap-3">
+          <span className="text-[0.9375rem] font-bold">Food Cost: {fmt.format(dailyTotal)}</span>
+          <Button onClick={() => { setAddError(''); setAddKind('stock'); setAddCatId(''); setAddOpen(true) }} variant="outline" className="h-11 border-border bg-card font-semibold">
+            + Add Item
+          </Button>
+          <Button onClick={() => { setError(''); setPurchaseDate(today); setOpen(true) }} className="bg-primary font-semibold">
+            + Record Purchase
+          </Button>
+        </div>
       </div>
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="w-full">
-        <TabsList>
-          <TabsTrigger value="raw">Raw Inputs</TabsTrigger>
-          <TabsTrigger value="meals">Meals</TabsTrigger>
-        </TabsList>
+      <DateRangeFilter
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onDateFromChange={setDateFrom}
+        onDateToChange={setDateTo}
+        onReset={() => { setDateFrom(''); setDateTo('') }}
+      />
 
-        <TabsContent value="raw">
-          <Card>
-            <CardHeader>
-              <CardTitle>Raw Inputs</CardTitle>
-              <CardDescription>
-                What you buy (e.g. a whole chicken). Record purchases against these, then yield portions into meals.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-4">
-              {/* Date filter for the list */}
-          <div className="flex flex-wrap items-end gap-4">
-            <span className="pb-1 text-base font-bold">
-              Food Cost: {fmt.format(dailyTotal)}
-            </span>
-            <DateRangeFilter
-              dateFrom={dateFrom}
-              dateTo={dateTo}
-              onDateFromChange={setDateFrom}
-              onDateToChange={setDateTo}
-              onReset={() => { setDateFrom(''); setDateTo('') }}
-            />
-          </div>
+      <h2 className="text-lg font-bold">Purchases</h2>
 
-          {/* Actions */}
-          <div className="flex justify-end gap-2">
-            <Button onClick={() => { setAddError(''); setAddOpen(true) }} variant="outline" className="h-11 border-border bg-card font-semibold">
-              + Add Raw Input
-            </Button>
-            <Button onClick={() => { setError(''); setPurchaseDate(today); setOpen(true) }} className="bg-primary font-semibold">
-              + Record Purchase
-            </Button>
-          </div>
-
-          {/* Purchase list */}
-          {loading ? (
+      {loading ? (
             <p className="text-center text-muted-foreground">Loading...</p>
           ) : purchases.length === 0 ? (
             <p className="p-12 text-center text-lg text-muted-foreground">
@@ -368,7 +313,7 @@ export function InventoryPage() {
                   <TableHeader>
                     <TableRow className="bg-card hover:bg-card">
                       <TableHead>Item</TableHead>
-                      <TableHead>Yields</TableHead>
+                      <TableHead>Total Yield</TableHead>
                       <TableHead className="text-right">Qty</TableHead>
                       <TableHead className="text-right">Unit Cost</TableHead>
                       <TableHead className="text-right">Total</TableHead>
@@ -378,14 +323,8 @@ export function InventoryPage() {
                     {purchasesPager.slice.map((p: ItemPurchaseWithName) => (
                       <TableRow key={p.id}>
                         <TableCell className="font-semibold">{p.item_name ?? `Item #${p.item_id}`}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap items-center gap-2">
-                            {(p.yields ?? []).map(y => (
-                              <span key={y.id} className="rounded-full border border-border bg-background px-2 py-0.5 text-[0.8125rem] text-muted-foreground">
-                                → {y.portions} × {y.name}
-                              </span>
-                            ))}
-                          </div>
+                        <TableCell className="text-center text-muted-foreground">
+                          {p.total_yield > 0 ? `${p.total_yield} pcs` : '—'}
                         </TableCell>
                         <TableCell className="text-right text-muted-foreground">
                           {p.quantity_kg} {p.unit ?? 'kg'}
@@ -402,28 +341,12 @@ export function InventoryPage() {
               <PaginationFooter pager={purchasesPager} />
             </div>
           )}
-            </CardContent>
-          </Card>
-        </TabsContent>
 
-        <TabsContent value="meals">
-          <Card>
-            <CardHeader>
-              <CardTitle>Meals</CardTitle>
-              <CardDescription>
-                What you sell on the POS. Each meal shows its selling price and current cost per serving.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-4">
-              <div className="ml-auto">
-            <Button onClick={() => { setMealError(''); setMealCatId(mealCats[0] ? String(mealCats[0].id) : ''); setMealOpen(true) }} className="bg-primary font-semibold">
-              + Add Meal
-            </Button>
-          </div>
+      <h2 className="text-lg font-bold">Items</h2>
 
-          {meals.length === 0 ? (
+      {items.length === 0 ? (
             <p className="p-12 text-center text-lg text-muted-foreground">
-              No meals yet. Add the dishes you sell on the POS.
+              No items yet. Add a stock item or a meal to get started.
             </p>
           ) : (
             <div className="flex flex-col gap-3">
@@ -431,62 +354,77 @@ export function InventoryPage() {
                 <Table className="table-zebra">
                   <TableHeader>
                     <TableRow className="bg-card hover:bg-card">
-                      <TableHead>Meal</TableHead>
+                      <TableHead>Item</TableHead>
+                      <TableHead>Type</TableHead>
                       <TableHead>Category</TableHead>
-                      <TableHead className="text-right">Selling Price</TableHead>
-                      <TableHead className="text-right">Cost / serving</TableHead>
+                      <TableHead className="text-right">Price</TableHead>
+                      <TableHead className="text-right">Stock</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {mealsPager.slice.map(m => (
-                      <TableRow key={m.id}>
-                        <TableCell className="font-semibold">{m.name}</TableCell>
-                        <TableCell className="text-muted-foreground">{m.category_name}</TableCell>
-                        <TableCell className="text-right font-bold">{fmt.format(m.selling_price_cents)}</TableCell>
-                        <TableCell className="text-right text-muted-foreground">{fmt.format(m.cost_price_cents)}</TableCell>
-                        <TableCell>
-                          {m.out_of_stock === 1 && (
-                            <span className="rounded-full border border-warning/40 bg-warning/10 px-2 py-0.5 text-[0.75rem] font-bold text-warning">
-                              OUT OF STOCK
+                    {itemsPager.slice.map(m => {
+                      const stock = isStockItem(m.category_id)
+                      const out = isOut(m.id, m.out_of_stock)
+                      return (
+                        <TableRow key={m.id}>
+                          <TableCell className="font-semibold">{m.name}</TableCell>
+                          <TableCell>
+                            <span className={cn(
+                              'rounded-full border px-2 py-0.5 text-[0.75rem] font-bold',
+                              stock
+                                ? 'border-primary/40 bg-primary/10 text-primary'
+                                : 'border-success/40 bg-success/10 text-success'
+                            )}>
+                              {stock ? 'STOCK' : 'MEAL'}
                             </span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="h-9 border-border bg-background px-3 text-[0.8125rem] font-semibold"
-                            onClick={() => toggleOutOfStock(m)}
-                          >
-                            {m.out_of_stock === 1 ? 'Mark in stock' : 'Mark out of stock'}
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">{m.category_name}</TableCell>
+                          <TableCell className="text-right font-bold">
+                            {stock
+                              ? <span className="font-normal text-muted-foreground">{fmt.format(m.cost_price_cents)}/{m.purchase_unit ?? 'kg'}</span>
+                              : fmt.format(m.selling_price_cents)}
+                          </TableCell>
+                          <TableCell className="text-right text-muted-foreground">{stockLabel(m.id)}</TableCell>
+                          <TableCell>
+                            {out && (
+                              <span className="rounded-full border border-warning/40 bg-warning/10 px-2 py-0.5 text-[0.75rem] font-bold text-warning">
+                                OUT OF STOCK
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="h-9 border-border bg-background px-3 text-[0.8125rem] font-semibold"
+                              onClick={() => toggleOutOfStock(m)}
+                            >
+                              {m.out_of_stock === 1 ? 'Mark in stock' : 'Mark out of stock'}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
                   </TableBody>
                 </Table>
               </div>
-              <PaginationFooter pager={mealsPager} />
+              <PaginationFooter pager={itemsPager} />
             </div>
           )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
 
-      {/* Add raw input */}
+      {/* Add item (stock or meal) */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Add Raw Input</DialogTitle>
+            <DialogTitle>Add Item</DialogTitle>
             <DialogDescription>
-              A raw input is something you buy (e.g. whole chicken, matooke, oil). It stays hidden from the POS — record purchases and yields separately.
+              A stock item is something you buy (e.g. whole chicken) and stays hidden from the POS. A meal is a dish you sell on the POS.
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleAddRaw} className="flex flex-col gap-4">
+          <form onSubmit={handleAddItem} className="flex flex-col gap-4">
             {addError && <p className="m-0 font-semibold text-destructive">{addError}</p>}
 
             <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
@@ -494,21 +432,56 @@ export function InventoryPage() {
               <Input value={addName} onChange={e => setAddName(e.target.value)} className={inputClass} placeholder="e.g. Whole Chicken" autoFocus />
             </Label>
 
-            <div className="grid grid-cols-2 gap-4">
-              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
-                Purchase unit
-                <Input value={addUnit} onChange={e => setAddUnit(e.target.value)} className={inputClass} placeholder="kg" />
-              </Label>
-              <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
-                Default unit cost (UGX)
-                <Input type="number" min="0" step="0.5" value={addUnitCost} onChange={e => setAddUnitCost(e.target.value)} className={inputClass} placeholder="e.g. 17000" />
-              </Label>
-            </div>
+            <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+              Type
+              <Select value={addKind} onValueChange={(v) => setAddKind(v as 'stock' | 'meal')}>
+                <SelectTrigger className="h-11 w-full rounded-[var(--radius-md)]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="stock">Stock item (bought, hidden from POS)</SelectItem>
+                  <SelectItem value="meal">Meal (sold on POS)</SelectItem>
+                </SelectContent>
+              </Select>
+            </Label>
+
+            {addKind === 'stock' ? (
+              <div className="grid grid-cols-2 gap-4">
+                <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+                  Purchase unit
+                  <Input value={addUnit} onChange={e => setAddUnit(e.target.value)} className={inputClass} placeholder="kg" />
+                </Label>
+                <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+                  Default unit cost (UGX)
+                  <Input type="number" min="0" step="0.5" value={addUnitCost} onChange={e => setAddUnitCost(e.target.value)} className={inputClass} placeholder="e.g. 17000" />
+                </Label>
+              </div>
+            ) : (
+              <>
+                <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+                  Category
+                  <Select value={addCatId} onValueChange={setAddCatId}>
+                    <SelectTrigger className="h-11 w-full rounded-[var(--radius-md)]">
+                      <SelectValue placeholder="Select category..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {pricedCats.map(c => (
+                        <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Label>
+                <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+                  Selling price (UGX)
+                  <Input type="number" min="0" step="0.5" value={addPrice} onChange={e => setAddPrice(e.target.value)} className={inputClass} placeholder="e.g. 8000" />
+                </Label>
+              </>
+            )}
 
             <DialogFooter>
               <Button type="button" variant="outline" className="border-border bg-card font-semibold" onClick={() => setAddOpen(false)}>Cancel</Button>
               <Button type="submit" className="bg-primary font-semibold" disabled={addProcessing}>
-                {addProcessing ? 'Saving...' : 'Add Raw Input'}
+                {addProcessing ? 'Saving...' : 'Add Item'}
               </Button>
             </DialogFooter>
           </form>
@@ -521,7 +494,7 @@ export function InventoryPage() {
           <DialogHeader>
             <DialogTitle>Record Purchase</DialogTitle>
             <DialogDescription>
-              Log what you bought and (optionally) which meals it yields. Purchase date defaults to today.
+              Log what you bought and its total yield (pieces/servings this purchase produces). Purchase date defaults to today.
             </DialogDescription>
           </DialogHeader>
 
@@ -536,7 +509,7 @@ export function InventoryPage() {
             </div>
 
             <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
-              Raw input
+              Stock item
               <Popover open={comboOpen} onOpenChange={setComboOpen}>
                 <PopoverTrigger asChild>
                   <Button
@@ -548,7 +521,7 @@ export function InventoryPage() {
                     className="h-11 w-full justify-between rounded-[var(--radius-md)] border-border bg-background px-3 text-[0.875rem] font-normal"
                   >
                     <span className={`truncate ${selectedItem ? '' : 'text-muted-foreground'}`}>
-                      {selectedItem ? selectedItem.name : 'Search for a raw input…'}
+                      {selectedItem ? selectedItem.name : 'Search for a stock item…'}
                     </span>
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
@@ -560,13 +533,13 @@ export function InventoryPage() {
                       autoFocus
                       value={comboQuery}
                       onChange={e => setComboQuery(e.target.value)}
-                      placeholder="Search raw inputs…"
+                      placeholder="Search stock items…"
                       className="h-11 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                     />
                   </div>
                   <div className="max-h-[240px] overflow-auto p-1">
                     {comboFiltered.length === 0 && (
-                      <p className="px-3 py-4 text-center text-sm text-muted-foreground">No raw inputs found.</p>
+                      <p className="px-3 py-4 text-center text-sm text-muted-foreground">No stock items found.</p>
                     )}
                     {comboFiltered.map(p => (
                       <button
@@ -589,7 +562,7 @@ export function InventoryPage() {
                       className="flex w-full items-center gap-2 rounded-[var(--radius-md)] px-2 py-2 text-left text-[0.875rem] font-medium text-primary hover:bg-muted"
                     >
                       <Plus className="h-4 w-4 shrink-0 text-primary" />
-                      Add new raw input{comboQuery.trim() ? `: "${comboQuery.trim()}"` : ''}
+                      Add new stock item{comboQuery.trim() ? `: "${comboQuery.trim()}"` : ''}
                     </button>
                   </div>
                 </PopoverContent>
@@ -616,87 +589,17 @@ export function InventoryPage() {
               <span className="text-[0.875rem] text-muted-foreground">
                 {selectedItem && !isNaN(costPerUnitNum)
                   ? `${selectedItem.name} × ${quantity || '0'} ${unit || 'unit'} @ ${fmt.format(costPerUnitNum)}/${unit || 'unit'}`
-                  : 'Select a raw input and enter cost to preview total'}
+                  : 'Select a stock item and enter cost to preview total'}
               </span>
               <span className="ml-auto text-lg font-extrabold">
                 {fmt.format(computedTotal)}
               </span>
             </div>
 
-            <div className="flex items-center gap-3 rounded-[var(--radius-md)] border border-border bg-background p-3">
-              <Checkbox
-                id="yields-enabled"
-                checked={yieldEnabled}
-                onCheckedChange={v => setYieldEnabled(!!v)}
-              />
-              <Label htmlFor="yields-enabled" className="text-[0.875rem] font-semibold">
-                This raw input yields sellable meals (e.g. whole chicken → Boiled + Fried)
-              </Label>
-            </div>
-
-            {yieldEnabled && (
-              <div className="flex flex-col gap-3 rounded-[var(--radius-md)] border border-border bg-background p-4">
-                {yieldRows.map((row, i) => {
-                  const otherRows = yieldRows.filter((_, idx) => idx !== i)
-                  const usableMeals = meals.filter(m => !otherRows.some(r => r.mealId && Number(r.mealId) === m.id))
-                  const rowCost = computedTotal > 0 && totalPortions > 0 && row.mealId && !isNaN(parseFloat(row.portions))
-                    ? Math.round((computedTotal * parseFloat(row.portions)) / totalPortions)
-                    : 0
-                  return (
-                    <div key={i} className="flex flex-col gap-2 rounded-[var(--radius-md)] border border-border px-3 py-3">
-                      <div className="grid grid-cols-[1fr_6rem] gap-3">
-                        <Label className="flex flex-col gap-1 text-[0.8125rem] font-semibold">
-                          Meal
-                          <Select value={row.mealId} onValueChange={(v) => setYieldRow(i, { mealId: v })}>
-                            <SelectTrigger className="h-10 w-full rounded-[var(--radius-md)]">
-                              <SelectValue placeholder="Select meal..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {usableMeals.map(m => (
-                                <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </Label>
-                        <Label className="flex flex-col gap-1 text-[0.8125rem] font-semibold">
-                          Portions
-                          <Input
-                            type="number"
-                            placeholder="0"
-                            min="1"
-                            step="1"
-                            value={row.portions}
-                            onChange={e => setYieldRow(i, { portions: e.target.value })}
-                            className="h-10 rounded-[var(--radius-md)] bg-background text-[0.875rem]"
-                          />
-                        </Label>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        {rowCost > 0 ? (
-                          <span className="text-[0.8125rem] text-muted-foreground">
-                            carries {fmt.format(rowCost)} ({fmt.format(Math.round(computedTotal / totalPortions))}/serving)
-                          </span>
-                        ) : (
-                          <span className="text-[0.8125rem] text-muted-foreground">cost auto-split by portions</span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => removeYieldRow(i)}
-                          className="ml-auto grid h-6 w-6 place-items-center rounded-[var(--radius-sm)] text-muted-foreground hover:bg-muted"
-                          aria-label="Remove yield"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  )
-                })}
-                <Button type="button" variant="outline" className="h-10 border-border bg-background font-semibold" onClick={addYieldRow}>
-                  <Plus className="h-4 w-4" />
-                  {yieldRows.length === 0 ? 'Add a yield (meal + portions)' : 'Add another meal'}
-                </Button>
-              </div>
-            )}
+            <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
+              Total Yield (pieces/servings this purchase produces)
+              <Input type="number" placeholder="0" value={totalYield} onChange={e => setTotalYield(e.target.value)} className={inputClass} min="0" step="1" />
+            </Label>
             <DialogFooter>
               <Button type="submit" disabled={processing} className="bg-primary font-semibold">
                 {processing ? 'Saving...' : 'Record Purchase'}
@@ -706,11 +609,11 @@ export function InventoryPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Nested add new raw input */}
+      {/* Nested add new stock item */}
       <Dialog open={addNestedOpen} onOpenChange={setAddNestedOpen}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Add new raw input</DialogTitle>
+            <DialogTitle>Add new stock item</DialogTitle>
             <DialogDescription>Create a stock item so you can record purchases against it.</DialogDescription>
           </DialogHeader>
 
@@ -731,51 +634,6 @@ export function InventoryPage() {
               <Button type="button" variant="outline" className="border-border bg-card font-semibold" onClick={() => setAddNestedOpen(false)}>Cancel</Button>
               <Button type="submit" className="bg-primary font-semibold" disabled={!nestedName.trim() || nestedProcessing}>
                 {nestedProcessing ? 'Saving...' : 'Add item'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Add meal */}
-      <Dialog open={mealOpen} onOpenChange={setMealOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add Meal</DialogTitle>
-            <DialogDescription>Add a dish you sell on the POS. Its cost per serving updates automatically when you record a purchase that yields it.</DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleAddMeal} className="flex flex-col gap-4">
-            {mealError && <p className="m-0 font-semibold text-destructive">{mealError}</p>}
-
-            <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
-              Meal name
-              <Input autoFocus value={mealName} onChange={e => setMealName(e.target.value)} className={inputClass} placeholder="e.g. Boiled Chicken" />
-            </Label>
-
-            <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
-              Category
-              <Select value={mealCatId} onValueChange={setMealCatId}>
-                <SelectTrigger className="h-11 w-full rounded-[var(--radius-md)]">
-                  <SelectValue placeholder="Select category..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {mealCats.map(c => (
-                    <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Label>
-
-            <Label className="flex flex-col gap-1 text-[0.875rem] font-semibold">
-              Selling price (UGX)
-              <Input type="number" min="0" step="0.5" value={mealPrice} onChange={e => setMealPrice(e.target.value)} className={inputClass} placeholder="e.g. 8000" />
-            </Label>
-
-            <DialogFooter>
-              <Button type="button" variant="outline" className="border-border bg-card font-semibold" onClick={() => setMealOpen(false)}>Cancel</Button>
-              <Button type="submit" className="bg-primary font-semibold" disabled={mealProcessing}>
-                {mealProcessing ? 'Saving...' : 'Add Meal'}
               </Button>
             </DialogFooter>
           </form>

@@ -316,12 +316,9 @@ export interface ItemPurchase {
   created_at?: string
 }
 
-export interface PurchaseYield {
-  id: number
-  item_id: number
-  name: string
-  portions: number
-  cost_cents: number
+export interface ItemPurchaseWithName extends ItemPurchase {
+  item_name?: string
+  unit_cost_cents?: number
 }
 
 export interface WasteRecord {
@@ -336,11 +333,30 @@ export interface WasteRecord {
   item_name?: string
 }
 
-export interface ItemPurchaseWithName extends ItemPurchase {
-  item_name?: string
-  unit_cost_cents?: number
-  yield_item_name?: string
-  yields?: PurchaseYield[]
+export type StockMovementType = 'purchase_in' | 'sale_out' | 'discount_out' | 'captain_out' | 'waste'
+
+export interface StockMovement {
+  id: number
+  item_id: number
+  movement_type: StockMovementType
+  quantity: number
+  is_discount: number
+  reference_table: string | null
+  reference_id: number | null
+  created_by: number | null
+  created_at: string
+  notes: string | null
+}
+
+export interface RecordStockMovementPayload {
+  item_id: number
+  movement_type: StockMovementType
+  quantity: number
+  is_discount?: number
+  reference_table?: string
+  reference_id?: number
+  created_by?: number | null
+  notes?: string
 }
 
 export interface WasteByItem {
@@ -565,6 +581,10 @@ export interface Api {
   'inventory:byDate': (date: string) => Promise<ItemPurchaseWithName[]>
   'inventory:byDateRange': (start: string, end: string) => Promise<ItemPurchaseWithName[]>
   'inventory:dailyTotal': (date: string) => Promise<number>
+  'inventory:recordMovement': (payload: RecordStockMovementPayload) => Promise<number>
+  'inventory:stockBalance': (itemId: number) => Promise<number>
+  'inventory:stockMovements': (itemId: number, limit?: number) => Promise<StockMovement[]>
+  'inventory:stockAvailability': (itemIds: number[]) => Promise<Record<number, number | null>>
   'waste:record': (payload: { item_id: number; quantity: number; estimated_value_cents: number; reason: 'staff_meal' | 'spoiled' | 'other'; waste_date: string; notes?: string }) => Promise<WasteRecord>
   'waste:byDate': (date: string) => Promise<WasteRecord[]>
   'waste:byDateRange': (start: string, end: string) => Promise<WasteRecord[]>

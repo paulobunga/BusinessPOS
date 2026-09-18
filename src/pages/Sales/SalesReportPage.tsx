@@ -7,9 +7,7 @@ import type { SaleWithItems } from '../../../shared/types'
 
 const PAGE_SIZE = 10
 
-function formatCurrency(cents: number): string {
-  return `(UGX ${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`
-}
+const fmt = (n: number) => new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 }).format(n)
 
 export function SalesReportPage() {
   const [dateFrom, setDateFrom] = useState('')
@@ -44,12 +42,10 @@ export function SalesReportPage() {
   return (
     <div className="flex flex-col gap-4 p-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Sales Report</h1>
-          <p className="m-0 text-[0.875rem] text-muted-foreground">
-            {totalCount} sale{totalCount !== 1 ? 's' : ''} · Total: {formatCurrency(totalCents)}
-          </p>
-        </div>
+        <h1 className="text-2xl font-bold">Sales Report</h1>
+        <span className="text-[0.9375rem] font-bold">
+          {totalCount} sale{totalCount !== 1 ? 's' : ''} · Total: {fmt(totalCents)}
+        </span>
       </div>
 
       <DateRangeFilter
@@ -62,8 +58,10 @@ export function SalesReportPage() {
 
       {loading ? (
         <p className="text-center text-muted-foreground">Loading...</p>
+      ) : sales.length === 0 ? (
+        <p className="p-12 text-center text-lg text-muted-foreground">No sales in this period</p>
       ) : (
-        <>
+        <div className="flex flex-col gap-3">
           <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
             <Table className="table-zebra">
               <TableHeader>
@@ -82,7 +80,7 @@ export function SalesReportPage() {
                     <TableCell className="text-muted-foreground">{sale.created_at.slice(0, 10)}</TableCell>
                     <TableCell className="font-semibold">{sale.customer_name ?? '—'}</TableCell>
                     <TableCell className="text-center">{sale.items.length}</TableCell>
-                    <TableCell className="text-right font-bold">{formatCurrency(sale.total_cents)}</TableCell>
+                    <TableCell className="text-right font-bold">{fmt(sale.total_cents)}</TableCell>
                     <TableCell>{sale.status}</TableCell>
                     <TableCell>{sale.payment_method ?? sale.payment_source ?? '—'}</TableCell>
                   </TableRow>
@@ -91,7 +89,7 @@ export function SalesReportPage() {
             </Table>
           </div>
           <PaginationFooter pager={pager} />
-        </>
+        </div>
       )}
     </div>
   )
