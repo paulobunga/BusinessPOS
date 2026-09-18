@@ -42,8 +42,28 @@ export interface TillSummaryData {
   closed_at: string | null
 }
 
-function getDailyRow(date: string): DailyReport {
+/**
+ * Fill blank range bounds from the data itself so an empty filter means "everything".
+ * Blank start/end ('' or undefined) resolve to the earliest/latest dates present.
+ */
+function resolveRange(start: string, end: string): [string, string] {
+  if (start && end) return [start, end]
   const db = getDb()
+  const row = db.prepare(`
+    SELECT MIN(d) as min_d, MAX(d) as max_d FROM (
+      SELECT DATE(created_at) as d FROM sales
+      UNION ALL SELECT purchase_date FROM item_purchases
+      UNION ALL SELECT waste_date FROM waste
+      UNION ALL SELECT date FROM expenses
+      UNION ALL SELECT date FROM reimbursements
+      UNION ALL SELECT DATE(created_at) FROM debt_write_offs
+    ) WHERE d IS NOT NULL
+  `).get() as { min_d: string | null; max_d: string | null }
+  const today = new Date().toISOString().slice(0, 10)
+  return [start || row.min_d || today, end || row.max_d || today]
+}
+
+function getDailyRow(date: string): DailyReport {  const db = getDb()
 
   const salesRow = db.prepare(`
     SELECT
@@ -249,9 +269,10 @@ function getMonthlyAggregated(year: number): MonthlyReport[] {
 
 export const reportsRepo = {
   getDaily(start: string, end: string): DailyReport[] {
+    const [from, to] = resolveRange(start, end)
     const days: DailyReport[] = []
-    const current = new Date(start + 'T00:00:00')
-    const endDate = new Date(end + 'T00:00:00')
+    const current = new Date(from + 'T00:00:00')
+    const endDate = new Date(to + 'T00:00:00')
     while (current <= endDate) {
       const dateStr =
         `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`
@@ -266,16 +287,18 @@ export const reportsRepo = {
   },
 
   getCategoryBreakdown(start: string, end: string): CategoryBreakdown[] {
+    const [from, to] = resolveRange(start, end)
     return getDb().prepare(`
       SELECT category, SUM(amount_cents) AS amount_cents
       FROM expenses
       WHERE date >= ? AND date <= ?
       GROUP BY category
       ORDER BY amount_cents DESC
-    `).all(start, end) as CategoryBreakdown[]
+    `).all(from, to) as CategoryBreakdown[]
   },
 
   getItemPerformance(start: string, end: string): ItemPerformance[] {
+    const [from, to] = resolveRange(start, end)
     return getDb().prepare(`
       SELECT
         COALESCE(c.name, '') AS category_name,
@@ -294,13 +317,14 @@ export const reportsRepo = {
       LEFT JOIN categories c ON c.id = mi.category_id
       WHERE s.status IN ('completed','unpaid')
         AND DATE(s.created_at) >= ? AND DATE(s.created_at) <= ?
-      GROUP BY c.name, mi.name
+      GROUP BY c.name, COALESCE(mi.name, si.name_snapshot)
       ORDER BY amount_sold_cents DESC
-    `).all(start, end) as ItemPerformance[]
+    `).all(from, to) as ItemPerformance[]
   },
 
   getSales(start: string, end: string): SaleWithItems[] {
     const db = getDb()
+    const [from, to] = resolveRange(start, end)
 
     const saleRows = db.prepare(`
       SELECT
@@ -312,7 +336,7 @@ export const reportsRepo = {
       WHERE status IN ('completed','unpaid')
         AND DATE(created_at) >= ? AND DATE(created_at) <= ?
       ORDER BY id DESC
-    `).all(start, end) as SaleWithItems[]
+    `).all(from, to) as SaleWithItems[]
 
     const saleIds = saleRows.map(r => r.id)
 
