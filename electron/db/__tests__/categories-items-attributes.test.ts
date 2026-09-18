@@ -10,6 +10,7 @@ import { runCategoriesMigration } from '../migrations/007_categories'
 import { runMenuSeedMigration } from '../migrations/009_menu_seed'
 import { runPurchaseYieldMigration } from '../migrations/010_purchase_yield'
 import { runUserRolesMigration } from '../migrations/013_user_roles'
+import { runPerLineCaptainMigration } from '../migrations/026_per_line_captain'
 
 let db: Database.Database
 
@@ -44,6 +45,7 @@ describe('Categories / items / attributes repos', () => {
     runMenuSeedMigration(db)
     runPurchaseYieldMigration(db)
     runUserRolesMigration(db)
+    runPerLineCaptainMigration(db)
 
     const user = usersRepo.create('Test Owner', 'admin', '1234')
     userId = user.id as number

@@ -72,20 +72,25 @@ describe('per-line captain sale creation', () => {
 
   test('captain lines consume stock as captain_out, paid lines as sale_out', () => {
     const chicken = seedItem('Chicken2', 10000)
+    const chips = seedItem('Chips2', 3000)
     const saleId = salesRepo.create({
-      subtotal_cents: 0,
+      subtotal_cents: 3000,
       discount_cents: 0,
-      total_cents: 0,
+      total_cents: 3000,
       debt_cents: 0,
       payment_method: 'cash',
       till_session_id: null,
       created_by: 1,
-      items: [{ item_id: chicken, price_cents: 0, quantity: 2, is_captain: true }],
+      items: [
+        { item_id: chicken, price_cents: 0, quantity: 2, is_captain: true },
+        { item_id: chips, price_cents: 3000, quantity: 1 },
+      ],
     })
     const moves = db.prepare(
-      'SELECT movement_type, quantity FROM item_stock_movements WHERE reference_table = ? AND reference_id = ?'
-    ).all('sales', saleId) as { movement_type: string; quantity: number }[]
-    expect(moves).toHaveLength(1)
-    expect(moves[0]).toMatchObject({ movement_type: 'captain_out', quantity: 2 })
+      'SELECT item_id, movement_type, quantity FROM item_stock_movements WHERE reference_table = ? AND reference_id = ? ORDER BY id'
+    ).all('sales', saleId) as { item_id: number; movement_type: string; quantity: number }[]
+    expect(moves).toHaveLength(2)
+    expect(moves[0]).toMatchObject({ item_id: chicken, movement_type: 'captain_out', quantity: 2 })
+    expect(moves[1]).toMatchObject({ item_id: chips, movement_type: 'sale_out', quantity: 1 })
   })
 })
