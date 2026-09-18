@@ -14,7 +14,7 @@ function attachItems(sales: SaleWithItems[]): SaleWithItems[] {
   const ids = sales.map(s => s.id)
   const itemRows: SaleItem[] = ids.length
     ? db.prepare(`
-        SELECT id, sale_id, item_id, free_item_id, name_snapshot, unit_price_cents, quantity, line_total_cents
+        SELECT id, sale_id, item_id, free_item_id, name_snapshot, unit_price_cents, quantity, line_total_cents, is_captain
         FROM sale_items
         WHERE sale_id IN (${ids.map(() => '?').join(',')})
         ORDER BY id ASC
@@ -40,7 +40,7 @@ export const salesRepo = {
     payment_method: 'cash' | 'debt' | 'mixed'
     till_session_id?: number | null
     created_by: number
-    items: Array<{ item_id: number; free_item_id?: number | null; price_cents: number; quantity?: number }>
+    items: Array<{ item_id: number; free_item_id?: number | null; price_cents: number; quantity?: number; is_captain?: boolean }>
   }) {
     const db = getDb()
     const status = data.payment_method === 'cash' ? 'completed' : 'unpaid'
@@ -65,16 +65,18 @@ export const salesRepo = {
     )
     const saleId = result.lastInsertRowid as number
     const insertItem = db.prepare(`
-      INSERT INTO sale_items (sale_id, item_id, free_item_id, name_snapshot, unit_price_cents, quantity, line_total_cents)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO sale_items (sale_id, item_id, free_item_id, name_snapshot, unit_price_cents, quantity, line_total_cents, is_captain)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `)
-    const getItem = db.prepare('SELECT name FROM menu_items WHERE id = ?')
+    const getItem = db.prepare('SELECT name, selling_price_cents FROM menu_items WHERE id = ?')
     for (const item of data.items) {
-      const mi = getItem.get(item.item_id) as { name: string } | undefined
+      const mi = getItem.get(item.item_id) as { name: string; selling_price_cents: number } | undefined
       const qty = item.quantity ?? 1
-      insertItem.run(saleId, item.item_id, item.free_item_id ?? null, mi?.name ?? '', item.price_cents, qty, item.price_cents * qty)
+      const isCaptain = item.is_captain ? 1 : 0
+      const unitPrice = isCaptain ? (mi?.selling_price_cents ?? item.price_cents) : item.price_cents
+      insertItem.run(saleId, item.item_id, item.free_item_id ?? null, mi?.name ?? '', unitPrice, qty, isCaptain ? 0 : unitPrice * qty, isCaptain)
       stockRepo.consumeForSale(item.item_id, qty, {
-        movement_type: 'sale_out',
+        movement_type: isCaptain ? 'captain_out' : 'sale_out',
         is_discount: data.discount_cents > 0 ? 1 : 0,
         reference_table: 'sales',
         reference_id: saleId,
