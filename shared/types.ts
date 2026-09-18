@@ -116,6 +116,7 @@ export interface SaleItem {
   quantity: number
   line_total_cents: number
   free_item_id?: number | null
+  is_captain: number
 }
 
 export interface SaleWithItems extends Sale {
@@ -446,6 +447,7 @@ export interface SaleItemInput {
   free_item_id?: number | null
   price_cents: number
   quantity?: number
+  is_captain?: boolean
 }
 
 export interface CreateSalePayload {
