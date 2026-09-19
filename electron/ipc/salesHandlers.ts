@@ -7,7 +7,7 @@ import type { KitchenOrder } from '../../shared/kitchen'
 export function registerSalesHandlers() {
   ipcMain.handle('sales:create', (_e, payload) => {
     const id = salesRepo.create(payload)
-    const order = salesRepo.getById(id)
+    const order = salesRepo.getWithItems(id)
     try {
       if (order) broadcastKitchenEvent({ type: 'order:new', order: order as unknown as KitchenOrder })
     } catch { /* never fail a sale if broadcast fails */ }
@@ -15,7 +15,7 @@ export function registerSalesHandlers() {
   })
   ipcMain.handle('sales:createCaptainOrder', (_e, payload) => {
     const id = salesRepo.createCaptainOrder(payload)
-    const order = salesRepo.getById(id)
+    const order = salesRepo.getWithItems(id)
     try {
       if (order) broadcastKitchenEvent({ type: 'order:new', order: order as unknown as KitchenOrder })
     } catch { /* never fail a sale if broadcast fails */ }

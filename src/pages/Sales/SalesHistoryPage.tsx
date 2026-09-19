@@ -74,6 +74,15 @@ export function SalesHistoryPage() {
     void load()
   }, [load])
 
+  useEffect(() => {
+    const unsubscribe = window.api.onKitchenEvent(() => {
+      void load()
+    })
+    return () => {
+      unsubscribe()
+    }
+  }, [load])
+
   const pager = usePagination(sales)
   const activeTotal = useMemo(
     () => sales.filter(s => s.status !== 'voided').reduce((sum, s) => sum + s.total_cents, 0),
