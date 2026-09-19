@@ -6,7 +6,7 @@ const SALE_COLUMNS = `
   id, till_session_id, created_at, status, subtotal_cents, discount_cents,
   tax_cents, total_cents, payment_source, customer_id, customer_name,
   created_by, voided_at, voided_by, void_reason, discount_reason,
-  debt_cents, payment_method, sale_kind, service_description
+  debt_cents, payment_method, sale_kind, service_description, kitchen_status
 `
 
 function attachItems(sales: SaleWithItems[]): SaleWithItems[] {
@@ -47,8 +47,8 @@ export const salesRepo = {
     const paymentSource = data.payment_method === 'cash' ? 'cash' : 'unpaid'
     const customerId = resolveCustomer(data.customer_name)
     const result = db.prepare(`
-      INSERT INTO sales (customer_id, customer_name, subtotal_cents, discount_cents, discount_reason, debt_cents, payment_method, status, payment_source, total_cents, till_session_id, created_by)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO sales (customer_id, customer_name, subtotal_cents, discount_cents, discount_reason, debt_cents, payment_method, status, payment_source, total_cents, till_session_id, created_by, kitchen_status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new')
     `).run(
       customerId,
       data.customer_name ?? null,
@@ -103,8 +103,8 @@ export const salesRepo = {
     return db.transaction(() => {
       const customerId = resolveCustomer(data.customer_name)
       const result = db.prepare(`
-        INSERT INTO sales (customer_id, customer_name, subtotal_cents, discount_cents, discount_reason, debt_cents, payment_method, status, payment_source, total_cents, till_session_id, created_by, sale_kind, service_description)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO sales (customer_id, customer_name, subtotal_cents, discount_cents, discount_reason, debt_cents, payment_method, status, payment_source, total_cents, till_session_id, created_by, sale_kind, service_description, kitchen_status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new')
       `).run(
         customerId,
         data.customer_name ?? null,
