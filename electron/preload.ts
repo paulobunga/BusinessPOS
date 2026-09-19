@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { Api } from '../shared/types'
-import type { AiEvent } from '../shared/types'
+import type { AiEvent, KitchenEvent } from '../shared/types'
 
 const api: Api = {
   ping: () => ipcRenderer.invoke('ping'),
@@ -23,6 +23,7 @@ const api: Api = {
   'till:close': (counted) => ipcRenderer.invoke('till:close', counted),
   'till:current': () => ipcRenderer.invoke('till:current'),
   'till:countCash': () => ipcRenderer.invoke('till:countCash'),
+  'till:list': () => ipcRenderer.invoke('till:list'),
   'inventory:recordPurchase': (payload) => ipcRenderer.invoke('inventory:recordPurchase', payload),
   'inventory:byDate': (date) => ipcRenderer.invoke('inventory:byDate', date),
   'inventory:byDateRange': (start, end) => ipcRenderer.invoke('inventory:byDateRange', start, end),
@@ -100,10 +101,17 @@ const api: Api = {
   'ai:sessions:archive': (id) => ipcRenderer.invoke('ai:sessions:archive', id),
   'ai:sessions:export': (id) => ipcRenderer.invoke('ai:sessions:export', id),
   'ai:sessions:delete': (id) => ipcRenderer.invoke('ai:sessions:delete', id),
+  'kitchen:list': () => ipcRenderer.invoke('kitchen:list'),
+  'kitchen:setStatus': (id, status) => ipcRenderer.invoke('kitchen:setStatus', id, status),
   onAiEvent: (cb) => {
     const listener = (_e: Electron.IpcRendererEvent, event: AiEvent) => cb(event)
     ipcRenderer.on('ai:event', listener)
     return () => ipcRenderer.removeListener('ai:event', listener)
+  },
+  onKitchenEvent: (cb) => {
+    const listener = (_e: Electron.IpcRendererEvent, event: KitchenEvent) => cb(event)
+    ipcRenderer.on('kitchen:event', listener)
+    return () => ipcRenderer.removeListener('kitchen:event', listener)
   },
 }
 

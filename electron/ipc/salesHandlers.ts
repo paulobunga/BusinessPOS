@@ -1,15 +1,25 @@
 import { ipcMain } from 'electron'
 import { salesRepo } from '../db/repositories/salesRepo'
 import { tillRepo } from '../db/repositories/tillRepo'
+import { broadcastKitchenEvent } from './kitchenHandlers.js'
+import type { KitchenOrder } from '../../shared/kitchen'
 
 export function registerSalesHandlers() {
   ipcMain.handle('sales:create', (_e, payload) => {
     const id = salesRepo.create(payload)
-    return salesRepo.getById(id)
+    const order = salesRepo.getById(id)
+    try {
+      if (order) broadcastKitchenEvent({ type: 'order:new', order: order as unknown as KitchenOrder })
+    } catch { /* never fail a sale if broadcast fails */ }
+    return order
   })
   ipcMain.handle('sales:createCaptainOrder', (_e, payload) => {
     const id = salesRepo.createCaptainOrder(payload)
-    return salesRepo.getById(id)
+    const order = salesRepo.getById(id)
+    try {
+      if (order) broadcastKitchenEvent({ type: 'order:new', order: order as unknown as KitchenOrder })
+    } catch { /* never fail a sale if broadcast fails */ }
+    return order
   })
   ipcMain.handle('sales:list', (_e, filters?: { status?: string; date_from?: string; date_to?: string }) => {
     return salesRepo.list(filters)
@@ -43,5 +53,8 @@ export function registerSalesHandlers() {
   })
   ipcMain.handle('till:countCash', () => {
     return tillRepo.countCash()
+  })
+  ipcMain.handle('till:list', () => {
+    return tillRepo.list()
   })
 }

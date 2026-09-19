@@ -1,4 +1,8 @@
 // === Entities ===
+import type { KitchenOrder, KitchenStatus } from './kitchen'
+
+export type KitchenEvent = { type: 'order:new' | 'order:updated'; order: KitchenOrder }
+
 export type Role = 'admin' | 'cashier'
 
 export interface User {
@@ -315,6 +319,7 @@ export interface ItemPurchase {
   created_by: number | null
   unit?: string
   created_at?: string
+  notes?: string | null
 }
 
 export interface ItemPurchaseWithName extends ItemPurchase {
@@ -568,6 +573,8 @@ export interface Api {
   'sales:get': (id: number) => Promise<SaleWithItems>
   'sales:listByDate': (date: string) => Promise<Sale[]>
   'sales:getById': (id: number) => Promise<Sale | null>
+  'kitchen:list': () => Promise<KitchenOrder[]>
+  'kitchen:setStatus': (id: number, status: KitchenStatus) => Promise<KitchenOrder>
   'expenses:create': (payload: CreateExpensePayload) => Promise<Expense>
   'expenses:update': (id: number, payload: Partial<CreateExpensePayload>) => Promise<Expense>
   'expenses:delete': (id: number) => Promise<void>
@@ -579,7 +586,8 @@ export interface Api {
   'till:close': (countedCents: number) => Promise<{ expected: number; variance: number }>
   'till:current': () => Promise<TillSession | null>
   'till:countCash': () => Promise<TillCountData | null>
-  'inventory:recordPurchase': (payload: { item_id: number; quantity: number; cost_cents: number; date: string; created_by: number | null; unit?: string; total_yield: number }) => Promise<ItemPurchaseWithName>
+  'till:list': () => Promise<TillSession[]>
+  'inventory:recordPurchase': (payload: { item_id: number; quantity: number; cost_cents: number; date: string; created_by: number | null; unit?: string; total_yield: number; notes?: string }) => Promise<ItemPurchaseWithName>
   'inventory:byDate': (date: string) => Promise<ItemPurchaseWithName[]>
   'inventory:byDateRange': (start: string, end: string) => Promise<ItemPurchaseWithName[]>
   'inventory:dailyTotal': (date: string) => Promise<number>
@@ -657,6 +665,7 @@ export interface Api {
   'ai:sessions:export': (id: number) => Promise<ExportedSession>
   'ai:sessions:delete': (id: number) => Promise<void>
   onAiEvent: (cb: (event: AiEvent) => void) => () => void
+  onKitchenEvent: (cb: (e: KitchenEvent) => void) => () => void
 }
 
 // === AI Assistant ===

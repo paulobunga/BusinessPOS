@@ -17,6 +17,7 @@ import { registerUsersHandlers } from './ipc/usersHandlers.js'
 import { registerAssetsHandlers } from './ipc/assetsHandlers.js'
 import { registerRecipesHandlers } from './ipc/recipesHandlers.js'
 import { registerAiHandlers } from './ipc/aiHandlers.js'
+import { registerKitchenHandlers } from './ipc/kitchenHandlers.js'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -79,5 +80,6 @@ registerUsersHandlers()
   registerAssetsHandlers()
   registerRecipesHandlers()
   registerAiHandlers()
+  registerKitchenHandlers()
 ipcMain.handle('ping', () => 'pong')
 ipcMain.handle('reports:exportCsv', () => '')
