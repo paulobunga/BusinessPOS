@@ -6,6 +6,10 @@ export const tillRepo = {
     return row ?? null
   },
 
+  list() {
+    return getDb().prepare('SELECT * FROM till_sessions ORDER BY opened_at DESC, id DESC').all()
+  },
+
   open(openingFloatCents: number) {
     const result = getDb().prepare("INSERT INTO till_sessions (opening_float_cents, opened_at) VALUES (?, datetime('now'))").run(openingFloatCents)
     return result.lastInsertRowid

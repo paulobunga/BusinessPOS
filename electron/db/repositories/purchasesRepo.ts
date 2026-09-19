@@ -15,14 +15,14 @@ export const purchasesRepo = {
     date: string,
     createdBy: number | null,
     totalYield: number,
-    opts: { unit?: string } = {},
+    opts: { unit?: string; notes?: string } = {},
   ): ItemPurchaseWithName {
     const db = getDb()
     const unit = opts.unit || 'kg'
 
     const result = db.prepare(
-      'INSERT INTO item_purchases (item_id, purchase_date, quantity_kg, cost_cents, total_yield, created_by, unit) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    ).run(itemId, date, quantity, costCents, totalYield, createdBy, unit)
+      'INSERT INTO item_purchases (item_id, purchase_date, quantity_kg, cost_cents, total_yield, created_by, unit, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    ).run(itemId, date, quantity, costCents, totalYield, createdBy, unit, opts.notes ?? null)
 
     if (quantity > 0 && costCents > 0) {
       db.prepare('UPDATE menu_items SET cost_price_cents = ? WHERE id = ?').run(

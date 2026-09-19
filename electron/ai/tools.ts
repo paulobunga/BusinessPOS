@@ -33,7 +33,7 @@ export const WRITE_TOOLS: string[] = [
   'log_expense', 'record_waste', 'record_debt_payment', 'log_reimbursement',
   'update_menu_item', 'add_menu_item', 'toggle_item_stock',
   'record_purchase', 'create_recipe', 'update_recipe', 'delete_recipe',
-  'open_till', 'close_till',
+  'set_meal_yield', 'open_till', 'close_till',
   'create_asset', 'update_asset', 'dispose_asset', 'post_depreciation',
 ]
 
@@ -318,18 +318,32 @@ export const TOOL_DEFINITIONS: Record<string, ToolDef> = {
     },
   },
   record_purchase: {
-    description: 'Record a food/protein purchase. Updates item cost price automatically. Requires admin. cost_cents is whole UGX.',
+    description: 'Record a raw/stock purchase (e.g. whole chicken, flour, meat) against a STOCK item, not a sellable meal. Updates item cost price automatically. Requires admin. cost_cents is whole UGX. Balances are tracked in servings, so total_yield must be the servings this purchase produces.',
     parameters: {
       type: 'object',
       properties: {
-        item_id: { type: 'integer' },
+        item_id: { type: 'integer', description: 'STOCK (raw input) item ID — use a purchase-only category item' },
         quantity: { type: 'number', description: 'Quantity purchased (e.g., kg or units)' },
         cost_cents: { type: 'integer', description: 'Total cost in whole UGX' },
         purchase_date: { type: 'string', description: 'YYYY-MM-DD, defaults to today' },
         unit: { type: 'string', description: 'Unit of measure: kg, g, whole, etc.' },
         total_yield: { type: 'integer', description: 'Total servings/yield from this purchase' },
+        notes: { type: 'string', description: 'Optional note: brand, variant, supplier (e.g. Supreme 2KG)' },
       },
       required: ['item_id', 'quantity', 'cost_cents', 'total_yield'], additionalProperties: false,
+    },
+  },
+  set_meal_yield: {
+    description: 'Link a raw/stock item to a sellable meal so sales deduct stock. qty_per_sale is how many servings of the raw each plate consumes (e.g. 2 for a 2-chapati combo, 1 for a single). Requires admin.',
+    parameters: {
+      type: 'object',
+      properties: {
+        raw_input_id: { type: 'integer', description: 'STOCK (raw input) item ID' },
+        meal_id: { type: 'integer', description: 'Sellable meal item ID' },
+        portions: { type: 'integer', description: 'Servings one unit of raw produces (costing info, e.g. 4 pieces per whole chicken)' },
+        qty_per_sale: { type: 'integer', description: 'Servings of raw consumed per plate sold (default 1)' },
+      },
+      required: ['raw_input_id', 'meal_id'], additionalProperties: false,
     },
   },
   open_till: {
@@ -614,8 +628,23 @@ export async function executeTool(name: string, args: Record<string, unknown>, c
         args.purchase_date ? String(args.purchase_date) : new Date().toISOString().slice(0, 10),
         ctx.userId,
         Number(args.total_yield),
-        { unit: args.unit ? String(args.unit) : 'kg' }
+        { unit: args.unit ? String(args.unit) : 'kg', notes: args.notes ? String(args.notes) : undefined }
       )
+    case 'set_meal_yield': {
+      const rawId = Number(args.raw_input_id)
+      const mealId = Number(args.meal_id)
+      const raw = itemsRepo.getById(rawId)
+      if (!raw) throw new Error(`Raw item ${rawId} not found`)
+      const meal = itemsRepo.getById(mealId)
+      if (!meal) throw new Error(`Meal item ${mealId} not found`)
+      const portions = args.portions != null ? Math.max(1, Math.floor(Number(args.portions))) : 1
+      const qtyPerSale = args.qty_per_sale != null ? Math.max(1, Math.floor(Number(args.qty_per_sale))) : 1
+      getDb().prepare(
+        `INSERT INTO item_yield_defaults (raw_input_id, meal_id, portions, qty_per_sale) VALUES (?, ?, ?, ?)
+         ON CONFLICT(raw_input_id, meal_id) DO UPDATE SET portions = excluded.portions, qty_per_sale = excluded.qty_per_sale`
+      ).run(rawId, mealId, portions, qtyPerSale)
+      return { raw_input_id: rawId, meal_id: mealId, portions, qty_per_sale: qtyPerSale }
+    }
     case 'create_asset':
       return assetsRepo.create({
         name: String(args.name),

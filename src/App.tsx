@@ -9,6 +9,7 @@ import { AppLayout } from './components/AppLayout'
 import { RecordDebtsPage } from './pages/Debts/RecordDebtsPage'
 import { SetupPage } from './pages/Setup/SetupPage'
 import { SellPage } from './pages/Sell/SellPage'
+import { TillPage } from './pages/Till/TillPage'
 import { SalesHistoryPage } from './pages/Sales/SalesHistoryPage'
 import { ExpensesPage } from './pages/Expenses/ExpensesPage'
 import { DebtsPage } from './pages/Debts/DebtsPage'
@@ -56,6 +57,7 @@ function Root() {
         <Route element={<RequireAuth />}>
           <Route element={<AppLayout />}>
             <Route path="/sell" element={<SellPage />} />
+            <Route path="/till" element={<RequireModule module="reports"><TillPage /></RequireModule>} />
             <Route path="/sales" element={<SalesHistoryPage />} />
             <Route path="/expenses" element={<RequireModule module="expenses"><ExpensesPage /></RequireModule>} />
             <Route path="/debts" element={<RequireModule module="debts"><DebtsPage /></RequireModule>} />

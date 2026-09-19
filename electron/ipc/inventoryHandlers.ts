@@ -4,9 +4,10 @@ import { expensesRepo } from '../db/repositories/expensesRepo'
 import { stockRepo } from '../db/repositories/stockRepo'
 
 export function registerInventoryHandlers() {
-  ipcMain.handle('inventory:recordPurchase', (_e, payload: { item_id: number; quantity: number; cost_cents: number; date: string; created_by: number | null; unit?: string; total_yield: number }) => {
+  ipcMain.handle('inventory:recordPurchase', (_e, payload: { item_id: number; quantity: number; cost_cents: number; date: string; created_by: number | null; unit?: string; total_yield: number; notes?: string }) => {
     const purchase = purchasesRepo.recordPurchase(payload.item_id, payload.quantity, payload.cost_cents, payload.date, payload.created_by, payload.total_yield, {
       unit: payload.unit,
+      notes: payload.notes,
     })
     try {
       const expenseData: { category: string; description: string; amount_cents: number; payment_source: 'till' | 'personal' | 'mpesa'; date: string; created_by: number } = {

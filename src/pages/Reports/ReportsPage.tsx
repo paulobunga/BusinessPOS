@@ -248,7 +248,7 @@ function DayView({ data, categories }: { data: DailyReport[]; categories: { cate
         <StatCard label="Revenue" value={formatUGX(day.sales_revenue_cents)} />
         <StatCard label="Food Cost" value={formatUGX(day.food_purchase_cents)} muted />
         <StatCard label="Waste" value={formatUGX(day.waste_cents)} muted />
-        <StatCard label="Expenses" value={formatUGX(day.expense_cents)} muted />
+        <StatCard label="Expenses (non-food)" value={formatUGX(day.expense_cents)} muted />
         <StatCard label="Reimbursements" value={formatUGX(day.reimbursement_cents)} muted />
         {day.barter_cents > 0 && <StatCard label="Barter (Captains)" value={formatUGX(day.barter_cents)} />}
         {day.bad_debt_cents > 0 && <StatCard label="Bad Debt" value={formatUGX(day.bad_debt_cents)} muted />}
@@ -321,7 +321,7 @@ function TableView({ data, label }: { data: (DailyReport | MonthlyReport)[]; lab
                 <TableHead>Revenue</TableHead>
                 <TableHead>Food Cost</TableHead>
                 <TableHead>Waste</TableHead>
-                <TableHead>Expenses</TableHead>
+                <TableHead>Expenses (non-food)</TableHead>
                 <TableHead>Still Owed</TableHead>
                 <TableHead>Barter</TableHead>
                 <TableHead>Bad Debt</TableHead>

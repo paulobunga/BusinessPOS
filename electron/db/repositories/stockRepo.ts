@@ -54,8 +54,9 @@ export const stockRepo = {
 
   /**
    * Record consumption for a sold meal.
-   * If the meal has recipe links (item_yield_defaults), deduct `qty` servings
-   * from each linked raw input. Otherwise deduct from the item itself.
+   * If the meal has recipe links (item_yield_defaults), deduct `qty * qty_per_sale`
+   * servings from each linked raw input (e.g. a 2-chapati combo deducts 2 from
+   * flour stock per plate). Otherwise deduct from the item itself.
    * Purchases add servings via `purchase_in` with quantity = total_yield, so
    * buy 1 chicken (yields 4) then sell 1 meal leaves 3 in stock.
    */
@@ -76,14 +77,14 @@ export const stockRepo = {
       "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'item_yield_defaults'",
     ).get()
     const raws = hasDefaults
-      ? (db.prepare('SELECT raw_input_id FROM item_yield_defaults WHERE meal_id = ?').all(mealId) as { raw_input_id: number }[])
+      ? (db.prepare('SELECT raw_input_id, qty_per_sale FROM item_yield_defaults WHERE meal_id = ?').all(mealId) as { raw_input_id: number; qty_per_sale: number | null }[])
       : []
     if (raws.length === 0) {
       this.recordMovement({ item_id: mealId, quantity: qty, ...opts })
       return
     }
     for (const r of raws) {
-      this.recordMovement({ item_id: r.raw_input_id, quantity: qty, ...opts })
+      this.recordMovement({ item_id: r.raw_input_id, quantity: qty * (r.qty_per_sale ?? 1), ...opts })
     }
   },
 

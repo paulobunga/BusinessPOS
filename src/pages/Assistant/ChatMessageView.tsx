@@ -1,8 +1,6 @@
 import { Message, MessageAvatar } from '@/components/ui/message'
 import { Markdown } from '@/components/ui/markdown'
-import { Reasoning, ReasoningTrigger, ReasoningContent } from '@/components/ui/reasoning'
 import { Steps, StepsItem, StepsTrigger, StepsContent, StepsBar } from '@/components/ui/steps'
-import { ResponseStream } from '@/components/ui/response-stream'
 import { cn } from '@/lib/utils'
 import type { AiChatMessage, AiToolCall } from '../../../shared/types'
 import type { ToolPart } from '@/components/ui/tool'
@@ -150,16 +148,15 @@ export function ChatMessageView({ message, isStreaming }: { message: AiChatMessa
           </div>
         ) : (
           <div className="rounded-lg bg-card p-2 text-foreground">
-            <Reasoning isStreaming={isStreaming ?? false}>
-              <ReasoningTrigger>
-                {isStreaming ? 'Thinking' : (hasToolCalls ? 'Done' : 'Done')}
-              </ReasoningTrigger>
-              <ReasoningContent markdown>
-                <Markdown id={`m-${message.id}`} className="prose prose-sm dark:prose-invert max-w-none">
-                  {message.content || (hasToolCalls ? 'Working on it…' : '')}
-                </Markdown>
-              </ReasoningContent>
-            </Reasoning>
+            {message.content ? (
+              <Markdown id={`m-${message.id}`} className="prose prose-sm dark:prose-invert max-w-none">
+                {message.content}
+              </Markdown>
+            ) : (
+              <p className="m-0 px-2 py-1 text-sm text-muted-foreground">
+                {isStreaming ? 'Thinking…' : (hasToolCalls ? 'Working on it…' : '')}
+              </p>
+            )}
 
             {hasToolCalls && (
               <Steps defaultOpen={true}>

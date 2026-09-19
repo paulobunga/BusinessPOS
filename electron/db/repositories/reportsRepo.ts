@@ -104,7 +104,7 @@ function getDailyRow(date: string): DailyReport {  const db = getDb()
   const expenseRow = db.prepare(`
     SELECT COALESCE(SUM(amount_cents), 0) AS expense_cents
     FROM expenses
-    WHERE date = ?
+    WHERE date = ? AND category != 'Supplies' AND deleted_at IS NULL
   `).get(date) as { expense_cents: number }
 
   const reimbursementRow = db.prepare(`
@@ -181,7 +181,7 @@ function getMonthlyAggregated(year: number): MonthlyReport[] {
       strftime('%Y-%m', date) AS month,
       COALESCE(SUM(amount_cents), 0) AS expense_cents
     FROM expenses
-    WHERE strftime('%Y', date) = ?
+    WHERE strftime('%Y', date) = ? AND category != 'Supplies' AND deleted_at IS NULL
     GROUP BY month
   `).all(String(year)) as { month: string; expense_cents: number }[]
 
@@ -306,10 +306,24 @@ export const reportsRepo = {
         SUM(si.quantity) AS quantity_sold,
         CAST(ROUND(SUM(si.line_total_cents * 1.0) / SUM(si.quantity)) AS INTEGER) AS price_per_item_cents,
         CAST(ROUND(SUM(si.line_total_cents * CASE WHEN s.subtotal_cents > 0 THEN s.total_cents * 1.0 / s.subtotal_cents ELSE 1 END)) AS INTEGER) AS amount_sold_cents,
-        SUM(COALESCE(mi.cost_price_cents, 0) * si.quantity) AS cost_cents,
+        SUM(COALESCE(
+          (SELECT CAST(ROUND(ip.cost_cents * 1.0 / NULLIF(ip.quantity_kg, 0)) AS INTEGER)
+           FROM item_purchases ip
+           WHERE ip.item_id = si.item_id
+             AND ip.purchase_date <= DATE(s.created_at)
+           ORDER BY ip.purchase_date DESC, ip.id DESC LIMIT 1),
+          COALESCE(mi.cost_price_cents, 0)
+        ) * si.quantity) AS cost_cents,
         CAST(ROUND(SUM(
           si.line_total_cents * CASE WHEN s.subtotal_cents > 0 THEN s.total_cents * 1.0 / s.subtotal_cents ELSE 1 END
-          - COALESCE(mi.cost_price_cents, 0) * si.quantity
+          - COALESCE(
+            (SELECT CAST(ROUND(ip.cost_cents * 1.0 / NULLIF(ip.quantity_kg, 0)) AS INTEGER)
+             FROM item_purchases ip
+             WHERE ip.item_id = si.item_id
+               AND ip.purchase_date <= DATE(s.created_at)
+             ORDER BY ip.purchase_date DESC, ip.id DESC LIMIT 1),
+            COALESCE(mi.cost_price_cents, 0)
+          ) * si.quantity
         )) AS INTEGER) AS profit_cents
       FROM sale_items si
       JOIN sales s ON s.id = si.sale_id
