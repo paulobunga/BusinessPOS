@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kitchen Display</title>
+<link rel="stylesheet" href="/kitchen/kitchen.css">
+</head>
+<body>
+<div id="pin-overlay">
+  <div class="pin-card">
+    <h1>Kitchen Display</h1>
+    <label for="pin-input">Kitchen PIN</label>
+    <input id="pin-input" type="password" inputmode="numeric" autocomplete="off" placeholder="Enter PIN">
+    <button id="start-btn" type="button">Start Kitchen Display</button>
+    <p id="pin-error" role="alert"></p>
+  </div>
+</div>
+<header>
+  <h1>Kitchen Display</h1>
+  <span id="conn-status" class="status-not-started">Not started</span>
+  <span id="sound-state">Sound off</span>
+</header>
+<main id="board">
+  <section data-status="new">
+    <h2>New</h2>
+    <div class="cards"></div>
+  </section>
+  <section data-status="preparing">
+    <h2>Preparing</h2>
+    <div class="cards"></div>
+  </section>
+  <section data-status="completed">
+    <h2>Completed</h2>
+    <div class="cards"></div>
+  </section>
+</main>
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/kitchen/kitchen.js"></script>
+</body>
+</html>
