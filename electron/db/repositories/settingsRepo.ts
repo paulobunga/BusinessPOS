@@ -27,6 +27,8 @@ export const settingsRepo = {
         tax_enabled: 'false',
         tax_rate: '0',
         business_name: 'My Restaurant',
+        kds_port: '3000',
+        kds_alert_minutes: '10',
       })
     }
   }
