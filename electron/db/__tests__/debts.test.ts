@@ -7,6 +7,7 @@ import { runSalesExtrasMigration } from '../migrations/002_sales_extras'
 import { runDebtsMigration } from '../migrations/004_debts_payment_allocations'
 import { runRemovePaymentIdMigration } from '../migrations/014_debt_allocations_cleanup'
 import { runDebtWriteOffsMigration } from '../migrations/017_debt_write_offs'
+import { runKitchenStatusMigration } from '../migrations/029_kitchen_status'
 
 const TEST_DB_PATH = path.join(__dirname, '..', '__test_debts.sqlite')
 
@@ -29,6 +30,7 @@ describe('debts:recordPayment', () => {
     runDebtsMigration(db)
     runRemovePaymentIdMigration(db)
     runDebtWriteOffsMigration(db)
+    runKitchenStatusMigration(db)
   })
 
   afterAll(() => {

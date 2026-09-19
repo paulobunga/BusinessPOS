@@ -18,6 +18,10 @@ import { runDebtWriteOffsMigration } from '../db/migrations/017_debt_write_offs'
 import { runTotalYieldMigration } from '../db/migrations/022_total_yield'
 import { runItemStockMovementsMigration } from '../db/migrations/024_item_stock_movements'
 import { runYieldCleanupMigration } from '../db/migrations/025_yield_cleanup'
+import { runPerLineCaptainMigration } from '../db/migrations/026_per_line_captain'
+import { runYieldQtyPerSaleMigration } from '../db/migrations/027_yield_qty_per_sale'
+import { runItemPurchaseNotesMigration } from '../db/migrations/028_item_purchase_notes'
+import { runKitchenStatusMigration } from '../db/migrations/029_kitchen_status'
 
 let db: Database.Database
 
@@ -69,6 +73,10 @@ describe('Full day at the restaurant (integration)', () => {
     runTotalYieldMigration(db)
     runItemStockMovementsMigration(db)
     runYieldCleanupMigration(db)
+    runPerLineCaptainMigration(db)
+    runYieldQtyPerSaleMigration(db)
+    runItemPurchaseNotesMigration(db)
+    runKitchenStatusMigration(db)
     runRemovePaymentIdMigration(db)
     runUserRolesMigration(db)
     runDebtWriteOffsMigration(db)
@@ -370,7 +378,11 @@ describe('Setup wizard & system purge (fresh system)', () => {
     runTotalYieldMigration(db)
     runItemStockMovementsMigration(db)
     runYieldCleanupMigration(db)
+    runPerLineCaptainMigration(db)
     runSetupMigration(db)
+    runYieldQtyPerSaleMigration(db)
+    runItemPurchaseNotesMigration(db)
+    runKitchenStatusMigration(db)
     runRemovePaymentIdMigration(db)
     runUserRolesMigration(db)
     runDebtWriteOffsMigration(db)

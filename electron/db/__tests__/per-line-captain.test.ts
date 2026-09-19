@@ -8,6 +8,9 @@ import { runRemovePaymentIdMigration } from '../migrations/014_debt_allocations_
 import { runDebtWriteOffsMigration } from '../migrations/017_debt_write_offs'
 import { runCategoriesMigration } from '../migrations/007_categories'
 import { runPerLineCaptainMigration } from '../migrations/026_per_line_captain'
+import { runSetupMigration } from '../migrations/012_setup'
+import { runYieldQtyPerSaleMigration } from '../migrations/027_yield_qty_per_sale'
+import { runKitchenStatusMigration } from '../migrations/029_kitchen_status'
 
 let db: Database.Database
 let catId = 0
@@ -38,7 +41,10 @@ describe('per-line captain sale creation', () => {
     runRemovePaymentIdMigration(db)
     runDebtWriteOffsMigration(db)
     runCategoriesMigration(db)
+    runSetupMigration(db)
     runPerLineCaptainMigration(db)
+    runYieldQtyPerSaleMigration(db)
+    runKitchenStatusMigration(db)
     catId = (db.prepare(`SELECT id FROM categories WHERE name = 'Proteins'`).get() as { id: number }).id
   })
 

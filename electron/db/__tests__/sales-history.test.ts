@@ -8,6 +8,7 @@ import { runCategoriesMigration } from '../migrations/007_categories'
 import { runRemovePaymentIdMigration } from '../migrations/014_debt_allocations_cleanup'
 import { runDebtWriteOffsMigration } from '../migrations/017_debt_write_offs'
 import { runPerLineCaptainMigration } from '../migrations/026_per_line_captain'
+import { runKitchenStatusMigration } from '../migrations/029_kitchen_status'
 
 let db: Database.Database
 
@@ -33,6 +34,7 @@ describe('sales history (list/get/void)', () => {
     runRemovePaymentIdMigration(db)
     runDebtWriteOffsMigration(db)
     runPerLineCaptainMigration(db)
+    runKitchenStatusMigration(db)
 
     const catId = Number(db.prepare(`INSERT INTO categories (name, kind, sort_order) VALUES ('Food', 'priced', 0)`).run().lastInsertRowid)
     itemId = Number(

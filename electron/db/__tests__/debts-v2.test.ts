@@ -6,6 +6,7 @@ import { runDebtsMigration } from '../migrations/004_debts_payment_allocations'
 import { runRemovePaymentIdMigration } from '../migrations/014_debt_allocations_cleanup'
 import { runDebtWriteOffsMigration } from '../migrations/017_debt_write_offs'
 import { runPerLineCaptainMigration } from '../migrations/026_per_line_captain'
+import { runKitchenStatusMigration } from '../migrations/029_kitchen_status'
 
 let db: Database.Database
 
@@ -58,6 +59,7 @@ describe('debts v2', () => {
     runRemovePaymentIdMigration(db)
     runDebtWriteOffsMigration(db)
     runPerLineCaptainMigration(db)
+    runKitchenStatusMigration(db)
   })
 
   afterAll(() => db.close())
