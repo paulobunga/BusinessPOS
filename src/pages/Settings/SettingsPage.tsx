@@ -68,6 +68,12 @@ export function SettingsPage() {
   // Kitchen display
   const [kdsMinutes, setKdsMinutes] = useState('10')
   const [kdsStatus, setKdsStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [kdsPort, setKdsPort] = useState('3000')
+  const [kdsToken, setKdsToken] = useState('')
+  const [kdsServer, setKdsServer] = useState<{ running: boolean; port: number | null; error: string | null } | null>(null)
+  const [kdsUrls, setKdsUrls] = useState<string[]>([])
+  const [kdsCopied, setKdsCopied] = useState<string | null>(null)
+  const [kdsBusy, setKdsBusy] = useState(false)
 
   // Categories
   const { categories, loading: categoriesLoading, error: categoriesError, retry: retryCategories } = useCategories(false)
@@ -122,12 +128,31 @@ export function SettingsPage() {
   }
 
   // === Kitchen display ===
+  const refreshKdsServer = async () => {
+    try {
+      const st = await window.api['system:kitchenStatus']()
+      setKdsServer({ running: st.running, port: st.port, error: st.error })
+    } catch {
+      setKdsServer({ running: false, port: null, error: 'Status unavailable' })
+    }
+    try {
+      setKdsUrls(await window.api['system:kitchenUrls']())
+    } catch {
+      setKdsUrls([])
+    }
+  }
+
   useEffect(() => {
     window.api['settings:get']().then(s => {
       const raw = s?.kds_alert_minutes
       const parsed = raw != null ? parseInt(raw, 10) : NaN
       setKdsMinutes(Number.isInteger(parsed) && parsed >= 1 && parsed <= 120 ? String(parsed) : '10')
+      const rawPort = s?.kds_port
+      const parsedPort = rawPort != null ? parseInt(rawPort, 10) : NaN
+      setKdsPort(Number.isInteger(parsedPort) && parsedPort >= 1 && parsedPort <= 65535 ? String(parsedPort) : '3000')
+      setKdsToken(s?.kds_token ?? '')
     }).catch(() => {})
+    void refreshKdsServer()
   }, [])
 
   const saveKdsMinutes = async () => {
@@ -136,6 +161,72 @@ export function SettingsPage() {
     await window.api['settings:update']({ kds_alert_minutes: String(n) })
     setKdsStatus({ type: 'success', text: 'Kitchen alert threshold saved' })
     setTimeout(() => setKdsStatus(null), 2500)
+  }
+
+  const saveKdsPort = async () => {
+    const n = parseInt(kdsPort, 10)
+    if (!Number.isInteger(n) || n < 1 || n > 65535) { setKdsStatus({ type: 'error', text: 'Enter a whole number from 1 to 65535' }); return }
+    setKdsBusy(true)
+    try {
+      await window.api['settings:update']({ kds_port: String(n) })
+      const st = await window.api['system:restartKds'](n)
+      setKdsServer({ running: st.running, port: st.port, error: st.error })
+      try {
+        setKdsUrls(await window.api['system:kitchenUrls']())
+      } catch {
+        setKdsUrls([])
+      }
+      if (st.running) {
+        setKdsStatus({ type: 'success', text: `Port saved — server running on port ${st.port}` })
+      } else {
+        setKdsStatus({ type: 'error', text: st.error ?? 'Port saved but server failed to start' })
+      }
+    } catch (e: any) {
+      setKdsStatus({ type: 'error', text: e?.message ?? 'Failed to save port' })
+    }
+    setKdsBusy(false)
+  }
+
+  const regenerateKdsToken = async () => {
+    const pin = String(crypto.getRandomValues(new Uint32Array(1))[0] % 900000 + 100000)
+    try {
+      await window.api['settings:update']({ kds_token: pin })
+      setKdsToken(pin)
+      setKdsStatus({ type: 'success', text: 'Kitchen PIN regenerated' })
+    } catch (e: any) {
+      setKdsStatus({ type: 'error', text: e?.message ?? 'Failed to regenerate PIN' })
+    }
+  }
+
+  const restartKdsServer = async () => {
+    setKdsBusy(true)
+    try {
+      const st = await window.api['system:restartKds']()
+      setKdsServer({ running: st.running, port: st.port, error: st.error })
+      try {
+        setKdsUrls(await window.api['system:kitchenUrls']())
+      } catch {
+        setKdsUrls([])
+      }
+      if (st.running) {
+        setKdsStatus({ type: 'success', text: `Server restarted on port ${st.port}` })
+      } else {
+        setKdsStatus({ type: 'error', text: st.error ?? 'Server failed to start' })
+      }
+    } catch (e: any) {
+      setKdsStatus({ type: 'error', text: e?.message ?? 'Failed to restart server' })
+    }
+    setKdsBusy(false)
+  }
+
+  const copyKdsUrl = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url)
+      setKdsCopied(url)
+      setTimeout(() => setKdsCopied(c => (c === url ? null : c)), 2000)
+    } catch {
+      setKdsStatus({ type: 'error', text: 'Copy failed — select the URL manually' })
+    }
   }
 
   // === Categories ===
@@ -394,6 +485,56 @@ export function SettingsPage() {
             />
           </Label>
           <Button className="h-11 bg-primary font-semibold" onClick={saveKdsMinutes}>Save</Button>
+        </div>
+        <div className="flex flex-wrap items-end gap-3">
+          <Label className="flex min-w-[240px] flex-1 flex-col gap-1 text-[0.875rem] font-semibold">
+            Server port
+            <Input
+              className={`${inputClass} h-11`}
+              type="number"
+              min={1}
+              max={65535}
+              value={kdsPort}
+              onChange={e => setKdsPort(e.target.value)}
+            />
+          </Label>
+          <Button className="h-11 bg-primary font-semibold" onClick={saveKdsPort} disabled={kdsBusy}>Save & Restart</Button>
+        </div>
+        <div className="flex flex-wrap items-end gap-3">
+          <Label className="flex min-w-[240px] flex-1 flex-col gap-1 text-[0.875rem] font-semibold">
+            Kitchen PIN
+            <Input
+              className={`${inputClass} h-11`}
+              type="password"
+              inputMode="numeric"
+              maxLength={6}
+              value={kdsToken}
+              placeholder="Not set yet — start the app once"
+              readOnly
+            />
+          </Label>
+          <Button className="h-11 border-border bg-card font-semibold" variant="outline" onClick={regenerateKdsToken}>Regenerate</Button>
+        </div>
+        <p className="m-0 text-[0.875rem] text-muted-foreground">Changing the PIN disconnects tablets until they re-enter it.</p>
+        {kdsServer != null && (
+          kdsServer.running
+            ? <StatusLine type="success" text={`Running on port ${kdsServer.port}`} />
+            : <StatusLine type="error" text={kdsServer.error ?? 'Server not running'} />
+        )}
+        {kdsUrls.length > 0 && (
+          <div className="flex flex-col gap-2">
+            {kdsUrls.map(url => (
+              <div key={url} className="flex flex-wrap items-center gap-2">
+                <code className="select-all rounded-[var(--radius-md)] border border-border bg-card px-2 py-1 text-[0.875rem]">{url}</code>
+                <Button variant="outline" size="sm" className="h-11 border-border bg-card font-semibold" onClick={() => copyKdsUrl(url)}>
+                  {kdsCopied === url ? 'Copied' : 'Copy'}
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div>
+          <Button className="h-11 border-border bg-card font-semibold" variant="outline" onClick={restartKdsServer} disabled={kdsBusy}>Restart server</Button>
         </div>
         {kdsStatus && <StatusLine type={kdsStatus.type} text={kdsStatus.text} />}
       </Section>
