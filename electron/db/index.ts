@@ -25,6 +25,9 @@ import { runRecipesMigration } from './migrations/023_recipes.js'
 import { runItemStockMovementsMigration } from './migrations/024_item_stock_movements.js'
 import { runYieldCleanupMigration } from './migrations/025_yield_cleanup.js'
 import { runPerLineCaptainMigration } from './migrations/026_per_line_captain.js'
+import { runYieldQtyPerSaleMigration } from './migrations/027_yield_qty_per_sale.js'
+import { runItemPurchaseNotesMigration } from './migrations/028_item_purchase_notes.js'
+import { runKitchenStatusMigration } from './migrations/029_kitchen_status.js'
 import { runRemovePaymentIdMigration } from './migrations/014_debt_allocations_cleanup.js'
 import { runSetupMigration } from './migrations/012_setup.js'
 import { usersRepo } from './repositories/usersRepo.js'
@@ -114,6 +117,9 @@ export function getDb(): Database.Database {
     runItemStockMovementsMigration(db)
     runYieldCleanupMigration(db)
     runPerLineCaptainMigration(db)
+    runYieldQtyPerSaleMigration(db)
+    runItemPurchaseNotesMigration(db)
+    runKitchenStatusMigration(db)
 
     const setupComplete = db.prepare("SELECT value FROM settings WHERE key = 'setup_complete'").get() as { value: string } | undefined
     const userCount = (db.prepare('SELECT COUNT(*) as c FROM users').get() as { c: number }).c
