@@ -5,6 +5,7 @@ import {
   Bot,
   Boxes,
   ChefHat,
+  CookingPot,
   History,
   Landmark,
   LogOut,
@@ -23,6 +24,7 @@ import type { Module } from '../lib/permissions'
 const navItems: { to: string; label: string; icon: React.ElementType; module: Module }[] = [
   { to: '/sell', label: 'Sell', icon: ShoppingCart, module: 'pos' },
   { to: '/sales', label: 'Sales History', icon: History, module: 'pos' },
+  { to: '/kitchen', label: 'Kitchen', icon: CookingPot, module: 'pos' },
   { to: '/expenses', label: 'Expenses', icon: ReceiptText, module: 'expenses' },
   { to: '/debts', label: 'Debts', icon: Wallet, module: 'debts' },
   { to: '/reimbursements', label: 'Reimbursements', icon: ArrowLeftRight, module: 'reimbursements' },

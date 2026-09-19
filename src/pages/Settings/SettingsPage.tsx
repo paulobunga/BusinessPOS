@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useCategories } from '../../hooks/useCategories'
 import { useAttributes } from '../../hooks/useAttributes'
@@ -65,6 +65,10 @@ export function SettingsPage() {
   const [businessName, setBusinessName] = useState('My Restaurant')
   const [bizStatus, setBizStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
+  // Kitchen display
+  const [kdsMinutes, setKdsMinutes] = useState('10')
+  const [kdsStatus, setKdsStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
   // Categories
   const { categories, loading: categoriesLoading, error: categoriesError, retry: retryCategories } = useCategories(false)
   const [categoryModal, setCategoryModal] = useState<CategoryModal | null>(null)
@@ -115,6 +119,23 @@ export function SettingsPage() {
     await window.api['settings:update']({ business_name: name })
     setBizStatus({ type: 'success', text: 'Business name saved' })
     setTimeout(() => setBizStatus(null), 2500)
+  }
+
+  // === Kitchen display ===
+  useEffect(() => {
+    window.api['settings:get']().then(s => {
+      const raw = s?.kds_alert_minutes
+      const parsed = raw != null ? parseInt(raw, 10) : NaN
+      setKdsMinutes(Number.isInteger(parsed) && parsed >= 1 && parsed <= 120 ? String(parsed) : '10')
+    }).catch(() => {})
+  }, [])
+
+  const saveKdsMinutes = async () => {
+    const n = parseInt(kdsMinutes, 10)
+    if (!Number.isInteger(n) || n < 1 || n > 120) { setKdsStatus({ type: 'error', text: 'Enter a whole number from 1 to 120' }); return }
+    await window.api['settings:update']({ kds_alert_minutes: String(n) })
+    setKdsStatus({ type: 'success', text: 'Kitchen alert threshold saved' })
+    setTimeout(() => setKdsStatus(null), 2500)
   }
 
   // === Categories ===
@@ -356,6 +377,25 @@ export function SettingsPage() {
           <Button className="h-11 bg-primary font-semibold" onClick={saveBusinessName}>Save</Button>
         </div>
         {bizStatus && <StatusLine type={bizStatus.type} text={bizStatus.text} />}
+      </Section>
+
+      {/* Kitchen display */}
+      <Section title="Kitchen display" subtitle="Alert threshold for overdue orders on the kitchen screen.">
+        <div className="flex flex-wrap items-end gap-3">
+          <Label className="flex min-w-[240px] flex-1 flex-col gap-1 text-[0.875rem] font-semibold">
+            Alert after (minutes)
+            <Input
+              className={inputClass}
+              type="number"
+              min={1}
+              max={120}
+              value={kdsMinutes}
+              onChange={e => setKdsMinutes(e.target.value)}
+            />
+          </Label>
+          <Button className="h-11 bg-primary font-semibold" onClick={saveKdsMinutes}>Save</Button>
+        </div>
+        {kdsStatus && <StatusLine type={kdsStatus.type} text={kdsStatus.text} />}
       </Section>
 
       {/* Categories */}

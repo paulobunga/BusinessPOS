@@ -17,6 +17,8 @@ import { FilterBar, FilterSelect } from '../../components/FilterBar'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
 import { cn } from '@/lib/utils'
 import type { SaleWithItems } from '../../../shared/types'
+import type { KitchenStatus } from '../../../shared/kitchen'
+import { KitchenBadge } from '../../components/KitchenBadge'
 
 const fmt = (n: number) => new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 }).format(n)
 
@@ -37,9 +39,8 @@ function statusBadge(status: string) {
 }
 
 export function SalesHistoryPage() {
-  const today = new Date().toISOString().slice(0, 10)
-  const [dateFrom, setDateFrom] = useState(today)
-  const [dateTo, setDateTo] = useState(today)
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [status, setStatus] = useState('all')
   const [sales, setSales] = useState<SaleWithItems[]>([])
   const [loading, setLoading] = useState(true)
@@ -114,7 +115,7 @@ export function SalesHistoryPage() {
           dateTo={dateTo}
           onDateFromChange={setDateFrom}
           onDateToChange={setDateTo}
-          onReset={() => { setDateFrom(today); setDateTo(today); setStatus('all') }}
+          onReset={() => { setDateFrom(''); setDateTo(''); setStatus('all') }}
         >
           <FilterSelect
             label="Status"
@@ -164,7 +165,12 @@ export function SalesHistoryPage() {
                       <TableCell className="text-right font-bold">{fmt(sale.total_cents)}</TableCell>
                       <TableCell className="text-muted-foreground">{sale.payment_method ?? sale.payment_source ?? '—'}</TableCell>
                       <TableCell>
-                        <span className={statusBadge(sale.status)}>{sale.status.toUpperCase()}</span>
+                        <span className="flex flex-wrap items-center gap-1">
+                          <span className={statusBadge(sale.status)}>{sale.status.toUpperCase()}</span>
+                          {(sale as SaleWithItems & { kitchen_status?: KitchenStatus }).kitchen_status ? (
+                            <KitchenBadge status={(sale as SaleWithItems & { kitchen_status: KitchenStatus }).kitchen_status} />
+                          ) : null}
+                        </span>
                       </TableCell>
                       <TableCell className="text-right" onClick={e => e.stopPropagation()}>
                         {sale.status !== 'voided' ? (
