@@ -1,9 +1,15 @@
 import { ipcMain, BrowserWindow } from 'electron'
 import { listActiveKitchenOrders, setKitchenStatus } from '../kds/kitchenService'
+import { emitToKitchenSocket } from '../kds/kdsServer.js'
 import type { KitchenOrder } from '../../shared/kitchen'
 export type KitchenEvent = { type: 'order:new' | 'order:updated'; order: KitchenOrder }
 export function broadcastKitchenEvent(payload: KitchenEvent) {
   for (const w of BrowserWindow.getAllWindows()) w.webContents.send('kitchen:event', payload)
+  try {
+    emitToKitchenSocket(payload.type, payload.order)
+  } catch {
+    // POS fan-out must never break on socket errors
+  }
 }
 export function registerKitchenHandlers() {
   ipcMain.handle('kitchen:list', () => listActiveKitchenOrders())

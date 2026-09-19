@@ -18,6 +18,7 @@ import { registerAssetsHandlers } from './ipc/assetsHandlers.js'
 import { registerRecipesHandlers } from './ipc/recipesHandlers.js'
 import { registerAiHandlers } from './ipc/aiHandlers.js'
 import { registerKitchenHandlers } from './ipc/kitchenHandlers.js'
+import { startKdsServer, stopKdsServer } from './kds/kdsServer.js'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -60,8 +61,18 @@ async function loadDevtoolsExtension() {
 app.whenReady().then(async () => {
   await loadDevtoolsExtension()
   createWindow()
+  try {
+    await startKdsServer().catch((err) => {
+      console.warn('[kds] failed to start:', err instanceof Error ? err.message : String(err))
+    })
+  } catch (err) {
+    console.warn('[kds] failed to start:', err instanceof Error ? err.message : String(err))
+  }
 })
 app.on('window-all-closed', () => app.quit())
+app.on('before-quit', () => {
+  void stopKdsServer()
+})
 
 registerAuthHandlers()
 registerItemsHandlers()

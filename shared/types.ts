@@ -631,6 +631,9 @@ export interface Api {
   'system:status': () => Promise<{ needsSetup: boolean }>
   'system:purge': () => Promise<void>
   'setup:save': (payload: SetupPayload) => Promise<{ userId: number }>
+  'system:kitchenStatus': () => Promise<{ running: boolean; port: number | null; urls: string[]; error: string | null }>
+  'system:restartKds': (port?: number) => Promise<{ running: boolean; port: number | null; urls: string[]; error: string | null }>
+  'system:kitchenUrls': () => Promise<string[]>
   'debts:listOpen': () => Promise<OpenDebt[]>
   'debts:recordPayment': (payload: { sale_id: number; amount_cents: number; payment_method: string; till_session_id: number | null; created_by: number }) => Promise<{ remaining_cents: number; sale_status: string }>
   'debts:writeOff': (payload: WriteOffPayload) => Promise<{ written_off_cents: number; remaining_cents: number }>

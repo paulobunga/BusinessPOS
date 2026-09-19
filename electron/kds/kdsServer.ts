@@ -1,5 +1,4 @@
-// @ts-ignore - express ships without bundled types and @types/express is not installed
-import express from 'express'
+import express, { type Request, type Response } from 'express'
 import { createServer } from 'node:http'
 import { Server } from 'socket.io'
 import path from 'node:path'
@@ -45,19 +44,19 @@ export async function startKdsServer(port?: number): Promise<KdsStatus> {
   const app = express()
   const publicDir = resolvePublicDir()
   if (publicDir) {
-    app.get('/kitchen', (_req: any, res: any) => {
+    app.get('/kitchen', (_req: Request, res: Response) => {
       res.sendFile(path.join(publicDir, 'kitchen.html'))
     })
     app.use('/kitchen', express.static(publicDir))
   } else {
-    app.get('/kitchen', (_req: any, res: any) => {
+    app.get('/kitchen', (_req: Request, res: Response) => {
       res.status(503).send('Kitchen display not installed')
     })
   }
-  app.get('/', (_req: any, res: any) => {
+  app.get('/', (_req: Request, res: Response) => {
     res.redirect('/kitchen')
   })
-  app.use((_req: any, res: any) => {
+  app.use((_req: Request, res: Response) => {
     res.status(404).send('Not found')
   })
 
