@@ -149,6 +149,50 @@ Server port (1–65535, default 3000, Save & Restart), Kitchen PIN (masked,
 Regenerate), LAN URL list (`http://<ip>:<port>/kitchen` + Copy per URL),
 server status line (Running on port P / error), Restart server button.
 
+## Ticket printing
+
+Paper tickets print alongside the on-screen board (KOT for the kitchen,
+receipt for the customer).
+
+### Data flow
+
+`sales:create` → `maybeAutoPrint` → print queue → hidden window →
+silent print. Sale creation enqueues KOT/receipt jobs per the auto-print
+flags; a hidden BrowserWindow renders the ticket and prints silently
+without a dialog.
+
+### Settings keys
+
+Settings → **Printing**:
+
+| Key | Default | Meaning |
+|-----|---------|---------|
+| `print_enabled` | on | Master switch; when off, all jobs are skipped |
+| `print_kot_auto` | on | Auto-print KOT on every sale |
+| `print_receipt_auto` | off | Auto-print customer receipt on every sale |
+| `print_device_name` | system default | Target printer; empty means the Windows default |
+| `receipt_footer` | empty | Extra footer line on receipts |
+
+### Troubleshooting
+
+- **Nothing prints:** is `print_enabled` on? Is the printer installed in
+  Windows? Is the right device selected in Settings → Printing? What did
+  the **Print test page** show — if the test page fails, fix the Windows
+  printer/driver first.
+- **Wrong printer:** silent print uses the Windows default printer when no
+  device is picked (`print_device_name` empty). Pick the device explicitly
+  in Settings → Printing to pin it.
+
+No new dependencies were added for printing (Electron + existing app code
+only).
+
+### Manual acceptance (to verify on Windows with a real printer)
+
+- Create a sale → KOT prints automatically — `to verify on Windows with a real printer` (not live-verified here).
+- Sale toast → Print receipt → receipt prints — `to verify on Windows with a real printer` (not live-verified here).
+- Settings → Printing → Print test page — `to verify on Windows with a real printer` (not live-verified here).
+- Disable `print_enabled` → jobs are skipped — `to verify on Windows with a real printer` (not live-verified here).
+
 ## Dependencies
 
 - Prod: `express` (^4), `socket.io` (^4).

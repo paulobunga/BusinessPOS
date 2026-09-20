@@ -34,3 +34,13 @@ The POS PC also serves a tablet-friendly board over the LAN:
 6. On the POS PC, **disable sleep** while plugged in and **launch the app at
    startup** so tablets can always reconnect (they resync automatically via
    `orders:sync`).
+
+### Ticket printing
+
+Printing summary: a KOT auto-prints on every sale (including captain
+orders) when `print_kot_auto` is on; a customer receipt auto-prints when
+`print_receipt_auto` is on. Setup: install the printer in Windows →
+Settings → Printing → pick the device → Print test page. Manual reprints:
+the sale-complete toast, the sales history row, and the kitchen card. See
+`docs/kitchen-display.md` (`## Ticket printing`) for data flow, settings,
+and troubleshooting.
