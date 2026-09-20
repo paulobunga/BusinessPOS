@@ -1,5 +1,6 @@
 // === Entities ===
 import type { KitchenOrder, KitchenStatus } from './kitchen'
+import type { PrintKind, PrintRequest, PrintResult, PrinterInfo } from './print'
 
 export type KitchenEvent = { type: 'order:new' | 'order:updated'; order: KitchenOrder }
 
@@ -575,6 +576,9 @@ export interface Api {
   'sales:getById': (id: number) => Promise<Sale | null>
   'kitchen:list': () => Promise<KitchenOrder[]>
   'kitchen:setStatus': (id: number, status: KitchenStatus) => Promise<KitchenOrder>
+  'print:listPrinters': () => Promise<PrinterInfo[]>
+  'print:test': (kind?: PrintKind) => Promise<PrintResult>
+  'print:ticket': (req: PrintRequest) => Promise<PrintResult>
   'expenses:create': (payload: CreateExpensePayload) => Promise<Expense>
   'expenses:update': (id: number, payload: Partial<CreateExpensePayload>) => Promise<Expense>
   'expenses:delete': (id: number) => Promise<void>

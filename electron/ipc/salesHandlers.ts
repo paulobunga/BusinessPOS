@@ -2,6 +2,7 @@ import { ipcMain } from 'electron'
 import { salesRepo } from '../db/repositories/salesRepo'
 import { tillRepo } from '../db/repositories/tillRepo'
 import { broadcastKitchenEvent } from './kitchenHandlers.js'
+import { printService } from '../print/printService.js'
 import type { KitchenOrder } from '../../shared/kitchen'
 
 export function registerSalesHandlers() {
@@ -11,6 +12,7 @@ export function registerSalesHandlers() {
     try {
       if (order) broadcastKitchenEvent({ type: 'order:new', order: order as unknown as KitchenOrder })
     } catch { /* never fail a sale if broadcast fails */ }
+    try { void printService.maybeAutoPrint(order as unknown as KitchenOrder).catch(() => {}) } catch { /* never fail a sale */ }
     return order
   })
   ipcMain.handle('sales:createCaptainOrder', (_e, payload) => {
@@ -19,6 +21,7 @@ export function registerSalesHandlers() {
     try {
       if (order) broadcastKitchenEvent({ type: 'order:new', order: order as unknown as KitchenOrder })
     } catch { /* never fail a sale if broadcast fails */ }
+    try { void printService.maybeAutoPrint(order as unknown as KitchenOrder).catch(() => {}) } catch { /* never fail a sale */ }
     return order
   })
   ipcMain.handle('sales:list', (_e, filters?: { status?: string; date_from?: string; date_to?: string }) => {

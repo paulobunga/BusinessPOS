@@ -18,6 +18,7 @@ import { registerAssetsHandlers } from './ipc/assetsHandlers.js'
 import { registerRecipesHandlers } from './ipc/recipesHandlers.js'
 import { registerAiHandlers } from './ipc/aiHandlers.js'
 import { registerKitchenHandlers } from './ipc/kitchenHandlers.js'
+import { registerPrintHandlers } from './ipc/printHandlers.js'
 import { startKdsServer, stopKdsServer } from './kds/kdsServer.js'
 
 let mainWindow: BrowserWindow | null = null
@@ -92,5 +93,6 @@ registerUsersHandlers()
   registerRecipesHandlers()
   registerAiHandlers()
   registerKitchenHandlers()
+  registerPrintHandlers()
 ipcMain.handle('ping', () => 'pong')
 ipcMain.handle('reports:exportCsv', () => '')

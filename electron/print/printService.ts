@@ -74,3 +74,5 @@ export function createPrintService(driver: PrintDriver = systemPrintDriver) {
   }
   return svc
 }
+
+export const printService = createPrintService()

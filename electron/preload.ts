@@ -106,6 +106,9 @@ const api: Api = {
   'ai:sessions:delete': (id) => ipcRenderer.invoke('ai:sessions:delete', id),
   'kitchen:list': () => ipcRenderer.invoke('kitchen:list'),
   'kitchen:setStatus': (id, status) => ipcRenderer.invoke('kitchen:setStatus', id, status),
+  'print:listPrinters': () => ipcRenderer.invoke('print:listPrinters'),
+  'print:test': (kind) => ipcRenderer.invoke('print:test', kind),
+  'print:ticket': (req) => ipcRenderer.invoke('print:ticket', req),
   onAiEvent: (cb) => {
     const listener = (_e: Electron.IpcRendererEvent, event: AiEvent) => cb(event)
     ipcRenderer.on('ai:event', listener)
