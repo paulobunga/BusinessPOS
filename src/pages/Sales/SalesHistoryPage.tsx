@@ -52,6 +52,11 @@ export function SalesHistoryPage() {
   const [voidError, setVoidError] = useState<string | null>(null)
   const [voiding, setVoiding] = useState(false)
 
+  const [printErrorId, setPrintErrorId] = useState<number | null>(null)
+  const [printError, setPrintError] = useState<string | null>(null)
+  const [printOkId, setPrintOkId] = useState<number | null>(null)
+  const [printBusyId, setPrintBusyId] = useState<number | null>(null)
+
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -106,6 +111,28 @@ export function SalesHistoryPage() {
       setVoidError((err as Error).message || 'Failed to void sale')
     } finally {
       setVoiding(false)
+    }
+  }
+
+  const handlePrintReceipt = async (sale: SaleWithItems) => {
+    setPrintErrorId(null)
+    setPrintError(null)
+    setPrintOkId(null)
+    setPrintBusyId(sale.id)
+    try {
+      const res = await window.api['print:ticket']({ orderId: sale.id, kind: 'receipt' })
+      if (!res.ok) {
+        setPrintErrorId(sale.id)
+        setPrintError(res.error ?? res.skipped ?? 'Print failed')
+      } else {
+        setPrintOkId(sale.id)
+        setTimeout(() => setPrintOkId(cur => (cur === sale.id ? null : cur)), 2500)
+      }
+    } catch (err) {
+      setPrintErrorId(sale.id)
+      setPrintError((err as Error).message || 'Print failed')
+    } finally {
+      setPrintBusyId(null)
     }
   }
 
@@ -182,17 +209,34 @@ export function SalesHistoryPage() {
                         </span>
                       </TableCell>
                       <TableCell className="text-right" onClick={e => e.stopPropagation()}>
-                        {sale.status !== 'voided' ? (
+                        <div className="flex flex-wrap items-center justify-end gap-2">
                           <Button
                             type="button"
                             variant="outline"
-                            className="h-9 border-destructive/40 px-3 text-[0.8125rem] font-semibold text-destructive hover:bg-destructive/10"
-                            onClick={() => { setVoidTarget(sale); setVoidReason(''); setVoidError(null) }}
+                            className="h-9 border-border bg-card px-3 text-[0.8125rem] font-semibold"
+                            disabled={printBusyId === sale.id}
+                            onClick={() => void handlePrintReceipt(sale)}
                           >
-                            Void
+                            {printBusyId === sale.id ? 'Printing...' : 'Print'}
                           </Button>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">{sale.void_reason ?? ''}</span>
+                          {sale.status !== 'voided' ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="h-9 border-destructive/40 px-3 text-[0.8125rem] font-semibold text-destructive hover:bg-destructive/10"
+                              onClick={() => { setVoidTarget(sale); setVoidReason(''); setVoidError(null) }}
+                            >
+                              Void
+                            </Button>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">{sale.void_reason ?? ''}</span>
+                          )}
+                        </div>
+                        {printErrorId === sale.id && printError && (
+                          <p className="m-0 mt-1 text-right font-semibold text-destructive">{printError}</p>
+                        )}
+                        {printOkId === sale.id && (
+                          <p className="m-0 mt-1 text-right font-semibold text-success">Printed</p>
                         )}
                       </TableCell>
                     </TableRow>

@@ -37,6 +37,8 @@ export function KitchenOrderCard({
   onAdvance: (id: number, next: KitchenStatus) => void
 }) {
   const [now, setNow] = useState(() => Date.now())
+  const [printError, setPrintError] = useState<string | null>(null)
+  const [printBusy, setPrintBusy] = useState(false)
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000)
@@ -45,6 +47,18 @@ export function KitchenOrderCard({
 
   const next = NEXT_STATUS[order.kitchen_status]
   const label = NEXT_LABEL[order.kitchen_status]
+
+  const handlePrint = async () => {
+    setPrintError(null)
+    setPrintBusy(true)
+    try {
+      const res = await window.api['print:ticket']({ orderId: order.id, kind: 'kot' })
+      if (!res.ok) setPrintError(res.error ?? res.skipped ?? 'Print failed')
+    } catch (e: any) {
+      setPrintError(e?.message ?? 'Print failed')
+    }
+    setPrintBusy(false)
+  }
 
   return (
     <div
@@ -81,6 +95,16 @@ export function KitchenOrderCard({
           {label}
         </Button>
       ) : null}
+      <Button
+        type="button"
+        variant="outline"
+        className="mt-1 min-h-12 w-full min-w-12 border-border bg-card text-[0.9375rem] font-bold"
+        disabled={printBusy}
+        onClick={() => void handlePrint()}
+      >
+        {printBusy ? 'Printing...' : 'Print'}
+      </Button>
+      {printError && <p className="m-0 text-[0.8125rem] font-semibold text-destructive">{printError}</p>}
     </div>
   )
 }

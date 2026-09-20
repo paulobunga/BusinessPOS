@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from '../../components/ui/select'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
+import { Copy, Eye, EyeOff } from 'lucide-react'
 import type { Category, MenuItemWithCategory, AttributeDef } from '../../../shared/types'
 
 const fmt = (n: number) => new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 }).format(n)
@@ -73,7 +74,18 @@ export function SettingsPage() {
   const [kdsServer, setKdsServer] = useState<{ running: boolean; port: number | null; error: string | null } | null>(null)
   const [kdsUrls, setKdsUrls] = useState<string[]>([])
   const [kdsCopied, setKdsCopied] = useState<string | null>(null)
+  const [showKdsPin, setShowKdsPin] = useState(false)
   const [kdsBusy, setKdsBusy] = useState(false)
+
+  // Printing
+  const [printEnabled, setPrintEnabled] = useState(true)
+  const [printKotAuto, setPrintKotAuto] = useState(true)
+  const [printReceiptAuto, setPrintReceiptAuto] = useState(false)
+  const [printDevice, setPrintDevice] = useState('')
+  const [printerList, setPrinterList] = useState<{ name: string; isDefault: boolean }[]>([])
+  const [receiptFooter, setReceiptFooter] = useState('')
+  const [printStatus, setPrintStatus] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null)
+  const [printBusy, setPrintBusy] = useState(false)
 
   // Categories
   const { categories, loading: categoriesLoading, error: categoriesError, retry: retryCategories } = useCategories(false)
@@ -151,7 +163,13 @@ export function SettingsPage() {
       const parsedPort = rawPort != null ? parseInt(rawPort, 10) : NaN
       setKdsPort(Number.isInteger(parsedPort) && parsedPort >= 1 && parsedPort <= 65535 ? String(parsedPort) : '3000')
       setKdsToken(s?.kds_token ?? '')
+      setPrintEnabled(s?.print_enabled !== 'false')
+      setPrintKotAuto(s?.print_kot_auto !== 'false')
+      setPrintReceiptAuto(s?.print_receipt_auto === 'true')
+      setPrintDevice(s?.print_device_name ?? '')
+      setReceiptFooter(s?.receipt_footer ?? '')
     }).catch(() => {})
+    window.api['print:listPrinters']().then(p => setPrinterList(p ?? [])).catch(() => setPrinterList([]))
     void refreshKdsServer()
   }, [])
 
@@ -192,9 +210,21 @@ export function SettingsPage() {
     try {
       await window.api['settings:update']({ kds_token: pin })
       setKdsToken(pin)
+      setShowKdsPin(true)
       setKdsStatus({ type: 'success', text: 'Kitchen PIN regenerated' })
     } catch (e: any) {
       setKdsStatus({ type: 'error', text: e?.message ?? 'Failed to regenerate PIN' })
+    }
+  }
+
+  const copyKdsPin = async () => {
+    if (!kdsToken) return
+    try {
+      await navigator.clipboard.writeText(kdsToken)
+      setKdsCopied('pin')
+      setTimeout(() => setKdsCopied(c => (c === 'pin' ? null : c)), 2000)
+    } catch {
+      setKdsStatus({ type: 'error', text: 'Copy failed — reveal the PIN and copy it manually' })
     }
   }
 
@@ -227,6 +257,54 @@ export function SettingsPage() {
     } catch {
       setKdsStatus({ type: 'error', text: 'Copy failed — select the URL manually' })
     }
+  }
+
+  // === Printing ===
+  const savePrintToggle = async (key: 'print_enabled' | 'print_kot_auto' | 'print_receipt_auto', value: boolean, apply: (v: boolean) => void, label: string) => {
+    apply(value)
+    try {
+      await window.api['settings:update']({ [key]: value ? 'true' : 'false' })
+      setPrintStatus({ type: 'success', text: `${label} saved` })
+    } catch (e: any) {
+      setPrintStatus({ type: 'error', text: e?.message ?? `Failed to save ${label}` })
+    }
+    setTimeout(() => setPrintStatus(null), 2500)
+  }
+
+  const savePrintDevice = async (v: string) => {
+    setPrintDevice(v)
+    try {
+      await window.api['settings:update']({ print_device_name: v })
+      setPrintStatus({ type: 'success', text: 'Printer saved' })
+    } catch (e: any) {
+      setPrintStatus({ type: 'error', text: e?.message ?? 'Failed to save printer' })
+    }
+    setTimeout(() => setPrintStatus(null), 2500)
+  }
+
+  const saveReceiptFooter = async () => {
+    try {
+      await window.api['settings:update']({ receipt_footer: receiptFooter })
+      setPrintStatus({ type: 'success', text: 'Receipt footer saved' })
+    } catch (e: any) {
+      setPrintStatus({ type: 'error', text: e?.message ?? 'Failed to save footer' })
+    }
+    setTimeout(() => setPrintStatus(null), 2500)
+  }
+
+  const printTestPage = async () => {
+    setPrintBusy(true)
+    try {
+      const res = await window.api['print:test']('receipt')
+      if (res.ok) {
+        setPrintStatus({ type: 'success', text: res.skipped ? `Print skipped — ${res.skipped}` : 'Test page sent to printer' })
+      } else {
+        setPrintStatus({ type: 'error', text: res.error ?? 'Test print failed' })
+      }
+    } catch (e: any) {
+      setPrintStatus({ type: 'error', text: e?.message ?? 'Test print failed' })
+    }
+    setPrintBusy(false)
   }
 
   // === Categories ===
@@ -503,15 +581,37 @@ export function SettingsPage() {
         <div className="flex flex-wrap items-end gap-3">
           <Label className="flex min-w-[240px] flex-1 flex-col gap-1 text-[0.875rem] font-semibold">
             Kitchen PIN
-            <Input
-              className={`${inputClass} h-11`}
-              type="password"
-              inputMode="numeric"
-              maxLength={6}
-              value={kdsToken}
-              placeholder="Not set yet — start the app once"
-              readOnly
-            />
+            <span className="flex items-center gap-2">
+              <Input
+                className={`${inputClass} h-11 flex-1`}
+                type={showKdsPin ? 'text' : 'password'}
+                inputMode="numeric"
+                maxLength={6}
+                value={kdsToken}
+                placeholder="Not set yet — start the app once"
+                readOnly
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-11 w-11 shrink-0 border-border bg-card"
+                onClick={() => setShowKdsPin(v => !v)}
+                title={showKdsPin ? 'Hide PIN' : 'Show PIN'}
+                aria-label={showKdsPin ? 'Hide PIN' : 'Show PIN'}
+              >
+                {showKdsPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 shrink-0 border-border bg-card font-semibold"
+                onClick={copyKdsPin}
+                disabled={!kdsToken}
+              >
+                {kdsCopied === 'pin' ? 'Copied' : <span className="flex items-center gap-1"><Copy className="h-4 w-4" />Copy</span>}
+              </Button>
+            </span>
           </Label>
           <Button className="h-11 border-border bg-card font-semibold" variant="outline" onClick={regenerateKdsToken}>Regenerate</Button>
         </div>
@@ -537,6 +637,55 @@ export function SettingsPage() {
           <Button className="h-11 border-border bg-card font-semibold" variant="outline" onClick={restartKdsServer} disabled={kdsBusy}>Restart server</Button>
         </div>
         {kdsStatus && <StatusLine type={kdsStatus.type} text={kdsStatus.text} />}
+      </Section>
+
+      {/* Printing */}
+      <Section title="Printing" subtitle="Ticket printers for KOTs and receipts.">
+        <Label className="flex min-h-10 flex-row items-center gap-2 text-[0.875rem] font-semibold">
+          <Checkbox checked={printEnabled} onCheckedChange={v => void savePrintToggle('print_enabled', v === true, setPrintEnabled, 'Printing')} />
+          <span>Enable printing</span>
+        </Label>
+        <Label className="flex min-h-10 flex-row items-center gap-2 text-[0.875rem] font-semibold">
+          <Checkbox checked={printKotAuto} onCheckedChange={v => void savePrintToggle('print_kot_auto', v === true, setPrintKotAuto, 'KOT auto-print')} />
+          <span>Auto-print KOT on sale</span>
+        </Label>
+        <Label className="flex min-h-10 flex-row items-center gap-2 text-[0.875rem] font-semibold">
+          <Checkbox checked={printReceiptAuto} onCheckedChange={v => void savePrintToggle('print_receipt_auto', v === true, setPrintReceiptAuto, 'Receipt auto-print')} />
+          <span>Auto-print receipt on sale</span>
+        </Label>
+        <div className="flex flex-wrap items-end gap-3">
+          <Label className="flex min-w-[240px] flex-1 flex-col gap-1 text-[0.875rem] font-semibold">
+            Printer
+            <select
+              className={`${inputClass} h-11`}
+              value={printDevice}
+              onChange={e => void savePrintDevice(e.target.value)}
+            >
+              <option value="">System default</option>
+              {printerList.map(p => (
+                <option key={p.name} value={p.name}>{p.name + (p.isDefault ? ' (default)' : '')}</option>
+              ))}
+            </select>
+          </Label>
+        </div>
+        <div className="flex flex-wrap items-end gap-3">
+          <Label className="flex min-w-[240px] flex-1 flex-col gap-1 text-[0.875rem] font-semibold">
+            Receipt footer
+            <Input
+              className={`${inputClass} h-11`}
+              value={receiptFooter}
+              onChange={e => setReceiptFooter(e.target.value)}
+              placeholder="e.g. Thank you, come again!"
+            />
+          </Label>
+          <Button className="h-11 bg-primary font-semibold" onClick={saveReceiptFooter}>Save</Button>
+        </div>
+        <div>
+          <Button className="h-11 border-border bg-card font-semibold" variant="outline" onClick={printTestPage} disabled={printBusy}>
+            {printBusy ? 'Printing...' : 'Print test page'}
+          </Button>
+        </div>
+        {printStatus && <StatusLine type={printStatus.type} text={printStatus.text} />}
       </Section>
 
       {/* Categories */}

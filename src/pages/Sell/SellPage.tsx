@@ -44,6 +44,7 @@ export function SellPage() {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [lastSaleId, setLastSaleId] = useState<number | null>(null)
   const [pendingSale, setPendingSale] = useState<{ paymentMethod: 'cash' | 'debt'; customerName?: string; paidNowCents: number; tabId: string } | null>(null)
   const [pendingCaptain, setPendingCaptain] = useState<{ serviceDescription: string; customerName?: string; tabId: string } | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -233,7 +234,8 @@ export function SellPage() {
           quantity: item.quantity,
         })),
       }
-      await window.api['sales:create'](payload)
+      const sale = await window.api['sales:create'](payload)
+      setLastSaleId(sale.id)
       cart.clearCart(tabId)
       if (customerName?.trim()) cart.setTabLabel(tabId, customerName.trim())
       setSelectedItem(null)
@@ -272,7 +274,8 @@ export function SellPage() {
           quantity: item.quantity,
         })),
       }
-      await window.api['sales:createCaptainOrder'](payload)
+      const order = await window.api['sales:createCaptainOrder'](payload)
+      setLastSaleId(order.id)
       cart.clearCart(tabId)
       if (customerName?.trim()) cart.setTabLabel(tabId, customerName.trim())
       setSelectedItem(null)
@@ -284,6 +287,16 @@ export function SellPage() {
       setMessage('Captain order failed: ' + (err as Error).message)
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handlePrintLastReceipt = async () => {
+    if (lastSaleId == null) return
+    try {
+      const res = await window.api['print:ticket']({ orderId: lastSaleId, kind: 'receipt' })
+      if (!res.ok) setMessage(res.error ?? res.skipped ?? 'Print failed')
+    } catch (err) {
+      setMessage('Print failed: ' + (err as Error).message)
     }
   }
 
@@ -620,8 +633,17 @@ export function SellPage() {
       )}
 
       {success && (
-        <div className="fixed top-6 right-6 z-[999] rounded-[var(--radius-md)] bg-primary px-6 py-3 font-bold text-white shadow-lg">
-          Sale recorded ✓
+        <div className="fixed top-6 right-6 z-[999] flex items-center gap-3 rounded-[var(--radius-md)] bg-primary px-6 py-3 font-bold text-white shadow-lg">
+          <span>Sale recorded ✓</span>
+          {lastSaleId != null && (
+            <button
+              type="button"
+              className="rounded-[var(--radius-sm)] bg-white px-3 py-1 text-[0.875rem] font-bold text-primary hover:bg-white/90"
+              onClick={() => void handlePrintLastReceipt()}
+            >
+              Print receipt
+            </button>
+          )}
         </div>
       )}
     </div>
