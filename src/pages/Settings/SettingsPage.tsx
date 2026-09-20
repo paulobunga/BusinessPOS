@@ -24,7 +24,6 @@ import {
   SelectValue,
 } from '../../components/ui/select'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
-import { Copy, Eye, EyeOff } from 'lucide-react'
 import type { Category, MenuItemWithCategory, AttributeDef } from '../../../shared/types'
 
 const fmt = (n: number) => new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', minimumFractionDigits: 0 }).format(n)
@@ -74,7 +73,6 @@ export function SettingsPage() {
   const [kdsServer, setKdsServer] = useState<{ running: boolean; port: number | null; error: string | null } | null>(null)
   const [kdsUrls, setKdsUrls] = useState<string[]>([])
   const [kdsCopied, setKdsCopied] = useState<string | null>(null)
-  const [showKdsPin, setShowKdsPin] = useState(false)
   const [kdsBusy, setKdsBusy] = useState(false)
 
   // Printing
@@ -210,21 +208,9 @@ export function SettingsPage() {
     try {
       await window.api['settings:update']({ kds_token: pin })
       setKdsToken(pin)
-      setShowKdsPin(true)
       setKdsStatus({ type: 'success', text: 'Kitchen PIN regenerated' })
     } catch (e: any) {
       setKdsStatus({ type: 'error', text: e?.message ?? 'Failed to regenerate PIN' })
-    }
-  }
-
-  const copyKdsPin = async () => {
-    if (!kdsToken) return
-    try {
-      await navigator.clipboard.writeText(kdsToken)
-      setKdsCopied('pin')
-      setTimeout(() => setKdsCopied(c => (c === 'pin' ? null : c)), 2000)
-    } catch {
-      setKdsStatus({ type: 'error', text: 'Copy failed — reveal the PIN and copy it manually' })
     }
   }
 
@@ -581,37 +567,15 @@ export function SettingsPage() {
         <div className="flex flex-wrap items-end gap-3">
           <Label className="flex min-w-[240px] flex-1 flex-col gap-1 text-[0.875rem] font-semibold">
             Kitchen PIN
-            <span className="flex items-center gap-2">
-              <Input
-                className={`${inputClass} h-11 flex-1`}
-                type={showKdsPin ? 'text' : 'password'}
-                inputMode="numeric"
-                maxLength={6}
-                value={kdsToken}
-                placeholder="Not set yet — start the app once"
-                readOnly
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="h-11 w-11 shrink-0 border-border bg-card"
-                onClick={() => setShowKdsPin(v => !v)}
-                title={showKdsPin ? 'Hide PIN' : 'Show PIN'}
-                aria-label={showKdsPin ? 'Hide PIN' : 'Show PIN'}
-              >
-                {showKdsPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="h-11 shrink-0 border-border bg-card font-semibold"
-                onClick={copyKdsPin}
-                disabled={!kdsToken}
-              >
-                {kdsCopied === 'pin' ? 'Copied' : <span className="flex items-center gap-1"><Copy className="h-4 w-4" />Copy</span>}
-              </Button>
-            </span>
+            <Input
+              className={`${inputClass} h-11`}
+              type="password"
+              inputMode="numeric"
+              maxLength={6}
+              value={kdsToken}
+              placeholder="Not set yet — start the app once"
+              readOnly
+            />
           </Label>
           <Button className="h-11 border-border bg-card font-semibold" variant="outline" onClick={regenerateKdsToken}>Regenerate</Button>
         </div>
